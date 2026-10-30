@@ -542,7 +542,7 @@ export default class ButtonControl {
 
     // À la place de « Calculer et Visualiser » (demande explicite), même style, visibles selon le
     // parcours du projet (classes posées sur <html> par window.appliquerParcoursRetour) :
-    //  - Résidentiel connecté au réseau : retour à la modale Calepinage multi-typologie ;
+    //  - Résidentiel connecté au réseau ou système Alimentation électrique / Système hybride / Solaire thermique : retour à la modale Calepinage multi-typologie ;
     //  - Site autonome en pompage solaire : retour à la modale Consommation d'énergie, onglet Pompage.
     const creerBoutonRetour = (id, icone, libelle, titre, classe, action) => {
       const bouton = document.createElement("button");
@@ -1467,6 +1467,7 @@ export default class ButtonControl {
     document.querySelectorAll(".residential-hide-separator, .residential-hide-section").forEach(toggle);
     toggle(document.querySelector(".form-container"));
     toggle(document.querySelector(".resize-handle"));
+    if (typeof window.appliquerParcoursRetour === "function") window.appliquerParcoursRetour();
     // Nombre de boutons visibles changé : recalcul de la disposition de la palette.
     const palette = document.querySelector(".drawing-control");
     if (palette && typeof palette._adapterALaCarte === "function") palette._adapterALaCarte();

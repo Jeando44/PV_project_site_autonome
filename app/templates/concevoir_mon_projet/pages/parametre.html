@@ -149,21 +149,45 @@
     /**
      * Boutons « Système » / « Calculer et Visualiser » de la carte (demande explicite), selon le
      * projet actif vérifié en base :
-     *  - `parcours-residentiel-reseau` : typologie Résidentielle connectée au réseau — remplacés par
-     *    « Revenir au calepinage 2D » (modale Calepinage multi-typologie) ;
+     *  - `parcours-residentiel-reseau` : typologie Résidentielle connectée au réseau, ou typologie du
+     *    système égale à « Alimentation en électricité » (« Habitation »), « Système hybride » ou
+     *    « Solaire thermique » — remplacés par « Revenir au calepinage 2D » (modale Calepinage
+     *    multi-typologie) ;
      *  - `parcours-pompage-autonome` : Site autonome en Pompage solaire — remplacés par « Revenir au
      *    pompage solaire » (modale Consommation d'énergie, onglet Pompage solaire).
      * Classes sur <html> (cf. menu_list.html). À rappeler après tout changement de
      * window.ACTIVE_PROJECT_* sans rechargement.
      */
     window.appliquerParcoursRetour = function () {
-        var horsReseau = window.ACTIVE_PROJECT_TYPE_CONNEXION === window.TYPE_CONNEXION_HORS_LIGNE;
-        var mode = String(window.ACTIVE_PROJECT_MODE_VALORISATION || '').normalize('NFD')
-            .replace(/[̀-ͯ]/g, '').toLowerCase();
+        var horsReseau = window.ACTIVE_PROJECT_TYPE_CONNEXION === window.TYPE_CONNEXION_HORS_LIGNE
+            || (typeof window.isSiteAutonomeProject === 'function' && window.isSiteAutonomeProject());
+        var modeBrut = window.ACTIVE_PROJECT_MODE_VALORISATION;
+        if (!modeBrut) {
+            var inputMode = document.getElementById('mode_de_valorisation');
+            if (inputMode && inputMode.value) modeBrut = inputMode.value;
+        }
+        if (!modeBrut) {
+            try {
+                var raw = localStorage.getItem('solarProjectData');
+                if (raw) {
+                    var data = JSON.parse(raw);
+                    modeBrut = (data.projectInfo && data.projectInfo.modeDeValorisation)
+                        || (data.projet && data.projet.mode_de_valorisation) || '';
+                }
+            } catch (e) {}
+        }
+        var mode = String(modeBrut || '').normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        var systemeCalepinage2D = mode.indexOf('habitation') !== -1
+            || mode.indexOf('alimentation') !== -1
+            || mode.indexOf('hybride') !== -1
+            || mode.indexOf('thermique') !== -1;
+        var pompageAutonome = horsReseau && mode.indexOf('pompage') !== -1;
+        var retourCalepinage2D = (!horsReseau && window.ACTIVE_PROJECT_TYPOLOGIE === window.TYPOLOGIE_RESIDENTIELLE)
+            || systemeCalepinage2D;
         var racine = document.documentElement;
-        racine.classList.toggle('parcours-residentiel-reseau',
-            !horsReseau && window.ACTIVE_PROJECT_TYPOLOGIE === window.TYPOLOGIE_RESIDENTIELLE);
-        racine.classList.toggle('parcours-pompage-autonome', horsReseau && mode.indexOf('pompage') !== -1);
+        racine.classList.toggle('parcours-residentiel-reseau', retourCalepinage2D && !pompageAutonome);
+        racine.classList.toggle('parcours-pompage-autonome', pompageAutonome);
     };
     window.appliquerParcoursRetour();
 
@@ -200,14 +224,15 @@
      * (aucune donnée n'en dépend côté serveur) et n'est utilisée que pour le projet qu'elle concerne.
      */
     window.CLE_PARCOURS_PROJET_ACTIF = 'skv_parcours_projet_actif';
-    window.memoriserParcoursProjet = function (projetId, typologie, typeConnexion, typeEtude) {
+    window.memoriserParcoursProjet = function (projetId, typologie, typeConnexion, typeEtude, modeValorisation) {
         if (!projetId) return;
         try {
             localStorage.setItem(window.CLE_PARCOURS_PROJET_ACTIF, JSON.stringify({
                 id: String(projetId),
                 typologie: window.normaliserTypologie(typologie),
                 typeConnexion: typeConnexion || '',
-                typeEtude: typeEtude || ''
+                typeEtude: typeEtude || '',
+                modeValorisation: modeValorisation !== undefined ? (modeValorisation || '') : (window.ACTIVE_PROJECT_MODE_VALORISATION || '')
             }));
         } catch (e) { /* stockage indisponible : sans conséquence */ }
     };
@@ -219,7 +244,7 @@
             var serverId = window.ACTIVE_PROJECT_ID;
             if (serverId && localId && String(serverId) === String(localId)) {
                 // Session serveur fiable pour ce projet : on la mémorise.
-                window.memoriserParcoursProjet(serverId, window.ACTIVE_PROJECT_TYPOLOGIE, window.ACTIVE_PROJECT_TYPE_CONNEXION, window.ACTIVE_PROJECT_TYPE_ETUDE);
+                window.memoriserParcoursProjet(serverId, window.ACTIVE_PROJECT_TYPOLOGIE, window.ACTIVE_PROJECT_TYPE_CONNEXION, window.ACTIVE_PROJECT_TYPE_ETUDE, window.ACTIVE_PROJECT_MODE_VALORISATION);
                 return;
             }
             if (!localId) return;
@@ -230,7 +255,11 @@
                 window.ACTIVE_PROJECT_TYPOLOGIE = window.normaliserTypologie(memo.typologie);
                 window.ACTIVE_PROJECT_TYPE_CONNEXION = memo.typeConnexion || '';
                 window.ACTIVE_PROJECT_TYPE_ETUDE = memo.typeEtude || '';
+                if (memo.modeValorisation !== undefined) {
+                    window.ACTIVE_PROJECT_MODE_VALORISATION = memo.modeValorisation || '';
+                }
                 window.appliquerParcoursChiffrage();
+                window.appliquerParcoursRetour();
             }
         } catch (e) {
             console.warn('Parcours du projet actif non restauré :', e);

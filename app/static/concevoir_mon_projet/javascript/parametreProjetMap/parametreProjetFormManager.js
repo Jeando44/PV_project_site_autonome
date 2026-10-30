@@ -1660,7 +1660,7 @@ export class DataManager {
                         // Parcours mémorisé AVANT l'éventuel rechargement ci-dessous : la page rechargée
                         // affiche la bonne palette même si la session serveur n'a pas encore suivi.
                         if (typeof window.memoriserParcoursProjet === 'function') {
-                            window.memoriserParcoursProjet(projectId, nouvelleTypologie, nouveauTypeConnexion, window.ACTIVE_PROJECT_TYPE_ETUDE);
+                            window.memoriserParcoursProjet(projectId, nouvelleTypologie, nouveauTypeConnexion, window.ACTIVE_PROJECT_TYPE_ETUDE, projetData.projet.mode_de_valorisation);
                         }
                         const estResidentiel = nouvelleTypologie === window.TYPOLOGIE_RESIDENTIELLE
                             || nouveauTypeConnexion === window.TYPE_CONNEXION_HORS_LIGNE;
