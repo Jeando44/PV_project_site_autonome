@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    {% include 'concevoir_mon_projet/components/headLinks.html' %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/Autoconsommation.css') }}">
+    <title>Autoconsommation - Gestion de Projet Photovoltaïque</title>
+</head>
+<body>
+    {% include 'concevoir_mon_projet/components/menu_list.html' %}
+    {% include 'concevoir_mon_projet/pages/parametre.html' %}
+
+    <div class="autoconsommation-page">
+        <div class="app-container">
+            <main id="main-content">
+                <div class="page-content">
+                    <h1>Autoconsommation</h1>
+
+                    <div class="content-wrapper">
+                        <p>Contenu de la page Autoconsommation à développer...</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Scripts JavaScript nécessaires pour les dépendances -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+        <!-- Script d'initialisation de la carte pour le modal paramètres -->
+        <script type="module" src="{{ url_for('static', filename='concevoir_mon_projet/javascript/parametreProjetMap/initialisationMap.js') }}?v=33"></script>
+
+        <!-- MODAL GEOMETRIE -->
+        <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrieModal.js') }}"></script>
+        
+        <!-- Logique de l'Autoconsommation -->
+        <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/main_autoconso.js') }}"></script>
+    </div> <!-- Fin de autoconsommation-page -->
+
+    {% include 'concevoir_mon_projet/components/page_navigation.html' %}
+</body>
+</html>

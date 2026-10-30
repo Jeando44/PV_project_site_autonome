@@ -1,0 +1,89 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+/venv
+monenv
+.monenv
+Skvenv
+Skvenv313
+.Skvenv
+Nkvenv
+appcopy.yaml
+
+
+# Variables d'environnement
+env/
+.env
+/.env
+user_code.py
+instance/*
+instance/.*
+instance/concevoir_mon_projet.db
+*.db
+
+
+# configuration du sso.
+requirements2.txt
+.git
+
+.gcloudignore
+# If you would like to upload your .git directory, .gitignore file or files
+# from your .gitignore file, remove the corresponding line
+# below:
+.git
+.gitignore
+desktop.ini
+monenv
+venv
+__pycache__
+robots.txt
+appcopy.yaml
+app.yaml
+Skvenv/
+requirements2.txt
+app.py
+__init.py
+requirements_Copy.txt
+app.py
+requirements_V1.txt
+__init.py
+.Dockerfile_backup
+CLAUDE.md
+.claudeignore
+Materiels_BD.xlsx
+Matériels_BD.xlsx
+**/Materiels_BD.xlsx
+**/Matériels_BD.xlsx
+
+# Tests locaux (non necessaires en production)
+/tests/
+
+# Orthophotos drone : données de chantier, jamais nécessaires en production
+app/static/concevoir_mon_projet/javascript/components/orthophoto_source/
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.jpg
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.jpeg
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.png
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.tif
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.tiff
+*.jgw
+*.pgw
+*.tfw
+*.wld
+*.prj
+*.jp2
+*.kmz
+*.kml
+*.dxf
+*.rsInfo
+
+# Outils locaux de vérification (exécutés sur le poste, pas sur le serveur)
+scripts/orthophoto_vers_kmz.py
+scripts/orthophoto_ign_reference.py
+Convertir orthophoto en KMZ.bat

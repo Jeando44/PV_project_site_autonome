@@ -1,0 +1,1827 @@
+<!-- Styles CSS -->
+<link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/EtudesEconomiqueModal.css') }}?v=2.7">
+
+<!-- Bibliothèques externes -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+{% include 'concevoir_mon_projet/components/mention_essai.html' %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+    /* Supprimer la barre de navigation verticale dans le modal principal */
+    .modal-content-eco::-webkit-scrollbar,
+    .container-eco::-webkit-scrollbar,
+    .tab-content::-webkit-scrollbar {
+        display: none;
+    }
+    .modal-content-eco, 
+    .container-eco, 
+    .tab-content {
+        -ms-overflow-style: none; /* IE et Edge */
+        scrollbar-width: none; /* Firefox */
+    }
+
+        /* --- Modale d'Alerte de Validation Personnalisée --- */
+        #custom-validation-alert-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 2147483647; /* Très élevé pour s'afficher par-dessus tout */
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+
+        #custom-validation-alert-modal {
+            background-color: white;
+            padding: 20px 10px !important; /* Marge réduite au maximum */
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            max-width: 450px;
+            width: 95% !important; /* Utilise plus de largeur sur l'écran */
+            text-align: center;
+            border-top: 5px solid #dc2626; /* Rouge pour symboliser l'erreur */
+            font-family: 'Inter', sans-serif;
+            animation: slideDownEcoAlert 0.3s ease-out;
+        }
+
+        @keyframes slideDownEcoAlert {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        #custom-validation-alert-modal h3 {
+            margin-top: 0;
+            color: #dc2626;
+            font-size: 1.25rem;
+            margin-bottom: 15px;
+            font-weight: 600;
+        }
+
+        #custom-validation-alert-message {
+            margin-bottom: 20px;
+            color: #333;
+            line-height: 1.5;
+            white-space: pre-wrap; /* Préserve les sauts de ligne du texte JS */
+            text-align: left;
+            font-size: 1rem;
+        }
+
+        #custom-validation-alert-btn {
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            transition: background-color 0.2s;
+        }
+
+        #custom-validation-alert-btn:hover {
+            background-color: #a00000;
+        }
+
+        /* --- Vue PRO / Grand projet (pro/ProEtudeEcoView.js) : les 3 onglets empilés à la verticale,
+           comme la vue résidentielle — barre d'onglets masquée, chaque section séparée d'un filet.
+           Le tableau « Chiffrage CAPEX (Devis) » (#pro-capex-container) reprend les styles
+           .resi-* ci-dessous ; l'OPEX passe sous le CAPEX, en pleine largeur. */
+        #etudes-eco-standard-view.eco-vertical > .tabs {
+            display: none;
+        }
+        #etudes-eco-standard-view.eco-vertical > .tab-content {
+            display: block;
+        }
+        #etudes-eco-standard-view.eco-vertical > .tab-content + .tab-content {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid var(--border-color, #ddd);
+        }
+        #etudes-eco-standard-view.eco-vertical .capex-opex-grid {
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+        #pro-capex-container {
+            margin-top: 20px;
+        }
+        /* Revenus & tarifs : titre de section à gauche, pleine largeur (comme « Données de
+           production... ») ; hors vue verticale, le titre d'origine reste celui de la section. */
+        #pro-revenus-tarifs-wrapper > .pro-revenus-titre {
+            display: none;
+        }
+        #etudes-eco-standard-view.eco-vertical #pro-revenus-tarifs-wrapper > .pro-revenus-titre {
+            display: block;
+            grid-column: 1 / -1;
+            margin-bottom: 0;
+        }
+        #etudes-eco-standard-view.eco-vertical #pro-revenus-tarifs-wrapper #section_revenus_globale > h2 {
+            display: none;
+        }
+        /* Indexation Vente Palier 1/2 : même largeur de saisie que le tarif de vente surplus, lequel
+           est dans une carte (bordure 1px + marge intérieure 15px, cf. generatePaliers()). */
+        #etudes-eco-standard-view.eco-vertical #section_revenus_globale > .grid:not(#paliers_grid) > .form-group {
+            padding: 0 16px;
+        }
+
+        /* --- Vue Chiffrage & Devis Résidentiel --- */
+        /* Titre à gauche, puis (en dessous) les boutons/contrôles également à gauche — demande
+           explicite : "positionner ces boutons à gauche comme à l'initiale". */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-section-header {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-section-header > div {
+            display: flex;
+            justify-content: flex-start;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        /* Favoris chiffrage / Ouvrir le chiffrage initial / Synchroniser depuis le calepinage :
+           sur une même ligne, même hauteur ; la ligne passe sous le titre si la place manque. */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-actions {
+            display: flex;
+            align-items: stretch;
+            flex-wrap: nowrap;
+            gap: 10px;
+            margin-left: auto;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-actions > .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0;
+            white-space: nowrap;
+        }
+        @media (max-width: 700px) {
+            :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-actions {
+                flex-wrap: wrap;
+                margin-left: 0;
+            }
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-poste-block {
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 6px;
+            padding: 10px 15px;
+            margin-bottom: 12px;
+            background: var(--bg-panel, #fff);
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-poste-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            font-size: 0.85em;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th,
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td {
+            border: 1px solid var(--border-color, #ddd);
+            padding: 4px 6px;
+            text-align: center;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th {
+            /* Même bleu que les labels h2 du modal (ex. "Chiffrage CAPEX (Devis)") */
+            background-color: #eaf3fb;
+            color: #005A9E;
+            font-weight: 600;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table input,
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table select {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 3px;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table .resi-designation {
+            min-width: 140px;
+            text-align: left;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table input[readonly] {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        /* Largeurs de colonnes : Désignation/Référence gardent l'essentiel de la place, Qté/PU HT
+           sont resserrées pour laisser plus d'air à TVA / Total HT / Total TTC. */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(1),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(1) { width: 24%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(2),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(2) { width: 13%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(3),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(3) { width: 7%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(4),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(4) { width: 9%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(5),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(5) { width: 11%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(6),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(6) { width: 15%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(7),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(7) { width: 15%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(8),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(8) { width: 6%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-poste-total {
+            font-size: 0.9em;
+            color: var(--text-secondary, #555);
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-opex-total {
+            text-align: right;
+            font-size: 1.05em;
+            margin-top: 10px;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-remove-line {
+            padding: 2px 8px;
+            margin: 0;
+            line-height: 1;
+        }
+
+        /* Encart "Total Capex" mis en avant à gauche, montants sur fond coloré (correctif UI).
+           Ligne dédiée aux 4 valeurs UNIQUEMENT (plus de contrôles devis PDF sur cette même ligne,
+           cf. .resi-devis-controls-row ci-dessous) : elles ont toute la largeur pour elles, plus
+           besoin de défilement horizontal ni de nowrap forcé. */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-grand-total {
+            text-align: left;
+            font-size: 1.05em;
+            margin-top: 15px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        /* Ligne séparée (sous "Total Capex") : case "Inclure le détail..." + bouton "Générer le
+           devis PDF" — sur sa propre ligne pour ne jamais entrer en concurrence d'espace avec les
+           4 valeurs numériques ci-dessus (demande explicite). */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-devis-controls-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 8px;
+            /* CORRECTIF (demande explicite : "aligner horizontalement... centrer dans le modal") :
+               la case "Inclure le détail..." et le bouton "Générer le devis PDF" sont déjà des
+               enfants flex directs (cf. display:contents sur #resi-devis-controls-anchor/-group) —
+               il ne manquait que le centrage horizontal de l'ensemble sur la largeur du modal. */
+            justify-content: center;
+        }
+
+        /* CORRECTIF (demande explicite, précisée après un premier essai incorrect) : 3 colonnes au
+           niveau du bloc combiné Facture consommation / Revenus & tarifs — pas 2 grilles séparées
+           chacune à 3 colonnes :
+             colonne 1 = carte "Facture consommation" (ses 2 champs visibles empilés verticalement,
+                         PAS côte à côte),
+             colonne 2 = carte "Tarif Vente Surplus" (#paliers_grid),
+             colonne 3 = "Indexation Vente Palier 1" (et Palier 2 en dessous s'il devient visible).
+           #resi-revenus-tarifs-wrapper devient donc la grille à 3 colonnes elle-même :
+           #section_facture_consommation occupe la 1ère, #section_revenus_globale occupe les 2
+           suivantes (grid-column: span 2) en devenant lui-même une mini-grille à 2 colonnes. */
+        :is(#etudes-eco-residentiel-view #resi-revenus-tarifs-wrapper, #etudes-eco-standard-view.eco-vertical #pro-revenus-tarifs-wrapper) {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            align-items: start;
+        }
+        :is(#etudes-eco-residentiel-view #resi-revenus-tarifs-wrapper, #etudes-eco-standard-view.eco-vertical #pro-revenus-tarifs-wrapper) > #section_revenus_globale {
+            grid-column: span 2;
+        }
+
+        /* Colonne 1 : Facture de consommation HP + Indexation facture élec. empilés verticalement
+           (demande explicite réitérée — surtout PAS côte à côte). */
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_facture_consommation .grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* #section_revenus_globale (colonnes 2+3 du wrapper) devient lui-même une grille à 2
+           colonnes : #paliers_grid (Tarif Vente Surplus, dynamique via generatePaliers() — jamais
+           modifié, reste un bloc normal, PAS display:contents) à gauche, la grille d'indexation
+           (Palier 1/2) à droite, À LA MÊME HAUTEUR.
+           CORRECTIF (bug rapporté : "Indexation Vente Palier 1 s'affiche en dessous de Période
+           d'application, pas à droite") : le conteneur (vide visuellement, mais PAS display:none
+           lui-même) du bouton "Calcul de revenu année 1" masqué se trouve, dans le DOM, ENTRE
+           #paliers_grid et la grille d'indexation — avec seulement grid-column posé sur h2/ce
+           conteneur (span complet) et #paliers_grid/indexation laissés en placement AUTOMATIQUE,
+           ce conteneur pleine-largeur forçait l'algorithme de placement auto à sauter toute la
+           ligne où #paliers_grid venait de s'installer (colonne 1 seule occupée), reléguant la
+           grille d'indexation sur une ligne encore plus bas, colonne 1 — jamais colonne 2. Fixé en
+           donnant à CHAQUE élément une position EXPLICITE (grid-row/grid-column), qui ne dépend
+           plus de l'ordre des éléments dans le DOM. */
+        :is(#etudes-eco-residentiel-view #resi-revenus-tarifs-wrapper, #etudes-eco-standard-view.eco-vertical #pro-revenus-tarifs-wrapper) > #section_revenus_globale {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px 16px;
+            align-items: start;
+        }
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale > h2 {
+            grid-column: 1 / -1;
+            grid-row: 1;
+        }
+        :is(#etudes-eco-residentiel-view #resi-revenus-tarifs-wrapper, #etudes-eco-standard-view.eco-vertical #pro-revenus-tarifs-wrapper) > #section_revenus_globale > #paliers_grid {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        /* Indexation Vente Palier 1 (visible) / Palier 2 (masqué par défaut) : empilés verticalement
+           dans leur propre colonne, à droite de Tarif Vente Surplus, même ligne. */
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale > .grid:not(#paliers_grid) {
+            grid-column: 2;
+            grid-row: 2;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        /* Conteneur du bouton "Calcul de revenu année 1" (masqué, non pertinent en résidentiel) :
+           sa propre ligne, après tout le reste — jamais entre les 2 colonnes ci-dessus. */
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale > div:not(.grid) {
+            grid-column: 1 / -1;
+            grid-row: 3;
+        }
+
+        /* CORRECTIF (demande explicite : "centrer et colorer le bouton Lancer le calcul en vert,
+           même couleur que le devis") : même classe .btn-export que "Générer le devis PDF"
+           (var(--accent-green), cf. EtudesEconomiqueModal.css) + centrage du conteneur d'actions. */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-actions {
+            justify-content: center;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-total-chip {
+            display: inline-block;
+            background-color: #005A9E;
+            color: #fff;
+            font-weight: 600;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.95em;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-total-chip-ratio {
+            background-color: #eaf3fb;
+            color: #005A9E;
+        }
+        /* Prix de vente cible / marge de vente répétés sur la ligne « Total Capex », calés à droite. */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-total-marge {
+            display: inline-flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-left: auto;
+            margin-right: 140px;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-total-chip-cible {
+            background-color: #dcfce7;
+            color: #1f2937;
+            border: 1px solid #22c55e;
+            font-weight: 500;
+        }
+
+        /* Vue Synthétique : vrai tableau (alignement automatique des colonnes de prix, correctif UI). */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-synth-table {
+            width: auto;
+            max-width: 650px;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-synth-table th,
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-synth-table td {
+            border: 1px solid var(--border-color, #ddd);
+            padding: 6px 14px;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-synth-table th {
+            background-color: #eaf3fb;
+            color: #005A9E;
+            text-align: left;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-synth-table .resi-synth-val {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        /* NOUVEAU (demande explicite : "validation stricte des données d'entrée... message
+           d'erreur clair... affichable sous les champs respectifs") : bordure rouge sur le champ en
+           erreur + message précis affiché juste en dessous, à l'intérieur de la même cellule du
+           tableau CAPEX (ResidentielCapexTable.js::attachEvents()/applyFieldValidation()). */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table input.is-invalid {
+            border-color: #dc2626;
+            background-color: #fef2f2;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-field-error {
+            color: #dc2626;
+            font-size: 0.72rem;
+            margin-top: 2px;
+            line-height: 1.2;
+        }
+
+        /* Accordéon "Provisions & indexation" (masqué par défaut, correctif UI). */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-accordion-toggle {
+            margin-bottom: 10px;
+        }
+
+        /* CORRECTIF (fond coloré des boutons ne recouvrant pas tout le texte / boutons mal alignés
+           horizontalement entre eux, ex. Financement/Fiscalité/Provisions & indexation) : force
+           TOUS les boutons de la vue résidentielle à occuper exactement la largeur de leur texte,
+           jamais étirés/rétrécis par leur conteneur flex parent — demande explicite "fais cela pour
+           tous les boutons". !important nécessaire : neutralise toute règle de largeur héritée d'un
+           conteneur générique (.grid/.form-group) qui viserait aussi ces boutons par accident.
+           Portée strictement limitée à #etudes-eco-residentiel-view : aucun effet Pro/Grand projet. */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) button {
+            width: auto !important;
+            max-width: none !important;
+            flex: 0 0 auto !important;
+            white-space: nowrap !important;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-opex-extra-grid {
+            margin-top: 5px;
+        }
+
+        /* --- Section Production reprise du rapport Pro/Grand projet (point 1) --- */
+        #etudes-eco-residentiel-view #resi-production-container {
+            margin-bottom: 10px;
+        }
+
+        /* --- Devis PDF : mise en page reprise/adaptée des sections Revenus & tarifs / Fiscalité --- */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-reused-section {
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 6px;
+            padding: 10px 20px 20px;
+            margin-bottom: 20px;
+            background: var(--bg-panel, #fff);
+        }
+
+        /* --- Type de conversion (poste Matériels photovoltaïques, ResidentielCapexTable.js) --- */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-conversion-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 8px 0;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-conversion-row select {
+            padding: 4px 6px;
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 4px;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-conversion-hint {
+            color: var(--text-secondary, #555);
+            font-size: 0.8rem;
+        }
+
+        /* --- Favoris chiffrage (ResidentielFavorisChiffrage.js) : fenêtre ajoutée à <body>, hors
+           de #etudes-economique-modal, d'où ses propres styles de boutons (même rouge). Sous
+           l'alerte de validation (#custom-validation-alert-overlay) pour que celle-ci reste visible. */
+        #resi-favoris-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 2147483000;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            font-family: var(--font-family, 'Inter', sans-serif);
+        }
+        #resi-favoris-overlay .resi-fav-modal {
+            background: var(--bg-modal, #fff);
+            color: var(--text-primary, #1f2937);
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+            width: min(1200px, 100%);
+            max-height: calc(100vh - 32px);
+            display: flex;
+            flex-direction: column;
+        }
+        #resi-favoris-overlay .resi-fav-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--border-color, #e5e7eb);
+        }
+        #resi-favoris-overlay .resi-fav-header h3 { margin: 0; font-size: 1.15rem; }
+        #resi-favoris-overlay .resi-fav-close {
+            background: none;
+            border: none;
+            font-size: 1.6rem;
+            line-height: 1;
+            cursor: pointer;
+            color: var(--text-secondary, #6b7280);
+        }
+        #resi-favoris-overlay .resi-fav-body {
+            padding: 12px 18px 16px;
+            overflow: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            min-height: 0;
+        }
+        #resi-favoris-overlay .resi-fav-intro,
+        #resi-favoris-overlay .resi-fav-hint {
+            margin: 0;
+            font-size: 0.85rem;
+            color: var(--text-secondary, #6b7280);
+        }
+        #resi-favoris-overlay .btn {
+            padding: 7px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            border: 1px solid #E1000F;
+        }
+        #resi-favoris-overlay .btn-primary { background: #E1000F; color: #fff; }
+        #resi-favoris-overlay .btn-secondary { background: #fff; color: #E1000F; }
+        #resi-favoris-overlay .btn:hover:not(:disabled) { filter: brightness(0.92); }
+        #resi-favoris-overlay .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+        #resi-favoris-overlay .resi-fav-toolbar,
+        #resi-favoris-overlay .resi-fav-apply-row,
+        #resi-favoris-overlay .resi-fav-add {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+        #resi-favoris-overlay .resi-fav-add input { width: 120px; padding: 5px 6px; }
+        #resi-favoris-overlay .resi-fav-add .resi-fav-add-puissance { width: 70px; }
+        #resi-favoris-overlay .resi-fav-table-wrap {
+            overflow: auto;
+            border: 1px solid var(--border-color, #e5e7eb);
+            border-radius: 6px;
+            min-height: 160px;
+        }
+        #resi-favoris-overlay .resi-fav-table {
+            border-collapse: collapse;
+            width: 100%;
+            font-size: 0.82rem;
+        }
+        #resi-favoris-overlay .resi-fav-table th,
+        #resi-favoris-overlay .resi-fav-table td {
+            border-bottom: 1px solid var(--border-color, #e5e7eb);
+            padding: 3px 5px;
+            vertical-align: top;
+        }
+        #resi-favoris-overlay .resi-fav-table thead th {
+            position: sticky;
+            background: var(--bg-panel, #f8f9fa);
+            text-align: center;
+            z-index: 1;
+        }
+        #resi-favoris-overlay .resi-fav-table thead tr:first-child th { top: 0; }
+        #resi-favoris-overlay .resi-fav-table thead tr:nth-child(2) th { top: 27px; }
+        /* Séparateur gris foncé devant chaque puissance (en-tête + corps) et bordure de fin de
+           tableau, pour distinguer d'un coup d'œil les groupes Qté / PU HT / TVA. */
+        #resi-favoris-overlay .resi-fav-table .resi-fav-col-head,
+        #resi-favoris-overlay .resi-fav-table .resi-fav-grp {
+            border-left: 2px solid #4b5563;
+        }
+        #resi-favoris-overlay .resi-fav-table tr > :last-child {
+            border-right: 2px solid #4b5563;
+        }
+        #resi-favoris-overlay .resi-fav-table .resi-fav-col-head {
+            border-bottom: 2px solid #4b5563;
+        }
+        /* Données centrées dans leur colonne (la désignation reste alignée à gauche). */
+        #resi-favoris-overlay .resi-fav-table td:not(.resi-fav-designation) {
+            text-align: center;
+        }
+        #resi-favoris-overlay .resi-fav-table .resi-fav-in {
+            text-align: center;
+            text-align-last: center;
+        }
+        #resi-favoris-overlay .resi-fav-table .resi-fav-err {
+            margin-left: auto;
+            margin-right: auto;
+        }
+        #resi-favoris-overlay .resi-fav-col-remove {
+            background: none;
+            border: none;
+            color: #E1000F;
+            font-size: 1rem;
+            cursor: pointer;
+            padding: 0 2px;
+        }
+        #resi-favoris-overlay td.resi-fav-designation,
+        #resi-favoris-overlay th.resi-fav-designation {
+            text-align: left;
+            min-width: 170px;
+            white-space: nowrap;
+        }
+        #resi-favoris-overlay .resi-fav-poste td {
+            background: var(--bg-panel, #f8f9fa);
+            font-weight: 600;
+        }
+        #resi-favoris-overlay .resi-fav-in {
+            width: 100%;
+            min-width: 58px;
+            padding: 3px 4px;
+            border: 1px solid var(--border-color, #d1d5db);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        #resi-favoris-overlay .resi-fav-in:disabled {
+            background: transparent;
+            border-color: transparent;
+            color: inherit;
+            opacity: 1;
+        }
+        #resi-favoris-overlay .resi-fav-in.is-invalid {
+            border-color: #dc2626;
+            background-color: #fef2f2;
+        }
+        #resi-favoris-overlay .resi-fav-err {
+            display: none;
+            color: #dc2626;
+            font-size: 0.7rem;
+            line-height: 1.2;
+            margin-top: 2px;
+            max-width: 180px;
+        }
+        #resi-favoris-overlay .resi-fav-notice {
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+        #resi-favoris-overlay .resi-fav-notice ul { margin: 6px 0 0; padding-left: 18px; }
+        #resi-favoris-overlay .resi-fav-notice-erreur { background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; }
+        #resi-favoris-overlay .resi-fav-notice-succes { background: #f0fdf4; border: 1px solid #86efac; color: #166534; }
+        #resi-favoris-overlay .resi-fav-apply {
+            border-top: 1px solid var(--border-color, #e5e7eb);
+            padding-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        #resi-favoris-overlay .resi-fav-confirm {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+            background: #fff7ed;
+            border: 1px solid #fdba74;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+
+        /* --- Mode Chiffrage (avant-projet, ChiffrageModeView.js) : sections inutiles masquées,
+           bandeau puissance / structures / climat en tête, bouton « Exporter le rapport ».
+           !important : certaines sections ont un display posé en JS (hybride, résultats...). --- */
+        .eco-mode-chiffrage .chiffrage-masque,
+        .eco-mode-chiffrage .resi-sync-calepinage-btn,
+        .eco-mode-chiffrage .resi-chiffrage-initial-btn {
+            display: none !important;
+        }
+        #chiffrage-bandeau {
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--border-color, #ddd);
+        }
+        .chiffrage-bandeau-grille {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 15px;
+        }
+        #chiffrage-puissance-calepinage {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        .chiffrage-valeur-lecture {
+            padding: 6px 0;
+            font-weight: 600;
+        }
+        .chiffrage-climat {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: var(--bg-panel, #f8fafc);
+            border: 1px solid var(--border-color, #ddd);
+            border-radius: 6px;
+            font-size: 0.95em;
+        }
+        #chiffrage-actions {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin: 30px 0 10px;
+        }
+        #chiffrage-export-statut {
+            font-size: 0.9em;
+            color: var(--text-secondary, #666);
+        }
+        /* TVA globale (ResidentielCapexTable.js::renderTvaGlobale) : interrupteur TVA unique / par
+           ligne + taux global ; en TVA unique, les sélecteurs de ligne sont grisés. */
+        .resi-tva-globale-row {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-top: 10px;
+        }
+        .resi-tva-globale-row .resi-tva-mode {
+            display: flex;
+            gap: 15px;
+        }
+        /* Groupe TVA sur une seule ligne ; le bloc prix de vente cible / marge est aligné à droite
+           sur la même ligne et ne passe dessous que si la largeur manque. */
+        .resi-tva-groupe {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: nowrap;
+            white-space: nowrap;
+        }
+        /* Écartée de la 1re carte (« Études et démarches administratives ») ; la règle
+           « .resi-section-header > div », plus spécifique, imposait sa propre disposition. */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-section-header > .resi-tva-globale-row {
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-self: stretch;
+            margin-bottom: 20px;
+        }
+        .resi-tva-globale-row label {
+            white-space: nowrap;
+        }
+        /* « TVA unique / TVA par ligne » côte à côte : la règle générale .radio-group
+           (EtudesEconomiqueModal.css, width:100% + flex-wrap:wrap en !important) empilait les deux
+           boutons et renvoyait « TVA globale » à droite. */
+        .resi-tva-globale-row .resi-tva-mode.radio-group {
+            width: auto !important;
+            flex-wrap: nowrap !important;
+            flex: 0 0 auto;
+            margin-top: 0 !important;
+        }
+        /* Prix de vente cible / marge (ResidentielCapexTable.js::renderMarge), sur la ligne de la TVA.
+           Colonne : champs sur une ligne, message d'erreur dessous. */
+        .resi-marge {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            max-width: 100%;
+            margin-left: auto;
+        }
+        .resi-marge .resi-prix-cible-euros {
+            font-weight: normal;
+            color: var(--text-secondary, #666);
+        }
+        .resi-marge-ligne {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px 16px;
+            justify-content: flex-end;
+        }
+        /* !important : les règles génériques du modal (label en bloc, select / input à 100 %)
+           étiraient le prix de vente cible sur toute la largeur et renvoyaient la marge cible
+           à la ligne. Les trois champs restent sur une ligne, à largeur fixe. */
+        .resi-marge .resi-marge-champ {
+            display: inline-flex !important;
+            flex: 0 0 auto !important;
+            align-items: center;
+            gap: 6px;
+            margin: 0 !important;
+            width: auto !important;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+        .resi-marge select,
+        .resi-marge input[type="number"] {
+            padding: 4px 6px !important;
+            border: 1px solid var(--border-color, #ccc);
+            border-radius: 4px;
+            flex: 0 0 auto !important;
+            margin: 0 !important;
+        }
+        .resi-marge .resi-prix-cible-mode { width: 5.5em !important; min-width: 0 !important; }
+        .resi-marge .resi-prix-cible { width: 6.5em !important; min-width: 0 !important; }
+        .resi-marge .resi-marge-cible { width: 4.5em !important; min-width: 0 !important; }
+        .resi-marge .resi-marge-erreur {
+            text-align: right;
+            max-width: 46em;
+        }
+        /* Main-d'œuvre non incluse au devis (case décochée) : poste grisé, hors totaux. */
+        .resi-poste-exclu {
+            opacity: 0.55;
+        }
+        .resi-view-toggle .resi-inclure-mo {
+            margin-left: 25px !important;
+        }
+        .resi-tva-globale-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+        .resi-tva-globale:disabled,
+        .resi-lines-table .resi-tva:disabled {
+            background-color: #e9ecef;
+            cursor: not-allowed;
+        }
+        /* Favoris chiffrage : quantité de panneaux reprise du calepinage (pas de saisie). */
+        .resi-fav-qte-calepinage {
+            text-align: center;
+            color: var(--text-secondary, #666);
+        }
+</style>
+
+<div id="etudes-economique-content" class="modal-content-eco">
+    <div class="container-eco">
+        <h1>Simulateur de rentabilité photovoltaïque</h1>
+
+        <!-- Vue standard (Pro / Grand projet) : onglets horizontaux, comportement inchangé.
+             Masquée entièrement (jamais démontée) pour les projets Résidentielle, remplacée par
+             #etudes-eco-residentiel-view ci-dessous (cf. ResidentielEtudeEcoView.js). -->
+        <div id="etudes-eco-standard-view">
+        <div class="tabs">
+            <button class="tab-link active" onclick="openTab(event, 'Production')">1. Production</button>
+            <button class="tab-link" onclick="openTab(event, 'ChiffrageFinancementTab')">2. Chiffrage & Financement</button>
+            <button class="tab-link" onclick="openTab(event, 'Resultats')">3. Résultats</button>
+        </div>
+
+        <div id="Production" class="tab-content active">
+            <h2>Paramètres projet</h2>
+            <div class="grid">
+                <div class="form-group">
+                    <label for="pays">Localisation / Pays</label>
+                    <select id="pays" onchange="handlePaysChange()">
+                        <option value="France" selected>France</option>
+                        <option value="Espagne">Espagne</option>
+                        <option value="Allemagne">Allemagne</option>
+                        <option value="Italie">Italie</option>
+                        <option value="Portugal">Portugal</option>
+                        <option value="Haïti">Haïti</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                </div>
+                <div id="pays_autre_container" class="form-group" style="display:none;">
+                    <label for="pays_autre">Nom du pays</label>
+                    <input type="text" id="pays_autre" placeholder="Saisir le pays">
+                </div>
+                <div class="form-group">
+                    <label for="type_projet">Type de projet</label>
+                    <select id="type_projet" disabled style="background-color: #e9ecef; cursor: not-allowed;" onchange="handleTypeProjetChange()">
+                        <option value="Toiture">Toiture</option>
+                        <option value="Ombrière">Ombrière</option>
+                        <option value="Petit champ solaire">Petit champ solaire</option>
+                        <option value="Autres">Autres</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Type de système</label>
+                    <div class="radio-group" style="display: flex; gap: 15px;">
+                        <label><input type="radio" name="type_systeme" value="reseau" checked
+                                onclick="toggleSystemeFields()"> Connecté au réseau</label>
+                        <label><input type="radio" name="type_systeme" value="hybride" onclick="toggleSystemeFields()">
+                            Site autonome/Hybride (PV+ Groupe électrogène)</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Choix de la devise</label>
+                    <div class="radio-group" style="display: flex; gap: 15px;">
+                        <label><input type="radio" name="devise" value="€" checked onclick="updateDeviseLabels()">
+                            €</label>
+                        <label><input type="radio" name="devise" value="$" onclick="updateDeviseLabels()"> $</label>
+                        <label><input type="radio" name="devise" value="FCFA" onclick="updateDeviseLabels()">
+                            FCFA</label>
+                        <!-- NOUVEAU (demande explicite) : Gourde haïtienne, disponible pour les
+                             rapports Résidentiel ET Professionnel (même liste de devises partagée
+                             par les deux). -->
+                        <label><input type="radio" name="devise" value="HTG" onclick="updateDeviseLabels()">
+                            HTG</label>
+                    </div>
+                </div>
+            </div>
+
+            <h2 style="margin-top: 40px;">Données de production système photovoltaïque</h2>
+            <div class="grid">
+                <div class="form-group">
+                    <label for="puissance">Puissance installée (kWc)</label>
+                    <input type="number" id="puissance" value="" min="0.1" step="any" class="form-control"
+                        oninput="if (event.isTrusted) this.dataset.manual = 'true'; checkPowerLimit(); updateFinanceCalculations();">
+                </div>
+                <div class="form-group">
+                    <label for="productible">Productible spécifique Année 1 (kWh/kWc/an)</label>
+                    <div style="display:flex; gap:10px;">
+                        <input type="number" id="productible" value="" min="0.01" max="2499.99" step="any" class="form-control" style="flex-grow: 1; background-color: #e9ecef; cursor: not-allowed;" readonly>
+                        <button type="button" class="btn btn-secondary" style="padding: 5px 10px; font-size: 12px; margin: 0;" onclick="openHeuresNeg()">AnalyseP90-Heure négative</button>
+                    </div>
+                </div>
+                <!-- Option cachée pour appliquer la dégradation sur la prime -->
+                <div class="form-group" style="display:none;">
+                    <input type="checkbox" id="check_degrad_prime">
+                </div>
+                <div class="form-group">
+                    <label for="degradation">Dégradation annuelle (%)</label>
+                    <input type="number" id="degradation" value="0.3" min="0.01" max="5" step="0.01"
+                        oninput="this.dataset.manual='true'; window.syncDegradationToSharedStorage(this.value); if (typeof updateFinanceCalculations === 'function') updateFinanceCalculations();">
+                </div>
+                <div class="form-group" id="container_taux_auto">
+                    <label for="taux_autoconsommation">Taux d’autoconsommation initial (%)</label>
+                    <input type="number" id="taux_autoconsommation" value="0" oninput="handleTauxAutoChange()">
+                </div>
+                <div class="form-group field-hybride-only" style="display:none;">
+                    <label for="consommation_energie_site">Consommation annuelle d’énergie du site (kWh/an)</label>
+                    <input type="number" id="consommation_energie_site" value="200000">
+                </div>
+                <div class="form-group field-hybride-only" style="display:none;">
+                    <label for="taux_de_couverture_PV">Taux de couverture photovoltaïque (%)</label>
+                    <input type="number" id="taux_de_couverture_PV" value="80">
+                </div>
+                <div class="form-group">
+                    <label for="horizon">Horizon d'étude (années)</label>
+                    <input type="number" id="horizon" value="20" min="0" max="30" step="1" oninput="checkHorizon()">
+                </div>
+                <div class="form-group" id="container_spec_tarifaire">
+                    <label>Spécificité tarifaire</label>
+                    <div class="radio-group" style="display: flex; gap: 15px;">
+                        <label><input type="radio" name="spec_france" id="spec_oui" value="oui"
+                                onchange="this.dataset.manual='true'; document.getElementById('spec_non').dataset.manual='true'; toggleFranceSpec(true); updateFinanceCalculations();"> Oui</label>
+                        <label><input type="radio" name="spec_france" id="spec_non" value="non" checked
+                                onchange="this.dataset.manual='true'; document.getElementById('spec_oui').dataset.manual='true'; toggleFranceSpec(false); updateFinanceCalculations();"> Non</label>
+                    </div>
+                </div>
+                <div class="form-group" id="prod_limite_container">
+                    <label for="prod_limite">Productible limite (kWh/kWc/an)</label>
+                    <input type="number" id="prod_limite" value="1600" min="0.01" max="2499.99" step="any">
+                </div>
+            </div>
+        </div>
+
+        <div id="ChiffrageFinancementTab" class="tab-content">
+            <!-- Revenus & tarifs : Facture consommation (champs empilés) à gauche, tarif de vente
+                 surplus + indexation à droite — même grille que la vue résidentielle (CSS
+                 #pro-revenus-tarifs-wrapper, vue PRO verticale). -->
+            <div id="pro-revenus-tarifs-wrapper">
+            <!-- Titre de section à gauche, sur toute la largeur (vue PRO verticale seulement : le
+                 titre interne de #section_revenus_globale y est masqué). -->
+            <h2 class="pro-revenus-titre">Revenus &amp; tarifs</h2>
+            <div id="section_facture_consommation">
+            <h3>Facture consommation</h3>
+            <div class="grid">
+                <div class="form-group field-reseau-only">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <label style="margin-bottom: 0;">Facture de consommation HP (<span class="symb-devise">€</span>/MWh)</label>
+                        <button type="button" class="btn btn-sm btn-secondary" onclick="openTarifPondereModal()" style="padding: 2px 8px; font-size: 12px; margin-right: 0;"><i class="fas fa-calculator"></i> Calculer</button>
+                    </div>
+                    <input type="number" id="prix_achat_elec" value="0" min="10" max="1000" step="any">
+                </div>
+                <div class="form-group field-reseau-only">
+                    <label>Indexation facture élec. (%/an)</label>
+                    <input type="number" id="indexation_achat" value="0" min="1" max="20" step="any">
+                </div>
+                <!-- Batterie virtuelle : sous l'indexation de la facture, qui lui est appliquée
+                     (affiché seulement case cochée, cf. majBatterieVirtuelle). -->
+                <div class="form-group" id="groupe_facture_hiver_bv" style="display:none;">
+                    <label for="facture_hiver_bv" title="Prix de la facture d'hiver évitée grâce à l'énergie restituée par la batterie virtuelle, indexé comme la facture d'électricité">Facture d’hiver compensée par la batterie virtuelle (<span class="symb-devise">€</span>/MWh)</label>
+                    <input type="number" id="facture_hiver_bv" value="210" min="40" max="1000" step="any">
+                </div>
+                <!-- Visible uniquement quand la recharge sur le réseau est activée dans le stockage
+                     (cf. majChampsStockageEco, EtudesEconomiqueLogic.js). -->
+                <div class="form-group" id="groupe_prix_recharge_reseau" style="display:none;">
+                    <label for="prix_recharge_reseau" title="Prix de l'électricité achetée pour recharger la batterie sur le réseau (heures creuses). L'énergie restituée est valorisée au prix de la facture de consommation.">Prix de recharge sur le réseau (<span class="symb-devise">€</span>/MWh)</label>
+                    <input type="number" id="prix_recharge_reseau" value="" min="0.1" max="1000" step="any" placeholder="0,1 à 1000">
+                </div>
+                <div class="form-group field-hybride-only" style="display:none;">
+                    <label>Prix d’un litre de carburant (<span class="symb-devise-unit">€/l</span>)</label>
+                    <input type="number" id="prix_carburant" value="1.5">
+                </div>
+                <div class="form-group field-hybride-only" style="display:none;">
+                    <label>Indexation facture carburant (%/an)</label>
+                    <input type="number" id="indexation_carburant" value="3.0" step="0.1">
+                </div>
+                <div class="form-group field-hybride-only" style="display:none;">
+                    <label>Consommation GE (l/kWh) @75% de charge</label>
+                    <input type="number" id="consommation_ge" value="0.5">
+                </div>
+            </div>
+            </div>
+
+            <div id="section_revenus_globale">
+                <h2>Revenus & tarifs</h2>
+                <div class="grid" id="paliers_grid"></div>
+                <div style="text-align: center; margin-top: 10px; margin-bottom: 15px;">
+                    <!-- Masqué (demande explicite : "masque le bouton pour les 2 options, Rési et Pro")
+                         directement en HTML — un masquage JS conditionnel par typologie s'était
+                         montré peu fiable (chargement/cache), display:none statique est la garantie
+                         la plus simple. #revenusModal (accessible depuis "AnalyseP90-Heure négative"
+                         également) reste inchangée, seul ce bouton d'ouverture disparaît. -->
+                    <button type="button" id="btn_calcul_revenu_annee1" class="btn btn-secondary" onclick="openRevenus()" style="display:none;">Calcul de revenu année 1</button>
+                </div>
+                <div class="grid">
+                    <div class="form-group" id="groupe_indexation_vente_12">
+                        <label>Indexation Vente Palier 1 (%/an)</label>
+                        <input type="number" id="indexation_vente_12" value="0" min="1" max="20" step="any">
+                    </div>
+                    <div class="form-group" id="ind_pal3_container" style="display:none;">
+                        <label>Indexation Vente Palier 2 (%/an)</label>
+                        <input type="number" id="indexation_vente_3" value="0" min="0" max="3" step="any">
+                    </div>
+                    <!-- Batterie virtuelle (autoconsommation partielle, réseau) : le surplus injecté est
+                         valorisé au prix de la facture d'hiver compensée, diminué du tarif de rachat du
+                         surplus stocké (cf. majBatterieVirtuelle, EtudesEconomiqueLogic.js). Case (et champ
+                         « Facture d’hiver », placé sous l’indexation de la facture) enregistrés avec les autres saisies. -->
+                    <div class="form-group" id="batterie-virtuelle-optin-container" style="display:none;">
+                        <label style="display:flex; align-items:center; gap:6px; cursor:pointer; font-weight:normal;">
+                            <input type="checkbox" id="batterie_virtuelle_optin" onchange="surCaseBatterieVirtuelle()" style="width:16px; height:16px; margin:0; cursor:pointer;">
+                            <!-- Tarif de vente du surplus saisi avant de cocher la case, rétabli quand elle est
+                                 décochée (cf. surCaseBatterieVirtuelle) ; enregistré avec les autres saisies. -->
+                            <input type="hidden" id="tarif_vente_avant_bv" value="">
+                            Intégration d’une batterie virtuelle
+                        </label>
+                    </div>
+                </div>
+            </div>
+            </div>
+
+            <!-- PRO / Grand projet : tableau « Chiffrage CAPEX (Devis) » (ResidentielCapexTable.js,
+                 profil 'pro', cf. pro/ProEtudeEcoView.js). -->
+            <div id="pro-capex-container"></div>
+
+            <div class="capex-opex-grid">
+                <!-- Ancien CAPEX simple / détaillé : masqué par la vue PRO, conservé dans le DOM car
+                     le moteur (collectInputs, exportPDF) relit #total_capex_display. -->
+                <div class="capex-section" id="capex_legacy_section">
+                    <h2>Capex détaillé (k<span class="symb-devise">€</span>)</h2>
+                    <div class="form-group">
+                        <label>Mode CAPEX</label>
+                        <div class="radio-group" style="display: flex; gap: 15px;">
+                            <label><input type="radio" name="capex_mode_select" value="simple" checked
+                                    onclick="toggleCapexModeSelect('simple')"> Simple (<span
+                                    class="symb-devise">€</span>/Wc)</label>
+                            <label><input type="radio" name="capex_mode_select" value="detaille"
+                                    onclick="toggleCapexModeSelect('detaille')"> Détaillé</label>
+                        </div>
+                    </div>
+                    <div id="capex_simple_input_div" class="form-group" style="display:block;">
+                        <label>Saisie CAPEX (<span class="symb-devise">€</span>/Wc)</label>
+                        <input type="number" id="capex_simple_val" value="0" min="0" max="2.99" step="any"
+                            oninput="updateCapexDisplays(); updateFinanceCalculations();">
+                    </div>
+                    <div id="capex_detaille_section" style="display:none;">
+                        <div id="capex_list" class="grid">
+                            <div class="form-group"><label>Études & Ingénierie</label><input type="number" id="capex_etudes" class="capex-in" data-label="Études" value="0" min="0" max="49.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Gestion administrative</label><input type="number" id="capex_admin" class="capex-in" data-label="Admin" value="0" min="0" max="99.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Fourniture/pose panneaux</label><input type="number" id="capex_panneaux" class="capex-in" data-label="Panneaux" value="0" min="0" max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Électricité PV</label><input type="number" id="capex_elec" class="capex-in" data-label="Élec" value="0" min="0" max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Charpente/Intégration</label><input type="number" id="capex_integration" class="capex-in" data-label="Intégration" value="0" min="0" max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group id-fondations" style="display:none;"><label>Fondations</label><input type="number" id="capex_fondations" class="capex-in" data-label="Fondations" value="0" min="0" max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>VRD/réseaux</label><input type="number" id="capex_vrd" class="capex-in" data-label="VRD" value="0" min="0" max="199.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Raccordement</label><input type="number" id="capex_racco" class="capex-in" data-label="Raccordement" value="0" min="0" max="4999.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>AMO/MOE</label><input type="number" id="capex_amo" class="capex-in" data-label="AMO" value="0" min="0" max="199.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Subvention (à déduire)</label><input type="number" id="capex_subvention" class="capex-in" data-label="Subvention" value="0" min="0" max="299.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Batterie</label><input type="number" id="capex_batterie" class="capex-in" data-label="Batterie" value="0" min="0" max="299.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                        </div>
+                        <div id="capex_autres_container" class="dynamic-list"></div>
+                        <button class="btn btn-secondary" onclick="addDynamicRow('capex_autres_container', 'capex-in', updateCapexDisplays)">+ Autre Capex</button>
+                    </div>
+                    <p><strong>Total Capex : <span id="total_capex_display">0</span> k<span class="symb-devise">€</span> | Ratio : <span id="ratio_capex_display">0</span> <span class="symb-devise">€</span>/Wc</strong></p>
+                </div>
+                <div class="opex-section">
+                    <h2>Opex & entretien</h2>
+                    <div class="form-group">
+                        <label>Mode Opex</label>
+                        <div class="radio-group" style="display: flex; gap: 15px;">
+                            <label><input type="radio" name="opex_mode_select" value="simple" checked onclick="toggleOpexModeSelect('simple')"> Simple (<span class="symb-devise">€</span>/Wc/an)</label>
+                            <label><input type="radio" name="opex_mode_select" value="detaille" onclick="toggleOpexModeSelect('detaille')"> Détaillé (k<span class="symb-devise">€</span>/an)</label>
+                        </div>
+                    </div>
+                    <div id="opex_simple_div" class="form-group">
+                        <label>Opex simple (<span class="symb-devise">€</span>/Wc/an)</label>
+                        <input type="number" id="opex_wc" value="0" min="0" max="0.19" step="any" oninput="updateCapexDisplays()">
+                    </div>
+                    <div id="opex_detaille_div" style="display:none;">
+                        <div class="grid">
+                            <div class="form-group"><label>Connexion réseau</label><input type="number" id="opex_connexion" class="opex-in" value="0" min="0" max="9.99" step="any" oninput="updateCapexDisplays()"></div>
+                            <div class="form-group"><label>Maintenance préventive</label><input type="number" id="opex_prev" class="opex-in" value="0" min="0" max="49.99" step="any" oninput="updateCapexDisplays()"></div>
+                            <div class="form-group"><label>Maintenance curative</label><input type="number" id="opex_cura" class="opex-in" value="0" min="0" max="49.99" step="any" oninput="updateCapexDisplays()"></div>
+                            <div class="form-group"><label>Loyer</label><input type="number" id="opex_loyer" class="opex-in" value="0" min="0" max="99.99" step="any" oninput="updateCapexDisplays()"></div>
+                        </div>
+                        <div id="opex_autres_container" class="dynamic-list"></div>
+                        <button class="btn btn-secondary" onclick="addDynamicRow('opex_autres_container', 'opex-in', updateCapexDisplays)">+ Autre Opex</button>
+                    </div>
+                    <!-- Frais d'abonnement batterie virtuelle (€/kWc/an x puissance), visibles et comptés
+                         dans le total OPEX quand la batterie virtuelle est retenue (cf. majBatterieVirtuelle,
+                         fraisAbonnementBvEuros). En résidentiel, ce bloc est déplacé dans le tableau des
+                         charges (ResidentielOpexTable.js), libellé TTC. Enregistré avec les autres saisies. -->
+                    <div class="form-group" id="groupe_abonnement_bv" style="display:none;">
+                        <label for="abonnement_bv_kwc" id="label_abonnement_bv">Frais d’abonnement batterie virtuelle (<span class="symb-devise">€</span>/kWc/an)</label>
+                        <input type="number" id="abonnement_bv_kwc" value="1.2" min="0.5" max="5" step="any" oninput="updateCapexDisplays()">
+                        <small id="montant_abonnement_bv" style="color:#6b7280;"></small>
+                    </div>
+                    <p><strong>Total OPEX : <span id="total_opex_display">0</span> k<span class="symb-devise">€</span> | Ratio : <span id="ratio_opex_display">0</span> <span class="symb-devise">€</span>/Wc</strong></p>
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>Indexation des OPEX (%/an)</label>
+                            <input type="number" id="index_opex" value="3" min="0" max="10" step="any">
+                        </div>
+                        <div class="form-group">
+                            <label>Coût onduleur an 10 (report an 11) (<span class="symb-devise-k">k€</span>)</label>
+                            <input type="number" id="ond_10" value="0" min="0" max="99999.99" step="any">
+                        </div>
+                        <div class="form-group">
+                            <label id="label_bat_10">Coût batterie an 10 (report an 11) (<span class="symb-devise-k">k€</span>)</label>
+                            <input type="number" id="bat_10" value="0" min="0" max="99999.99" step="any">
+                        </div>
+                        <!-- Stockage pris en compte : le coût batterie tombe l'année de remplacement
+                             (cf. majChampsStockageEco, EtudesEconomiqueLogic.js). -->
+                        <div class="form-group" id="bloc_remplacement_batterie" style="display:none;">
+                            <label for="remplacement_batterie_mode">Remplacement de la batterie</label>
+                            <select id="remplacement_batterie_mode" onchange="majChampsStockageEco()">
+                                <option value="auto" selected>Automatique en fin de vie</option>
+                                <option value="annee">Année personnalisée</option>
+                                <option value="aucun">Aucun remplacement</option>
+                            </select>
+                            <small id="info_duree_vie_batterie" style="color: var(--text-secondary, #6b7280);"></small>
+                        </div>
+                        <div class="form-group" id="groupe_annee_remplacement" style="display:none;">
+                            <label for="remplacement_batterie_annee">Année de remplacement batterie</label>
+                            <input type="number" id="remplacement_batterie_annee" value="10" min="2" max="30" step="1">
+                        </div>
+                        <div class="form-group" id="ond_20_container">
+                            <label>Coût onduleur an 20 (report an 21) (<span class="symb-devise-k">k€</span>)</label>
+                            <input type="number" id="ond_20" value="0" min="0" max="99999.99" step="any">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="section_hybride_capex" style="display:none;">
+                <h2>Capex & OPEX Groupe électrogène</h2>
+                <div class="grid">
+                    <div class="form-group">
+                        <label for="cap_ge">CAPEX groupe électrogène (<span class="symb-devise-k">k€</span>)</label>
+                        <input type="number" id="cap_ge" value="0"
+                            oninput="updateCapexDisplays(); updateFinanceCalculations();">
+                    </div>
+                    <div class="form-group">
+                        <label for="op_ge">OPEX groupe électrogène (<span class="symb-devise-k">k€</span>)</label>
+                        <input type="number" id="op_ge" value="0" oninput="updateCapexDisplays()">
+                    </div>
+                </div>
+            </div>
+
+            <div id="section_financement">
+            <h2>Financement </h2>
+            <div class="grid" style="align-items: center;">
+                <div class="form-group mb-0">
+                    <label>Prise en compte de la dette <small style="font-weight: normal;">(Les résultats de votre choix seront utilisés dans le rapport)</small></label>
+                    <div class="radio-group" style="margin-top: 5px; display: flex; gap: 15px;">
+                        <label><input type="radio" name="dette_toggle" value="oui"
+                                onclick="toggleDetteFields(true)"> Oui</label>
+                        <!-- "Non" par défaut (demande explicite, Résidentielle ET Pro/Grand projet :
+                             "pour qu'il n'y ait pas de confusion") — comportement précédent
+                             ("Oui" par défaut) conservé nulle part ailleurs. -->
+                        <label><input type="radio" name="dette_toggle" value="non" checked onclick="toggleDetteFields(false)">
+                            Non</label>
+                    </div>
+                </div>
+                <div class="form-group mb-0" id="simuler_deux_options_container">
+                    <label for="simuler_deux_options" style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: black;">
+                        <input type="checkbox" id="simuler_deux_options" onchange="toggleDeuxOptions()" style="width: 18px; height: 18px; margin: 0; cursor: pointer;" checked>
+                        Simuler les 2 options (FP et FP+Dette)
+                    </label>
+                </div>
+            </div>
+            <div class="grid mt-3">
+                <div class="form-group"><label>Fonds propres (%)</label><input type="number" id="fp_pct" value="20" min="0" max="49.99" step="any" oninput="updateFinanceCalculations()"></div>
+            </div>
+            <div id="dette_fields" class="grid">
+                <div class="form-group"><label>Taux d’intérêt (%)</label><input type="number" id="taux_dette" value="4" min="0" max="19.99" step="any"
+                        oninput="updateFinanceCalculations()">
+                </div>
+                <div class="form-group"><label>Maturité (ans)</label><input type="number" id="maturite_dette" value="20" min="0" max="29" step="1"
+                        oninput="updateFinanceCalculations()"></div>
+                <div class="form-group"><label>Intérêt annuel estimé (k<span class="symb-devise">€</span>)</label><input
+                        type="number" id="res_int_annuel" readonly style="background:#eee"></div>
+                <div class="form-group"><label>Annuité estimée (k<span class="symb-devise">€</span>)</label><input
+                        type="number" id="res_annuite_est" readonly style="background:#eee"></div>
+            </div>
+            </div>
+
+            <div id="section_fiscalite">
+            <h2>Fiscalité</h2>
+            <div class="grid">
+                <div class="form-group"><label>Taux actualisation (%)</label><input type="number"
+                        id="taux_actualisation" value="3" min="0" max="9.99" step="any"></div>
+                <div class="form-group"><label>Impôt/TVA (%)</label><input type="number" id="taux_impot" value="25" min="0" max="49.99" step="any">
+                </div>
+                <div class="form-group" id="deprec_toggle_container">
+                    <label>Dépréciation</label>
+                    <div class="radio-group" style="display: flex; gap: 15px;">
+                        <label><input type="radio" name="deprec_toggle" value="oui" checked
+                                onclick="document.getElementById('deprec_field').style.display='block'"> Oui</label>
+                        <label><input type="radio" name="deprec_toggle" value="non"
+                                onclick="document.getElementById('deprec_field').style.display='none'"> Non</label>
+                    </div>
+                </div>
+                <div class="form-group" id="deprec_field">
+                    <label>% Fraction dépréciation</label>
+                    <input type="number" id="deprec_pct" value="100" min="0" max="100" step="any">
+                </div>
+            </div>
+            </div>
+            <div style="margin-top: 40px; display: flex; justify-content: center;">
+                <button id="calculate-btn" class="btn btn-primary" onclick="runSimulation()">Lancer le calcul</button>
+            </div>
+        </div>
+
+        <div id="Resultats" class="tab-content">
+            <div
+                style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 20px;">
+                <h2>Résultats de la simulation</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 20px; gap: 15px;">
+                    <div id="pdf_export_choice" style="display: none;">
+                        <div style="padding: 10px 15px; border: 1px solid var(--border-color); border-radius: 5px; background: var(--bg-panel); display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+                            <label style="font-weight: bold; font-size: 0.9em; margin: 0;">Données pour rapport PDF :</label>
+                            <div class="radio-group" style="margin-top: 0; display: flex; gap: 15px;">
+                                <label style="font-size: 0.9em; display: flex; align-items: center; gap: 5px; margin: 0;"><input type="radio" name="pdf_report_choice" value="main" checked> <span id="pdf_choice_main_label"></span></label>
+                                <label style="white-space: nowrap !important;font-size: 0.9em; align-items: center; gap: 5px; margin-left: -10px;"><input type="radio" name="pdf_report_choice" value="alt"> <span id="pdf_choice_alt_label"></span></label>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <button class="btn-warning" id="btn-analyse-sensibilite" onclick="openSensibilite()">Analyse de sensibilité</button>
+                        <button class="btn-export" id="btn-export-csv" onclick="exportCSV()">Exporter CSV</button>
+                        <button class="btn-export" id="btn-export-pdf" onclick="verifyAndExportPDF(this)">Exporter PDF</button>
+                        <button class="btn-warning" id="btn-eco-verif" onclick="runEcoVerif(this)" style="display: none;" title="Bouton provisoire : compare les résultats à une vérification indépendante">Eco verif</button>
+                    </div>
+
+                </div>
+            </div>
+
+            <div id="eco-verif-panel" style="display:none; margin-bottom:20px; padding:15px; border:1px solid var(--border-color); border-radius:5px; background:var(--bg-panel); font-size:0.9em;"></div>
+
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h3 style="border: none; margin: 0;">Indicateurs financiers clés</h3>
+                <div id="kpi-toggle-buttons" style="display:none; gap: 10px;">
+                    <button type="button" class="btn-secondary btn-sm px-3 py-1" style="margin-right: 21vw;" onclick="toggleKpiSection('fp')">Masquer/Afficher Fonds Propres</button>
+                    <button type="button" class="btn-secondary btn-sm px-3 py-1" onclick="toggleKpiSection('dette')" id="btn-toggle-kpi-dette">Masquer/Afficher Fonds + Dette</button>
+                </div>
+            </div>
+
+            <div class="kpi-sections-wrapper" style="display: flex; gap: 20px; flex-wrap: wrap;">
+                <!-- Section 1 (Base / Fonds Propres) -->
+                <div id="section-kpi-fp" style="flex: 1; min-width: 300px;">
+                    <h4 id="title-kpi-fp" style="font-size: 1.05em; color: var(--text-secondary); margin-bottom: 15px;">Indicateurs financiers clés</h4>
+                    <table class="kpi-results-table" id="indicators-container">
+                        <thead><tr><th>Indicateur</th><th>Valeur</th></tr></thead>
+                        <tbody>
+                        <tr>
+                            <td>VAN projet</td>
+                            <td id="res_van">-</td>
+                        </tr>
+                        <tr>
+                            <td>TRI projet</td>
+                            <td id="res_tri_p">-</td>
+                        </tr>
+                        <tr>
+                            <td>TRI fonds propres</td>
+                            <td id="res_tri_fp">-</td>
+                        </tr>
+                        <tr>
+                            <td>Total OPEX</td>
+                            <td id="res_total_opex">-</td>
+                        </tr>
+                        <tr>
+                            <td>LCOE production (<span class="symb-devise">€</span>/<span>MWh</span>)</td>
+                            <td id="res_lcoe">-</td>
+                        </tr>
+                        <tr id="card_lcoe_facture" style="display:none;">
+                            <td>LCOE Soutirage (<span class="symb-devise">€</span>/<span>MWh</span>)</td>
+                            <td id="res_lcoe_facture">-</td>
+                        </tr>
+                        <tr>
+                            <td>Payback brut fonds propres</td>
+                            <td id="res_pb_brut">-</td>
+                        </tr>
+                        <tr>
+                            <td>Payback actualisé fonds propres</td>
+                            <td id="res_pb_act">-</td>
+                        </tr>
+                        <tr>
+                            <td>Gain cumulés actualisé</td>
+                            <td id="res_gains_act_final">-</td>
+                        </tr>
+                        <tr>
+                            <td>Gains Net tot. (non actualisé.)</td>
+                            <td id="res_gains_non_act">-</td>
+                        </tr>
+                        <tr class="hybride-res" style="display:none">
+                            <td>Dépenses carburant an 1</td>
+                            <td id="res_carb_an1">-</td>
+                        </tr>
+                        <tr class="hybride-res" style="display:none">
+                            <td>Dépenses carburant horizon</td>
+                            <td id="res_carb_total">-</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Section 2 (Dette) -->
+                <div id="section-kpi-dette" style="flex: 1; min-width: 300px; display: none;">
+                    <h4 style="font-size: 1.05em; color: var(--text-secondary); margin-bottom: 15px;">Indicateurs financiers clés - Fonds propres + dette</h4>
+                    <table class="kpi-results-table" id="indicators-container-dette">
+                        <thead><tr><th>Indicateur</th><th>Valeur</th></tr></thead>
+                        <tbody>
+                        <tr>
+                            <td>VAN projet</td>
+                            <td id="res_van_dette">-</td>
+                        </tr>
+                        <tr>
+                            <td>TRI projet</td>
+                            <td id="res_tri_p_dette">-</td>
+                        </tr>
+                        <tr>
+                            <td>TRI fonds propres</td>
+                            <td id="res_tri_fp_dette">-</td>
+                        </tr>
+                        <tr>
+                            <td>Total OPEX</td>
+                            <td id="res_total_opex_dette">-</td>
+                        </tr>
+                        <tr>
+                            <td>LCOE production (<span class="symb-devise">€</span>/<span>MWh</span>)</td>
+                            <td id="res_lcoe_dette">-</td>
+                        </tr>
+                        <tr id="card_lcoe_facture_dette" style="display:none;">
+                            <td>LCOE Soutirage (<span class="symb-devise">€</span>/<span>MWh</span>)</td>
+                            <td id="res_lcoe_facture_dette">-</td>
+                        </tr>
+                        <tr>
+                            <td>Payback brut fonds propres</td>
+                            <td id="res_pb_brut_dette">-</td>
+                        </tr>
+                        <tr>
+                            <td>Payback actualisé fonds propres</td>
+                            <td id="res_pb_act_dette">-</td>
+                        </tr>
+                        <tr>
+                            <td>Gain cumulés actualisé</td>
+                            <td id="res_gains_act_final_dette">-</td>
+                        </tr>
+                        <tr>
+                            <td>Gains Net tot. (non actualisé.)</td>
+                            <td id="res_gains_non_act_dette">-</td>
+                        </tr>
+                        <tr class="hybride-res-dette" style="display:none">
+                            <td>Dépenses carburant an 1</td>
+                            <td id="res_carb_an1_dette">-</td>
+                        </tr>
+                        <tr class="hybride-res-dette" style="display:none">
+                            <td>Dépenses carburant horizon</td>
+                            <td id="res_carb_total_dette">-</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="chart-container-wrapper">
+                <div class="chart-row">
+                    <div class="chart-box-half"><canvas id="cumFlowChart"></canvas></div>
+                    <div class="chart-box-half"><canvas id="factureChart"></canvas></div>
+                </div>
+                <div class="chart-box-full"><canvas id="fcfActChart"></canvas></div>
+            </div>
+
+            <h3>Tableau annuel des flux (k<span class="symb-devise">€</span>)</h3>
+            <div style="overflow-x:auto; width: 100%;">
+                <table id="results-table">
+                    <thead id="results-thead">
+                    </thead>
+                    <tbody id="results-tbody" style></tbody>
+                    <tfoot id="results-tfoot"></tfoot>
+                </table>
+            </div>
+        </div>
+        </div>
+        <!-- fin #etudes-eco-standard-view -->
+
+        <!-- Vue Résidentielle (Chiffrage & Devis) : défilement vertical unique, construite/affichée
+             par ResidentielEtudeEcoView.js uniquement quand
+             window.ACTIVE_PROJECT_TYPOLOGIE === 'Résidentielle'. Reste vide et display:none pour
+             toute autre typologie. -->
+        <div id="etudes-eco-residentiel-view" style="display:none;"></div>
+    </div>
+
+    <div id="sensiModal" class="modal">
+        <div class="modal-content">
+            <h2>Analyse de sensibilité</h2>
+            <div class="grid">
+                <div style="border-right: 1px solid #ccc; padding-right: 15px;">
+                    <h3>Scénario 1</h3>
+                    <div class="sensi-input-row"><label>Capex (x)</label><input type="number" id="s1_capex" value="1.00"
+                            step="0.01"></div>
+                    <div class="sensi-input-row"><label>Opex (x)</label><input type="number" id="s1_opex" value="1.00"
+                            step="0.01"></div>
+                    <div class="sensi-input-row"><label class="label-auto-sensi">Taux auto (%)</label><input
+                            type="number" id="s1_auto" value="85"></div>
+                    <div class="sensi-input-row"><label>Puissance (x)</label><input type="number" id="s1_puiss"
+                            value="1.00" step="0.01"></div>
+                    <div class="sensi-input-row"><label>Productible (x)</label><input type="number" id="s1_prod"
+                            value="1.00" step="0.01"></div>
+                </div>
+                <div>
+                    <h3>Scénario 2</h3>
+                    <div class="sensi-input-row"><label>Capex (x)</label><input type="number" id="s2_capex" value="1.00"
+                            step="0.01"></div>
+                    <div class="sensi-input-row"><label>Opex (x)</label><input type="number" id="s2_opex" value="1.00"
+                            step="0.01"></div>
+                    <div class="sensi-input-row"><label class="label-auto-sensi">Taux auto (%)</label><input
+                            type="number" id="s2_auto" value="85"></div>
+                    <div class="sensi-input-row"><label>Puissance (x)</label><input type="number" id="s2_puiss"
+                            value="1.00" step="0.01"></div>
+                    <div class="sensi-input-row"><label>Productible (x)</label><input type="number" id="s2_prod"
+                            value="1.00" step="0.01"></div>
+                </div>
+            </div>
+            <div style="margin-top:20px; text-align: center;">
+                <button class="btn btn-primary" onclick="runSensibilite()">Comparer</button>
+                <button class="btn btn-secondary" onclick="closeModal('sensiModal')">Fermer</button>
+                <button class="btn btn-warning" onclick="resetSensibilite()">Valeurs par défaut</button>
+            </div>
+            <div id="sensi_results" style="margin-top:20px"></div>
+        </div>
+    </div>
+
+    <!-- Modale de calcul du tarif pondéré -->
+    <div id="tarifPondereModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 10px; margin-bottom: 15px;">
+                <h2 style="border: none; padding: 0; margin: 0; width: auto;">Calcul du Tarif Pondéré</h2>
+                <span class="close-btn" onclick="document.getElementById('tarifPondereModal').style.display='none'" style="cursor:pointer; font-size: 24px; font-weight: bold; color: #aaa;">&times;</span>
+            </div>
+            <div class="grid">
+                <div class="form-group">
+                    <label>Tarif de soutirage HP Hiver (<span class="symb-devise">€</span>/MWh)</label>
+                    <input type="number" id="tarif_hiver_input" value="0" min="10" max="1000" step="any" oninput="calculerTarifPondere()">
+                </div>
+                <div class="form-group">
+                    <label>Tarif de soutirage HP Été (<span class="symb-devise">€</span>/MWh)</label>
+                    <input type="number" id="tarif_ete_input" value="0" min="10" max="1000" step="any" oninput="calculerTarifPondere()">
+                </div>
+                <div class="form-group">
+                    <label>Part Prod. Autoconsommée Annuelle (%) Hiver</label>
+                    <input type="text" id="part_autoconso_hiver" value="0.00" readonly style="background:#f1f3f5; cursor: not-allowed;">
+                </div>
+                <div class="form-group">
+                    <label>Part Prod. Autoconsommée Annuelle (%) Été</label>
+                    <input type="text" id="part_autoconso_ete" value="0.00" readonly style="background:#f1f3f5; cursor: not-allowed;">
+                </div>
+            </div>
+            <div style="margin-top: 15px; padding: 15px; background: #2c2c2e; border-radius: 5px; text-align: center; font-size: 1.1em; color: var(--primary-color);">
+                <strong>Tarif pondéré calculé : </strong> <span id="resultat_tarif_pondere" style="font-weight: bold; font-size: 1.2em;">0.00</span> <span class="symb-devise">€</span>/MWh
+            </div>
+            <div style="margin-top:20px; text-align: center; display: flex; justify-content: space-between;">
+                <button class="btn btn-secondary" onclick="document.getElementById('tarifPondereModal').style.display='none'">Annuler</button>
+                <button class="btn btn-primary" onclick="appliquerTarifPondere()">Appliquer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Analyse heures négatives -->
+    <div id="heuresNegModal" class="modal">
+        <div class="modal-content" style="max-width: 420px; padding: 10px; max-height: 60vh; height: fit-content; min-height: 0; overflow: hidden;">
+            <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 5px; margin-bottom: 10px;">
+                <h2 style="border: none; padding: 0; margin: 0; width: auto; font-size: 1.1rem;">Analyse P90/Heures négatives</h2>
+                <span class="close-btn" onclick="closeModal('heuresNegModal')" style="cursor:pointer; font-size: 24px; font-weight: bold; color: #aaa;">&times;</span>
+            </div>
+            <table class="results-table" style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 0.85rem;">
+                <thead>
+                    <tr>
+                        <th style="background-color: var(--primary-color); color: white; padding: 5px; border: 1px solid #ddd;">Année 1</th>
+                        <th style="background-color: var(--primary-color); color: white; padding: 5px; border: 1px solid #ddd;">Valeur</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding: 5px; border: 1px solid #ddd;">Productible spécifique</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><span id="hn_prod_init" style="font-weight: bold;"></span></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; border: 1px solid #ddd;">Productible limite</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_prod_limite" value="1600" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;" oninput="calcHeuresNeg()"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; border: 1px solid #ddd;">Productible tranche 2 (&gt; h =1600 kWh/kWc/an)</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><span id="hn_prod_tranche2" style="font-weight: bold;">0</span></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; border: 1px solid #ddd;">Nbre d’heure négative (kWh/kWc/an)</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_nbre" value="0" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;" oninput="calcHeuresNeg()"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; border: 1px solid #ddd;">% d’heure négative</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><span id="hn_pct" style="font-weight: bold;">0</span> %</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; border: 1px solid #ddd;">Seuil déclenchement (h)</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_seuil" value="15" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; border: 1px solid #ddd;">Seuil maximal (h)</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_max" value="300" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;"></td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px; border: 1px solid #ddd;">Appliquer le productible net (Pertes + Prime)</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="checkbox" id="hn_appliquer_net" checked onclick="this.dataset.manual='true';" onchange="calcHeuresNeg(); updateFinanceCalculations();"></td>
+                    </tr>
+                    <tr style="background-color: #f8f9fa;">
+                        <td style="padding: 5px; border: 1px solid #ddd; font-weight: bold;">Productible net réel (Info)</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_prod_net" class="form-control" style="font-weight: bold; color: #000; font-size: 1.1em; width: 80px; margin: 0 auto; text-align: center; padding: 2px; background: transparent; border: none; outline: none;" readonly></td>
+                    </tr>
+                </tbody>
+            </table>
+            <div style="text-align:center; display: flex; justify-content: center;">
+                <button type="button" class="btn btn-primary btn-sm" onclick="closeModal('heuresNegModal'); updateFinanceCalculations();">Valider & Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Calcul de revenu -->
+    <div id="revenusModal" class="modal">
+        <div class="modal-content" style="max-width: 400px; padding: 10px; height: fit-content; min-height: 0; overflow: hidden;">
+            <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--primary-color); padding-bottom: 2px; margin-bottom: 5px;">
+                <h2 style="border: none; padding: 0; margin: 0; width: auto; font-size: 1rem;">Calcul de revenu année 1</h2>
+                <span class="close-btn" onclick="closeModal('revenusModal')" style="cursor:pointer; font-size: 24px; font-weight: bold; color: #aaa;">&times;</span>
+            </div>
+            <div class="grid" style="gap: 2px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.8rem; margin-bottom: 0;">Tarif de revente (<span class="symb-devise">€</span>/MWh)</label>
+                    <input type="number" id="rev_tarif" value="0" class="form-control form-control-sm" oninput="calcRevenus()">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.8rem; margin-bottom: 0;">Revenus vente réseau (<span class="symb-devise">€</span>)</label>
+                    <input type="number" id="rev_vente" class="form-control form-control-sm" readonly style="background:#eee; cursor: not-allowed;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.8rem; margin-bottom: 0;">Prime de compensation (<span class="symb-devise">€</span>)</label>
+                    <input type="number" id="rev_prime" class="form-control form-control-sm" readonly style="background:#eee; cursor: not-allowed;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.8rem; margin-bottom: 0;">Revenu Total (<span class="symb-devise">€</span>)</label>
+                    <input type="number" id="rev_total" class="form-control form-control-sm" readonly style="background:#eee; cursor: not-allowed; font-weight: bold; color: var(--primary-color);">
+                </div>
+            </div>
+            <div style="text-align:right; margin-top:5px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeModal('revenusModal')">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Structure HTML de la modale de validation (placée à la fin) -->
+    <div id="custom-validation-alert-overlay">
+        <div id="custom-validation-alert-modal">
+            <h3>Erreur de validation</h3>
+            <div id="custom-validation-alert-message"></div>
+            <button id="custom-validation-alert-btn" onclick="document.getElementById('custom-validation-alert-overlay').style.display='none'">Fermer</button>
+        </div>
+    </div>
+
+</div>
+
+<!-- Scripts JavaScript -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/EtudesEconomiqueModal.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/StockageVieillissement.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/EtudesEconomiqueLogic.js') }}?v=23"></script>
+<!-- Puissance, productible, taux d'autoconsommation, parts hiver/été : lus en base (calcul ProSolaire) + contrôle bloquant. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/ReferenceProSolaire.js') }}?v=2"></script>
+
+<!-- Reprise des données du projet dans le formulaire -->
+<script>
+/**
+ * Puissance, productible, taux d'autoconsommation, parts hiver/été, consommation du site et taux de
+ * couverture : UNIQUEMENT depuis la base (calculs enregistrés, cf. ReferenceProSolaire.js) — plus
+ * aucune lecture du localStorage pour ces valeurs (cache commun à tous les projets, souvent périmé).
+ * Restent ici la dégradation annuelle (réglage partagé avec ProSolaire) et le type de projet.
+ */
+function injectProjectDataToEconomicStudy() {
+    try {
+        if (window.ReferenceProSolaire) window.ReferenceProSolaire.appliquer();
+        const projectData = JSON.parse(localStorage.getItem('solarProjectData') || '{}');
+
+        // Injecter la dégradation annuelle : priorité à la valeur partagée avec la simulation de
+        // production (module autoconso, champ "Dégradation annuelle des panneaux" en vente en
+        // totalité), sinon repli sur la norme de calcul du projet (comportement existant).
+        const degradationInput = document.getElementById('degradation');
+        if (degradationInput && !degradationInput.dataset.manual) {
+            const sharedDegradationRaw = localStorage.getItem('sharedDegradationRate');
+            const sharedDegradation = sharedDegradationRaw !== null ? parseFloat(sharedDegradationRaw) : NaN;
+            if (!isNaN(sharedDegradation)) {
+                degradationInput.value = sharedDegradation.toFixed(2);
+                console.log(`✅ Dégradation synchronisée depuis la simulation de production: ${sharedDegradation.toFixed(2)}%`);
+            } else if (projectData.projectInfo?.coefficientDegradation) {
+                const degradation = parseFloat(projectData.projectInfo.coefficientDegradation);
+                if (!isNaN(degradation)) {
+                    degradationInput.value = degradation.toFixed(1);
+                    console.log(`✅ Dégradation injectée: ${degradation.toFixed(1)}%`);
+                }
+            }
+        }
+
+        // Injecter le type de projet
+        const typeProjetSelect = document.getElementById('type_projet');
+        if (typeProjetSelect && projectData.projectInfo && projectData.projectInfo.typeProjet) {
+            let savedType = projectData.projectInfo.typeProjet;
+            if (savedType === 'Ombrières') savedType = 'Ombrière';
+            if (savedType === 'Champ solaire') savedType = 'Petit champ solaire';
+            
+            if (Array.from(typeProjetSelect.options).some(opt => opt.value === savedType)) {
+                typeProjetSelect.value = savedType;
+                if (typeof handleTypeProjetChange === 'function') {
+                    handleTypeProjetChange();
+                }
+                console.log(`✅ Type de projet injecté: ${savedType}`);
+            }
+        }
+
+        // Déclencher les mises à jour si nécessaire
+        if (typeof checkPowerLimit === 'function') {
+            checkPowerLimit();
+        }
+        if (typeof updateFinanceCalculations === 'function') {
+            updateFinanceCalculations();
+        }
+
+    } catch (error) {
+        console.error('❌ Erreur lors de l\'injection des données:', error);
+    }
+}
+
+/**
+ * Taux d'autoconsommation (avec stockage s'il est affiché dans ProSolaire) : depuis la base, comme
+ * les autres valeurs du calcul (cf. ReferenceProSolaire.js). Nom gardé : appelé par d'autres scripts.
+ */
+function injectAutoconsoDataToEconomicStudy() {
+    if (window.ReferenceProSolaire) window.ReferenceProSolaire.appliquer();
+    else if (typeof window.majChampsStockageEco === 'function') window.majChampsStockageEco();
+}
+
+/**
+ * Projet "Site autonome ou Projet PV Hybride" : bascule l'étude sur le type de système
+ * "Site autonome/Hybride". La consommation annuelle d'énergie du site (pré-dimensionnement) et le
+ * taux de couverture photovoltaïque (production annuelle du calcul ProSolaire / consommation) sont
+ * calculés et enregistrés par le serveur, puis repris par ReferenceProSolaire.js — en lecture seule,
+ * contrôlés avant tout calcul. Ils venaient auparavant du localStorage (skv_site_autonomy_summary_*)
+ * et restaient modifiables.
+ */
+function applySiteAutonomeToEconomicStudy() {
+    if (typeof window.isSiteAutonomeProject !== 'function' || !window.isSiteAutonomeProject()) return;
+    const radioHybride = document.querySelector('input[name="type_systeme"][value="hybride"]');
+    if (radioHybride && !radioHybride.checked) {
+        radioHybride.checked = true;
+        if (typeof toggleSystemeFields === 'function') toggleSystemeFields();
+        if (window.ReferenceProSolaire) window.ReferenceProSolaire.appliquer();
+    }
+}
+
+// Injecter les données au chargement du modal
+document.addEventListener('DOMContentLoaded', () => {
+    // Attendre un court instant pour s'assurer que tout est chargé
+    setTimeout(() => {
+        injectProjectDataToEconomicStudy();
+        injectAutoconsoDataToEconomicStudy();
+        applySiteAutonomeToEconomicStudy();
+    }, 500);
+});
+
+// Injecter aussi quand le modal devient visible
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            const modal = document.getElementById('etudes-economique-content');
+            if (modal && modal.offsetParent !== null) {
+                // Le modal est visible
+                setTimeout(() => {
+                    if (window.ReferenceProSolaire) window.ReferenceProSolaire.charger();
+                    injectProjectDataToEconomicStudy();
+                    injectAutoconsoDataToEconomicStudy();
+                    applySiteAutonomeToEconomicStudy();
+                }, 200);
+            }
+        }
+    });
+});
+
+// NOUVEAU: Partage le taux de dégradation saisi manuellement ici avec le module autoconso
+// (champ "Dégradation annuelle des panneaux" en vente en totalité, cf. main_autoconso.js).
+window.syncDegradationToSharedStorage = function(value) {
+    try { localStorage.setItem('sharedDegradationRate', value); } catch (e) {}
+};
+
+// --- LOGIQUE TARIF PONDÉRÉ ---
+window.openTarifPondereModal = function() {
+    let pctHiver = 0;
+    let pctEte = 0;
+    // Parts du calcul ProSolaire enregistré en base (avec stockage s'il est affiché) ; aucune
+    // lecture du cache local. Sans calcul : 0, et « Appliquer » est bloqué par le contrôle.
+    const referencePS = window.ReferenceProSolaire && window.ReferenceProSolaire.courante();
+    if (referencePS) {
+        pctHiver = Number(referencePS.part_hiver_pct) || 0;
+        pctEte = Number(referencePS.part_ete_pct) || 0;
+    }
+
+    document.getElementById('part_autoconso_hiver').value = pctHiver.toFixed(2);
+    document.getElementById('part_autoconso_ete').value = pctEte.toFixed(2);
+    
+    calculerTarifPondere(); // Init calcul avec 0 par défaut
+    document.getElementById('tarifPondereModal').style.display = 'block';
+};
+
+window.calculerTarifPondere = function() {
+    const tarifHiver = parseFloat(document.getElementById('tarif_hiver_input').value) || 0;
+    const tarifEte = parseFloat(document.getElementById('tarif_ete_input').value) || 0;
+    const pctHiver = parseFloat(document.getElementById('part_autoconso_hiver').value) || 0;
+    const pctEte = parseFloat(document.getElementById('part_autoconso_ete').value) || 0;
+    
+    // (Tarif_Hiver * %Autoconso_Hiver) + (Tarif_Ete * %Autoconso_Ete)
+    const tarifPondere = (tarifHiver * (pctHiver / 100)) + (tarifEte * (pctEte / 100));
+    
+    document.getElementById('resultat_tarif_pondere').textContent = tarifPondere.toFixed(2);
+    return tarifPondere;
+};
+
+// Bornes des tarifs de soutirage HP Hiver / Été et du tarif pondéré qui en résulte (= facture de
+// consommation HP, mêmes bornes que #prix_achat_elec dans EtudesEconomiqueLogic.js).
+const TARIF_SOUTIRAGE_MIN = 10;
+const TARIF_SOUTIRAGE_MAX = 1000;
+
+window.appliquerTarifPondere = async function() {
+    // Parts hiver/été (et données de production) conformes au calcul ProSolaire, sinon bloqué.
+    if (window.ReferenceProSolaire && !(await window.ReferenceProSolaire.controler())) return;
+    const erreurs = [];
+    [['tarif_hiver_input', 'Tarif de soutirage HP Hiver'], ['tarif_ete_input', 'Tarif de soutirage HP Été']].forEach(([id, nom]) => {
+        const champ = document.getElementById(id);
+        const valeur = parseFloat(champ.value);
+        const valide = champ.value !== '' && !isNaN(valeur) && valeur >= TARIF_SOUTIRAGE_MIN && valeur <= TARIF_SOUTIRAGE_MAX;
+        champ.style.border = valide ? '' : '2px solid red';
+        if (!valide) erreurs.push(`[${nom}] doit être >= ${TARIF_SOUTIRAGE_MIN} et <= ${TARIF_SOUTIRAGE_MAX} €/MWh (Saisie : ${champ.value || 'vide'}).`);
+    });
+    const tarifPondere = calculerTarifPondere();
+    if (!erreurs.length && (tarifPondere < TARIF_SOUTIRAGE_MIN || tarifPondere > TARIF_SOUTIRAGE_MAX)) {
+        erreurs.push(`Le tarif pondéré (${tarifPondere.toFixed(2)} €/MWh) doit être compris entre ${TARIF_SOUTIRAGE_MIN} et ${TARIF_SOUTIRAGE_MAX} €/MWh : `
+            + "vérifiez que les parts de production autoconsommée Hiver/Été ont bien été calculées (calcul d'autoconsommation).");
+    }
+    if (erreurs.length) {
+        alert("Validation bloquante (Aucune auto-correction n'est permise) :\n\n" + erreurs.join('\n'));
+        return;
+    }
+    const inputElec = document.getElementById('prix_achat_elec');
+    inputElec.value = tarifPondere.toFixed(2);
+    
+    // Déclenche les dépendances si nécessaires
+    inputElec.dispatchEvent(new Event('input', { bubbles: true })); 
+    document.getElementById('tarifPondereModal').style.display = 'none';
+};
+
+// Observer le modal
+const modalContent = document.getElementById('etudes-economique-content');
+if (modalContent) {
+    observer.observe(modalContent, { attributes: true, attributeFilter: ['style'] });
+}
+
+// Dégradation partagée avec ProSolaire / type de projet : relus si le cache local change. Les
+// valeurs de calcul, elles, sont relues en base (écouteurs de ReferenceProSolaire.js).
+window.addEventListener('storage', (e) => {
+    if (e.key === null || e.key === 'sharedDegradationRate' || e.key === 'solarProjectData') injectProjectDataToEconomicStudy();
+});
+document.addEventListener('solarProjectDataSaved', injectProjectDataToEconomicStudy);
+</script>
+
+<!-- Liaison vers le script de synchronisation de l'étude économique en Base de données -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/EtudesEconomiqueDB.js') }}?v=6"></script>
+
+<!-- Chiffrage & Devis Résidentiel (actif uniquement si typologie === 'Résidentielle', cf.
+     ResidentielEtudeEcoView.js) — ?v= incrémenté à chaque correctif pour forcer le rechargement
+     (évite qu'un navigateur serve une version en cache de ces fichiers, cf. correctifs round 3). -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielValidationRules.js') }}?v=19"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielReusedSections.js') }}?v=15"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielCapexTable.js') }}?v=22"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielFavorisChiffrage.js') }}?v=5"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielOpexTable.js') }}?v=13"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/DevisPdfGenerator.js') }}?v=17"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielChiffrageDB.js') }}?v=20"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielEtudeEcoView.js') }}?v=19"></script>
+<!-- Vue PRO / Grand projet : affichage vertical + Chiffrage CAPEX (Devis) du résidentiel. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/pro/ProEtudeEcoView.js') }}?v=1"></script>
+<!-- Parcours Chiffrage (avant-projet) : même modal, sections réduites au devis (cf. fichier). -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/ChiffrageModeView.js') }}?v=3"></script>
+
+<!-- Autoconsommation embarquée (résidentiel uniquement, cf. ResidentielAutoconsoEmbed.js) : le
+     modal Autoconsommation existant (index_autoconso.html/main_autoconso.js, non modifié) est
+     réutilisé tel quel dans une iframe — appelée depuis le modal Calepinage Maison via
+     window.cmOpenAutoconsoResults(). AUTOCONSO_URL est fourni ici en global : un fichier JS statique
+     ne peut pas appeler url_for() lui-même, seul un template Jinja le peut. -->
+<script>
+    window.AUTOCONSO_URL = "{{ url_for('prodsolaire.index_autoconso') }}";
+</script>
+<script type="module" src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielAutoconsoEmbed.js') }}?v=8"></script>

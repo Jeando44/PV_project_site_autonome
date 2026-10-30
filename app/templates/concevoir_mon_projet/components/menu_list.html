@@ -1,0 +1,587 @@
+<!-- Version des données du projet actif (verrou optimiste + cohérence des caches locaux), lue AVANT
+     tout autre script : cf. services/version_projet.js et app/services/version_projet.py. -->
+<script>
+  window.SKV_PROJET_RENDU = {
+    id: {{ active_projet_id_verifie|default(none)|tojson }},
+    version: {{ active_projet_version|default(none)|tojson }},
+    dernierOnglet: {{ active_projet_dernier_onglet|default(none)|tojson }},
+    session: {{ skv_session_caches|default(none)|tojson }}
+  };
+</script>
+<script src="/static/concevoir_mon_projet/javascript/services/version_projet.js?v=3"></script>
+<link href="/static/concevoir_mon_projet/CSS/menu_list.css?v=4" rel="stylesheet" />
+<style>
+  /* Masquage des entrées de menu (icône + libellé), demande explicite. `!important` est nécessaire
+     car updateMenuVisibility() ci-dessous réinitialise périodiquement (toutes les 500ms) le
+     `style.display` de tous les <li> de ce menu à 'list-item' selon le type d'étude — un simple
+     `style="display:none"` inline serait donc écrasé au prochain passage de cette fonction. Même
+     règle partagée pour le menu horizontal (#menu_list.html) et le menu vertical inclus juste en
+     dessous (components/menu.html), puisque ce dernier est inclus dans le DOM de cette page. */
+  .demo-nav .menu-item-hidden,
+  .MENU .menu-item-hidden {
+    display: none !important;
+  }
+  /* Parcours Chiffrage (classe posée sur <html> par window.appliquerParcoursChiffrage, cf.
+     parametre.html) : .masque-chiffrage = élément inutile à l'avant-projet ; .seulement-chiffrage =
+     élément propre à ce parcours. !important : même raison que ci-dessus (updateMenuVisibility). */
+  html.parcours-chiffrage .masque-chiffrage,
+  html:not(.parcours-chiffrage) .seulement-chiffrage {
+    display: none !important;
+  }
+  /* Boutons « Système » / « Calculer et Visualiser » de la carte remplacés par un bouton de retour
+     (classes posées sur <html> par window.appliquerParcoursRetour, cf. parametre.html). */
+  html.parcours-residentiel-reseau .masque-parcours-retour,
+  html.parcours-pompage-autonome .masque-parcours-retour,
+  html:not(.parcours-residentiel-reseau) .seulement-residentiel-reseau,
+  html:not(.parcours-pompage-autonome) .seulement-pompage-autonome {
+    display: none !important;
+  }
+  /* Palette de la carte : « Chiffrer votre projet » masqué (doublon du bouton vert
+     #chiffrage-ouvrir-button, demande explicite) — cf. MAP_HIDDEN_BUTTON_IDS (ButtonControl.js). */
+  #chiffrage-ouvrir-palette-button {
+    display: none !important;
+  }
+  /* Entrée "Déclaration préalable" : même raison pour !important (updateMenuVisibility). */
+  .demo-nav .dp-nav-hidden {
+    display: none !important;
+  }
+
+  /* NOUVEAU WORKFLOW (demande explicite) : met en évidence, dans le menu horizontal, l'étape de
+     configuration actuellement en cours (Paramètres / Consommation d'énergie / Calepinage /
+     Dimensionnement) — cf. window.setActiveMainNavStep() ci-dessous. Classe dédiée distincte de
+     `.active` (déjà utilisée par ailleurs pour un simple appariement d'URL, fond blanc translucide)
+     pour ne jamais entrer en collision avec elle. */
+  .demo-nav li a.step-active {
+    background-color: #fde68a; /* jaune clair doré */
+    color: #78350f;
+    font-weight: 700;
+    /* NOUVEAU (demande explicite) : angles nettement arrondis pour ce fond jaune — le
+       border-radius:5px hérité de .demo-nav li a passait quasi inaperçu vu la hauteur du bloc. */
+    border-radius: 12px;
+  }
+  /* Demande explicite : liseré blanc sous le fond jaune — venait du `border-bottom: 3px solid white`
+     de `.active` (menu_list.css), posé aussi sur l'étape en cours. Bordure passée au même jaune
+     (hauteur inchangée) ; `.step-active.active` l'emporte sur `.active` quel que soit l'ordre. */
+  .demo-nav li a.step-active,
+  .demo-nav li a.step-active.active {
+    background-color: #fde68a;
+    border-bottom-color: #fde68a;
+  }
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+<link href="/static/concevoir_mon_projet/CSS/ParametresProjet.css?v=16" rel="stylesheet" />
+<!-- <script type="module" src="/static/concevoir_mon_projet/javascript/components/AddressSuggestions.js"></script>
+<script type="module" src="/static/concevoir_mon_projet/javascript/components/DrawingControl/handlers/AddressSuggestionsHandler.js"></script> -->
+<div class="demo-nav">
+  <nav role="navigation">
+    <ul>
+      <!-- Parcours (demande explicite) : Mes projets (ouverture du projet) -> Paramètres projet ->
+           Profil de consommation -> Calepinage. #open-modal ouvre le modal sur la liste « Mes projets » ;
+           « Paramètres projet » l'ouvre directement sur le formulaire du projet actif (cf.
+           window.openParametresProjet, initialisationMap.js). -->
+      <li><a href="#" id="open-modal" data-nav-step="mes-projets"><i class="fas fa-folder-open"></i> Mes projets</a></li>
+      <li><a href="#" id="open-parametres-projet" data-nav-step="parametres" onclick="window.openParametresProjet(); return false;"><i class="fa fa-cogs"></i> Paramètres projet</a></li>
+      <!-- « Consommation d'énergie » ou « Profil de consommation » (Site autonome), cf. app/utils/parcours.py. -->
+      <li class="masque-chiffrage"><a href="#" data-nav-step="cons-energie" onclick="openBDMateriels(event); return false;"><i class="bi bi-bar-chart-line-fill"></i> {{ parcours_projet.titre_consommation }}</a></li>
+      <li><a href="{{ parcours_projet.url_accueil }}" data-nav-step="calepinage" onclick="return handleCalepinageClick(event);"><i class="fas fa-solar-panel"></i> Calepinage</a></li>
+      <!-- Parcours Chiffrage (avant-projet) uniquement : ouvre le modal de chiffrage par-dessus la
+           page Calepinage (cf. openChiffrageModal ci-dessous). -->
+      <li id="chiffrage-nav-item" class="seulement-chiffrage"><a href="#" data-nav-step="chiffrage" onclick="openChiffrageModal(event); return false;"><i class="fas fa-euro-sign"></i> Chiffrage</a></li>
+      <li class="masque-chiffrage{{ ' skv-masque-parcours' if 'dimensionnement' in parcours_projet.masquer }}"><a href="#" data-nav-step="dimensionnement" onclick="openDimensionnementModal(); return false;"><i class="fas fa-drafting-compass"></i> Dimensionnement</a></li>
+      <!-- Déclaration préalable : visible sur les parcours PRO et Résidentiel, jamais pour un projet
+           site autonome, cf. updateDeclarationPrealableNav() ci-dessous. -->
+      <li id="dp-nav-item" class="dp-nav-hidden"><a href="#" onclick="openDeclarationPrealable(event); return false;"><i class="bi bi-file-earmark-ruled"></i> Déclaration préalable</a></li>
+      <li class="menu-item-hidden"><a href="#" onclick="openModalGeometrie(); return false;"><i class="fas fa-ruler-combined"></i> Géométrie</a></li>
+      <li class="menu-item-hidden"><a href="#" onclick="return false;"><i class="bi bi-bar-chart-line-fill"></i> Autoconsommation</a></li>
+      <!--<li><a href="/concevoir_mon_projet/systeme"><i class="bi bi-power"></i> Système</a></li>-->
+      <li id="etudes-economique-nav-item" class="menu-item-hidden"><a href="#" onclick="openEtudesEconomiqueModal(); return false;"><i class="bx bx-dollar"></i> Étude économique</a></li>
+      <!--<li><a href="/concevoir_mon_projet/export"><i class="bi bi-file-earmark-pdf"></i> Exporter | Partager </a></li>-->
+      <li class="menu-item-hidden"><a href="#" onclick="triggerProjectExport(event); return false;"><i class="bi bi-file-earmark-pdf"></i> Exporter </a></li>
+      <li><a href="https://www.solakvan.com/socalts/"><i class="bi bi-box-arrow-left"></i> Revenir à Socalts</a></li>
+      <!-- NOUVEAU (demande explicite) : nom du projet actif, affiché après "Revenir à Socalts" —
+           non cliquable (simple indicateur), masqué tant qu'aucun projet n'est actif. Mis à jour
+           par updateActiveProjectNameNav() ci-dessous. -->
+      <li id="active-project-name-item" style="display: none;">
+        <a href="#" onclick="return false;" style="cursor: default;">
+          <i class="fas fa-folder-open"></i> <span id="active-project-name-text"></span>
+        </a>
+      </li>
+      <!--<li><a href="#" onclick="openPdfViewer('{{ url_for('main.serve_tutoriels', filename='versions.pdf') }}', 'Versions du logiciel'); return false;"><i class="bx bx-history"></i> Version LG</a></li>-->
+    </ul>
+  </nav>
+</div>
+<div class="container-flux">
+  {% include 'concevoir_mon_projet/components/menu.html' %}
+</div>
+
+<script>
+// CORRECTIF (clic sur "Calepinage" ouvrait le modal "Paramètres du projet" au lieu de rester sur
+// le calepinage) : le lien pointait vers "/" (page d'accueil), qui redirige vers
+// /concevoir_mon_projet/ — un simple RECHARGEMENT PLEIN PAGE quand on est déjà sur cette page,
+// ré-exécutant depuis zéro l'initialisation de ParametresProjet.js (son garde-fou
+// "aucun projet actif" peut alors rouvrir le modal). Les autres onglets de ce menu (Géométrie,
+// Étude économique...) n'ont jamais ce problème car ils n'ont jamais recours à une navigation
+// réelle (onclick="...; return false;"), seulement ce lien-ci utilisait un <a href> classique.
+// On garde un href valide (clic droit / ouverture dans un nouvel onglet toujours possibles), mais
+// on n'effectue la navigation QUE si on ne se trouve pas déjà sur la page de calepinage.
+function handleCalepinageClick(event) {
+    if (window.estPageAccueil()) {
+        event.preventDefault();
+        // Pas de rechargement de page dans ce cas (cf. commentaire ci-dessus) : le DOMContentLoaded
+        // qui positionnerait normalement la mise en évidence sur "Calepinage" ne se redéclenche pas
+        // ici, donc on l'applique nous-mêmes directement.
+        if (typeof window.setActiveMainNavStep === 'function') window.setActiveMainNavStep('calepinage');
+        return false;
+    }
+    return true;
+}
+
+// NOUVEAU WORKFLOW (demande explicite) : met en évidence, dans le menu horizontal, l'étape de
+// configuration actuellement en cours (Paramètres / Consommation d'énergie / Calepinage /
+// Dimensionnement) via un fond jaune clair doré (cf. règle CSS .step-active ci-dessus). Appelée par
+// chacun des 4 points d'ouverture/fermeture correspondants (ici, dans menu.html pour Consommation
+// d'énergie, et dans initialisationMap.js/SummaryModal.js pour Paramètres/Dimensionnement).
+//
+// CORRECTIF (bug rapporté : "on ferme le modal Paramètres, on retombe sur Calepinage mais le menu
+// reste en évidence sur Paramètres") : mémorise ici l'étape qui était active JUSTE AVANT chaque
+// changement, dans window._previousMainNavStep — utilisé par window.restorePreviousMainNavStep()
+// ci-dessous, appelée par les fermetures de modale (Paramètres/Consommation d'énergie/
+// Dimensionnement) à la place d'un retour figé sur 'calepinage'. Nécessaire pour le cas général posé
+// par l'utilisateur : si l'étape active avant l'ouverture n'était PAS 'calepinage' (ex. l'utilisateur
+// a navigué Dimensionnement -> Paramètres sans repasser par Calepinage), la fermeture doit rétablir
+// l'étape réellement quittée, pas toujours 'calepinage'.
+//
+// window._navStepRestorePending : n'est armé QUE lors d'une transition VERS une étape modale
+// (Paramètres/Consommation d'énergie/Dimensionnement — jamais vers 'calepinage'/'calepinage-click').
+// CORRECTIF 2 (le bug persistait) : chacune de ces 3 modales possède PLUSIEURS mécanismes de
+// fermeture indépendants pour le même bouton/backdrop (cf. ParametresProjet.js::closeMainModal vs
+// initialisationMap.js::closeModal vs menu_list.js::closeModal, tous appelant désormais
+// restorePreviousMainNavStep()) : sans ce garde, 2 appels redondants pour UNE SEULE fermeture
+// faisaient un aller-retour (calepinage -> parametres -> calepinage selon la parité du nombre de
+// gestionnaires réellement déclenchés), pouvant réafficher Paramètres en évidence au lieu de
+// Calepinage. Ce garde ne consomme (restaure) qu'UNE seule fois par fermeture réelle : les appels
+// redondants suivants, tant qu'aucune nouvelle ouverture n'a réarmé le drapeau, sont des no-op.
+const MODAL_NAV_STEPS = ['mes-projets', 'parametres', 'cons-energie', 'dimensionnement'];
+window.setActiveMainNavStep = function (key) {
+    const currentActive = document.querySelector('.demo-nav nav ul li a.step-active[data-nav-step]');
+    const currentKey = currentActive ? currentActive.dataset.navStep : null;
+    // « Mes projets » et « Paramètres projet » sont deux vues du MÊME modal : passer de l'une à
+    // l'autre ne doit pas écraser l'étape à rétablir à sa fermeture.
+    const MEME_MODAL = ['mes-projets', 'parametres'];
+    const basculeInterne = MEME_MODAL.includes(currentKey) && MEME_MODAL.includes(key);
+    if (currentKey && currentKey !== key && !basculeInterne) {
+        window._previousMainNavStep = currentKey;
+    }
+    if (MODAL_NAV_STEPS.includes(key)) {
+        window._navStepRestorePending = true;
+    }
+    document.querySelectorAll('.demo-nav nav ul li a[data-nav-step]').forEach((link) => {
+        link.classList.toggle('step-active', link.dataset.navStep === key);
+    });
+};
+
+// Rétablit l'étape mise en évidence avant la dernière ouverture d'une modale de configuration
+// (Paramètres/Consommation d'énergie/Dimensionnement) — à appeler à LEUR fermeture, à la place d'un
+// window.setActiveMainNavStep('calepinage') figé. Repli sur 'calepinage' si aucune étape précédente
+// n'a été mémorisée (ex. tout premier chargement de la page). Idempotent : cf. commentaire de
+// window._navStepRestorePending ci-dessus.
+window.restorePreviousMainNavStep = function () {
+    if (!window._navStepRestorePending) return;
+    window._navStepRestorePending = false;
+    window.setActiveMainNavStep(window._previousMainNavStep || 'calepinage');
+};
+
+// Ouvre la modale de synthèse "Dimensionnement" (Summary modal), qui n'existe que sur la page
+// Calepinage (window.summaryModalInstance, cf. DrawingControl.js). Depuis une autre page, on se
+// contente de revenir sur le Calepinage (même repli que triggerProjectExport ci-dessous quand
+// l'élément attendu de la page n'est pas présent), sans tenter de rouvrir automatiquement la
+// modale après coup : le calepinage doit être chargé (formes, panneaux) avant que la synthèse ait
+// un sens à afficher.
+function openDimensionnementModal() {
+    if (window.summaryModalInstance && typeof window.summaryModalInstance.showSummary === 'function') {
+        window.summaryModalInstance.showSummary();
+        if (typeof window.setActiveMainNavStep === 'function') window.setActiveMainNavStep('dimensionnement');
+    } else {
+        window.location.href = window.SKV_URL_ACCUEIL;
+    }
+}
+
+// Parcours Chiffrage : le modal de chiffrage (modal Études économiques en mode chiffrage) s'ouvre
+// PAR-DESSUS la page Calepinage. Depuis une autre page, on y retourne avec ?chiffrage=1, qui l'ouvre
+// automatiquement (cf. reprise ci-dessous). L'état « modal ouvert » est mémorisé par projet pour
+// être retrouvé après un rechargement (F8) ; les données du chiffrage, elles, sont en base.
+function cleChiffrageModalOuvert() {
+    return 'skv_chiffrage_modal_ouvert_' + (localStorage.getItem('current_projet_id') || '');
+}
+function openChiffrageModal(event) {
+    if (event) event.preventDefault();
+    if (!window.estPageAccueil()) {
+        window.location.href = window.SKV_URL_ACCUEIL + '?chiffrage=1';
+        return;
+    }
+    const modal = document.getElementById('etudes-economique-modal');
+    if (typeof window.openEtudesEconomiqueModal === 'function') window.openEtudesEconomiqueModal();
+    if (!modal || modal.style.display === 'none') return; // ouverture refusée (aucun projet actif)
+    if (typeof window.setActiveMainNavStep === 'function') window.setActiveMainNavStep('chiffrage');
+    try { localStorage.setItem(cleChiffrageModalOuvert(), '1'); } catch (e) { /* sans conséquence */ }
+    if (!modal.dataset.suiviChiffrage) {
+        modal.dataset.suiviChiffrage = '1';
+        // Fermeture (quel que soit le bouton) : retour sur l'étape Calepinage, état oublié.
+        new MutationObserver(() => {
+            if (modal.style.display !== 'none' || !window.isChiffrageProject || !window.isChiffrageProject()) return;
+            try { localStorage.removeItem(cleChiffrageModalOuvert()); } catch (e) { /* idem */ }
+            if (typeof window.setActiveMainNavStep === 'function') window.setActiveMainNavStep('calepinage');
+        }).observe(modal, { attributes: true, attributeFilter: ['style'] });
+    }
+}
+window.openChiffrageModal = openChiffrageModal;
+
+// Reprise du parcours Chiffrage sur la page Calepinage : ?chiffrage=1 (venu d'une autre page) ou
+// modal laissé ouvert avant un rechargement. Délai : le modal éco s'initialise au window.load
+// (+650 ms, cf. ProEtudeEcoView.js / ResidentielEtudeEcoView.js).
+window.addEventListener('load', function () {
+    if (!window.estPageAccueil()) return;
+    if (!window.isChiffrageProject || !window.isChiffrageProject()) return;
+    const params = new URLSearchParams(window.location.search);
+    let rouvrir = params.get('chiffrage') === '1';
+    try { rouvrir = rouvrir || localStorage.getItem(cleChiffrageModalOuvert()) === '1'; } catch (e) { /* idem */ }
+    if (rouvrir) setTimeout(openChiffrageModal, 900);
+});
+
+// Ouvre le modal "Déclaration préalable" (dossier DP, cf. declaration_prealable/DpModal.js). Il ne
+// vit que sur la page Calepinage (il pilote la carte pour les captures) : depuis une autre page, on
+// y retourne avec ?dp=1, qui l'ouvre automatiquement (cf. pages/index.html).
+function openDeclarationPrealable(event) {
+    if (event) event.preventDefault();
+    if (!localStorage.getItem('current_projet_id')) {
+        alert('Ouvrez un projet avant de préparer la déclaration préalable.');
+        return;
+    }
+    if (typeof isSiteAutonomeProjet === 'function' && isSiteAutonomeProjet()) {
+        alert("La déclaration préalable n'est pas applicable à un site autonome ou projet PV hybride.");
+        return;
+    }
+    if (window.declarationPrealableModal && window.map) {
+        window.declarationPrealableModal.open();
+    } else {
+        window.location.href = window.SKV_URL_ACCUEIL + '?dp=1';
+    }
+}
+
+// Fonction pour déclencher l'export PDF du projet depuis le menu
+function triggerProjectExport(event) {
+    if (event) event.preventDefault();
+    
+    // Le bouton d'export est généré par ButtonControl.js avec l'ID 'export-pdf-button'
+    const exportBtn = document.getElementById('export-pdf-button');
+    
+    if (exportBtn) {
+        // Simuler un clic sur le bouton d'export du calepinage
+        exportBtn.click();
+    } else {
+        // Si le bouton n'est pas présent (ex: l'utilisateur est sur une autre page), 
+        // rediriger vers la page d'export classique
+        window.location.href = '/concevoir_mon_projet/export';
+    }
+}
+
+// Vérifier si un projet existe dans le localStorage au chargement de la page
+document.addEventListener('DOMContentLoaded', function() {
+    // Vérifier si un projet existe dans le localStorage
+    const projectData = localStorage.getItem('currentProject') || localStorage.getItem('projet');
+
+    // Vérifier si le modal a déjà été affiché dans cette session
+    const modalAlreadyShown = sessionStorage.getItem('modalParametresShown');
+
+    // Si aucun projet n'existe ET que le modal n'a pas encore été affiché, ouvrir le modal des paramètres
+    if (!projectData && !modalAlreadyShown) {
+        const openModalBtn = document.getElementById('open-modal');
+        if (openModalBtn) {
+            // Marquer le modal comme affiché dans cette session
+            sessionStorage.setItem('modalParametresShown', 'true');
+
+            // Attendre un court instant pour que tout soit bien initialisé
+            setTimeout(() => {
+                openModalBtn.click();
+            }, 100);
+        }
+    }
+
+    // Ajouter la classe "active" au lien de menu correspondant à la page actuelle
+    const currentPath = window.location.pathname;
+    const menuLinks = document.querySelectorAll('.demo-nav nav ul li a');
+
+    menuLinks.forEach(link => {
+        // Retirer toutes les classes "active" existantes
+        link.classList.remove('active');
+
+        // Obtenir le href du lien
+        const href = link.getAttribute('href');
+
+        // Si le href correspond au chemin actuel, ajouter la classe "active"
+        if (href && href !== '#' && currentPath.includes(href)) {
+            link.classList.add('active');
+        }
+        // Cas spécial pour la page d'accueil (calepinage)
+        else if (window.estPageAccueil(currentPath) && window.estPageAccueil(href)) {
+            link.classList.add('active');
+        }
+    });
+
+    // Fonction pour afficher/masquer les éléments du menu selon le type d'étude et le mode de valorisation
+    function updateMenuVisibility() {
+        try {
+            const savedData = localStorage.getItem('solarProjectData');
+            if (!savedData) {
+                console.log('Aucune donnée de projet trouvée');
+                return;
+            }
+
+            const projectInfo = JSON.parse(savedData);
+            const typeEtude = projectInfo.projectInfo?.typeEtude?.toLowerCase() || '';
+            const modeValorisation = projectInfo.projectInfo?.modeDeValorisation?.toLowerCase() || '';
+
+            console.log('Type d\'étude:', typeEtude);
+            console.log('Mode de valorisation:', modeValorisation);
+
+            // Récupérer tous les éléments du menu
+            const menuItems = document.querySelectorAll('.demo-nav nav ul li');
+
+            // Si type d'étude = "étude de conception détaillée"
+            if (typeEtude.includes('faisabilité détaillée') || typeEtude.includes('conception détaillée')) {
+                // Afficher TOUS les éléments du menu peu importe les autres options
+                menuItems.forEach(item => {
+                    item.style.display = 'list-item';
+                });
+            } else if (typeEtude.includes('technico') || typeEtude.includes('pré-étude') || typeEtude.includes('préétude')) {
+                // Étude technico-économique (ex « Pré-étude de faisabilité ») : vérifier le mode de valorisation
+
+                // Si mode de valorisation = "autoconsommation"
+                if (modeValorisation.includes('autoconsommation')) {
+                    // Afficher: Paramètres projets, calepinage, géométrie, Autoconsommation et étude économique
+                    // Masquer: Système et Exporter/Partager
+                    menuItems.forEach(item => {
+                        const linkText = item.textContent.trim().toLowerCase();
+
+                        if (linkText.includes('système') ||
+                            linkText.includes('exporter') ||
+                            linkText.includes('partager')) {
+                            item.style.display = 'none';
+                        } else {
+                            item.style.display = 'list-item';
+                        }
+                    });
+                }
+                // Si mode de valorisation = "vente en totalité" OU "marché libre"
+                else if (modeValorisation.includes('vente en totalité') || modeValorisation.includes('marché libre')) {
+                    // Afficher: Paramètres projets, calepinage, géométrie et étude économique
+                    // Masquer: Autoconsommation, Système et Exporter/Partager
+                    menuItems.forEach(item => {
+                        const linkText = item.textContent.trim().toLowerCase();
+
+                        if (linkText.includes('autoconsommation') ||
+                            linkText.includes('système') ||
+                            linkText.includes('exporter') ||
+                            linkText.includes('partager')) {
+                            item.style.display = 'none';
+                        } else {
+                            item.style.display = 'list-item';
+                        }
+                    });
+                } else {
+                    // Afficher tous les éléments si le mode de valorisation n'est pas défini
+                    menuItems.forEach(item => {
+                        item.style.display = 'list-item';
+                    });
+                }
+            } else {
+                // Afficher toutes les options pour les autres types d'études
+                menuItems.forEach(item => {
+                    item.style.display = 'list-item';
+                });
+            }
+
+            console.log('Menu mis à jour avec succès');
+        } catch (error) {
+            console.error('Erreur lors de la mise à jour du menu:', error);
+        }
+
+        // NOUVEAU (demande explicite) : appelé ICI, en fin de updateMenuVisibility() — cette
+        // fonction réinitialise le style.display de TOUS les <li> de ce menu (y compris le nôtre)
+        // à chacun de ses appels (chargement, événements 'storage'/'solarProjectDataSaved',
+        // interval ci-dessous) ; sans ce ré-appel systématique juste après, notre <li> repasserait
+        // à 'list-item' même sans projet actif dès le prochain passage de updateMenuVisibility().
+        updateActiveProjectNameNav();
+        updateDeclarationPrealableNav();
+    }
+
+    // Permission/quota DP (session['licence_dp'] côté Solakvan_Projet — cf.
+    // app/services/dp/quota.py, GET /api/dp/status). Récupérée une seule fois au chargement (et
+    // après chaque génération) plutôt qu'à chaque passage de updateDeclarationPrealableNav(),
+    // appelée toutes les 500ms par l'interval ci-dessous — un appel réseau à ce rythme serait
+    // inutilement coûteux. Tant que non chargée, on ne bloque pas l'affichage sur cette base (le
+    // blocage réel, côté serveur, a de toute façon lieu dans DpModal.js::_checkQuotaDp()).
+    let _dpQuota = { allowed: true, loaded: false };
+    function refreshDpQuotaStatus() {
+        fetch('/concevoir_mon_projet/api/dp/status')
+            .then((res) => (res.ok ? res.json() : null))
+            .then((data) => {
+                if (data) {
+                    _dpQuota = { allowed: !!data.allowed, loaded: true };
+                    updateDeclarationPrealableNav();
+                }
+            })
+            .catch(() => {});
+    }
+    document.addEventListener('dpUsageRegistered', refreshDpQuotaStatus);
+
+    // Détermine si le projet sélectionné ou actif est de type "Site autonome ou Projet PV Hybride"
+    function isSiteAutonomeProjet() {
+        // 1. Fonction centralisée définie dans parametre.html
+        if (typeof window.isSiteAutonomeProject === 'function') {
+            return window.isSiteAutonomeProject();
+        }
+        // 2. Sélection en direct dans le modal "Paramètres du projet"
+        const cardNonConnecter = document.getElementById('id_projet_non_connecter');
+        if (cardNonConnecter && cardNonConnecter.classList.contains('selected')) {
+            return true;
+        }
+        const cardConnecter = document.getElementById('id_projet_connecter');
+        if (cardConnecter && cardConnecter.classList.contains('selected')) {
+            return false;
+        }
+        // 3. Valeur du champ de formulaire
+        const inputType = document.getElementById('type_de_projet');
+        if (inputType && inputType.value) {
+            if (inputType.value === 'hors-ligne' || inputType.value === (window.TYPE_CONNEXION_HORS_LIGNE || 'hors-ligne')) {
+                return true;
+            }
+            if (inputType.value === 'connecte') return false;
+        }
+        // 4. État global du projet actif
+        if (window.ACTIVE_PROJECT_TYPE_CONNEXION === (window.TYPE_CONNEXION_HORS_LIGNE || 'hors-ligne')) {
+            return true;
+        }
+        // 5. Repli sur solarProjectData
+        try {
+            const raw = localStorage.getItem('solarProjectData');
+            if (raw) {
+                const data = JSON.parse(raw);
+                const typeP = (data.projectInfo && (data.projectInfo.typeDeProjet || data.projectInfo.typeConnexion))
+                    || (data.projet && data.projet.type_de_projet);
+                if (typeP === 'hors-ligne' || typeP === (window.TYPE_CONNEXION_HORS_LIGNE || 'hors-ligne')) {
+                    return true;
+                }
+            }
+        } catch (e) {}
+        return false;
+    }
+    window.isSiteAutonomeProjet = isSiteAutonomeProjet;
+
+    // Entrée "Déclaration préalable" : parcours résidentiel connecté seulement.
+    // DEMANDE EXPLICITE : masquer si dans le modal paramètres projet le "type de connexion de votre
+    // projet" = "Site autonome ou Projet PV Hybride".
+    function updateDeclarationPrealableNav() {
+        const item = document.getElementById('dp-nav-item');
+        if (!item) return;
+
+        // RÈGLE MÉTIER : masquer impérativement pour tout projet "Site autonome ou Projet PV Hybride"
+        if (isSiteAutonomeProjet()) {
+            item.classList.add('dp-nav-hidden');
+            return;
+        }
+
+        // Sinon visible sur les parcours PRO et Résidentiel (demande explicite du 2026-10-29 : la DP
+        // n'est plus réservée à la typologie Résidentielle), avec projet actif et quota valide.
+        const masqueParcours = typeof window.parcoursMasque === 'function' && window.parcoursMasque('dp');
+        const quotaOk = !_dpQuota.loaded || _dpQuota.allowed;
+        item.classList.toggle('dp-nav-hidden', !(!masqueParcours && localStorage.getItem('current_projet_id') && quotaOk));
+    }
+    window.updateDeclarationPrealableNav = updateDeclarationPrealableNav;
+
+    // NOUVEAU (demande explicite) : affiche/masque et renseigne le nom du projet actif dans le menu
+    // horizontal (cf. <li id="active-project-name-item"> ci-dessus, après "Revenir à Socalts").
+    function updateActiveProjectNameNav() {
+        const item = document.getElementById('active-project-name-item');
+        const text = document.getElementById('active-project-name-text');
+        if (!item || !text) return;
+        const nom = localStorage.getItem('current_projet_nom');
+        if (nom) {
+            text.textContent = nom;
+            text.title = nom; // nom complet au survol (libellé tronqué si trop long, menu_list.css)
+            item.style.display = 'list-item';
+        } else {
+            item.style.display = 'none';
+        }
+    }
+
+    // Obligation de projet actif (cf. openEtudesEconomiqueModal() dans menu_list.js /
+    // EtudesEconomiqueModal.js, qui bloque déjà le clic) : indiquer visuellement que le lien
+    // "Étude économique" est désactivé tant qu'aucun projet n'est actif.
+    function updateEtudesEconomiqueLinkState() {
+        const hasActiveProject = !!localStorage.getItem('current_projet_id');
+        ['etudes-economiques-item', 'etudes-economique-nav-item'].forEach(id => {
+            const item = document.getElementById(id);
+            if (!item) return;
+            item.style.opacity = hasActiveProject ? '' : '0.5';
+            const link = item.querySelector('a');
+            if (link) link.style.cursor = hasActiveProject ? '' : 'not-allowed';
+        });
+    }
+
+    // Appeler la fonction au chargement
+    updateMenuVisibility();
+    updateEtudesEconomiqueLinkState();
+    updateActiveProjectNameNav();
+    updateDeclarationPrealableNav();
+    refreshDpQuotaStatus();
+
+    // NOUVEAU WORKFLOW (demande explicite) : au chargement, aucune modale de configuration
+    // (Paramètres/Consommation d'énergie/Dimensionnement) n'est encore ouverte — "Calepinage" est
+    // donc l'étape par défaut mise en évidence. Les autres points d'ouverture (openBDMateriels,
+    // openModal, openDimensionnementModal...) prennent ensuite le relais.
+    window.setActiveMainNavStep('calepinage');
+
+    // Écouter les changements dans le localStorage pour une mise à jour en temps réel
+    window.addEventListener('storage', updateMenuVisibility);
+    document.addEventListener('solarProjectDataSaved', updateMenuVisibility);
+
+    // Écouter les changements directs du localStorage avec un interval pour plus de réactivité
+    let lastProjectData = localStorage.getItem('solarProjectData');
+    let lastProjetId = localStorage.getItem('current_projet_id');
+    let lastProjetNom = localStorage.getItem('current_projet_nom');
+    setInterval(() => {
+        // Simple bascule de classe : la typologie du projet actif peut changer sans rechargement.
+        updateDeclarationPrealableNav();
+        const currentData = localStorage.getItem('solarProjectData');
+        if (currentData !== lastProjectData) {
+            lastProjectData = currentData;
+            updateMenuVisibility();
+        }
+        const currentProjetId = localStorage.getItem('current_projet_id');
+        if (currentProjetId !== lastProjetId) {
+            lastProjetId = currentProjetId;
+            updateEtudesEconomiqueLinkState();
+            updateActiveProjectNameNav();
+        }
+        // NOUVEAU (demande explicite) : suivi séparé de current_projet_nom — en pratique toujours
+        // écrit en même temps que current_projet_id, mais une vérification dédiée reste peu
+        // coûteuse et évite toute dépendance implicite entre les deux clés.
+        const currentProjetNom = localStorage.getItem('current_projet_nom');
+        if (currentProjetNom !== lastProjetNom) {
+            lastProjetNom = currentProjetNom;
+            updateActiveProjectNameNav();
+        }
+    }, 500); // Vérifier toutes les 500ms
+
+    // Hauteur réelle du menu horizontal (une seule ligne, cf. menu_list.css) publiée
+    // dans --skv-topbar-h : la page Calepinage (Modele.css) se place juste en dessous.
+    const demoNav = document.querySelector('.demo-nav');
+    if (demoNav && typeof ResizeObserver === 'function') {
+        new ResizeObserver(() => {
+            const h = Math.max(50, Math.ceil(demoNav.getBoundingClientRect().height));
+            document.documentElement.style.setProperty('--skv-topbar-h', h + 'px');
+        }).observe(demoNav);
+    }
+});
+</script>

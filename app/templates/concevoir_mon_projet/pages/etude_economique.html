@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    {% include 'concevoir_mon_projet/components/headLinks.html' %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/EtudeEconomique.css') }}">
+    <title>Étude Économique - Gestion de Projet Photovoltaïque</title>
+</head>
+<body>
+    {% include 'concevoir_mon_projet/components/menu_list.html' %}
+    {% include 'concevoir_mon_projet/pages/parametre.html' %}
+
+    <div class="etude-economique-page">
+        <div class="app-container">
+            <main id="main-content">
+                <div class="page-content">
+                    <h1>Étude Économique</h1>
+
+                    <div class="content-wrapper">
+                        <p>Contenu de la page Étude Économique à développer...</p>
+                        <form id="etudeEcoForm">
+                            <!-- === PRODUCTION === -->
+                            <!-- Note: step="any" permet les décimales, min="0.01" et max="2499.99" appliquent le strict < et > -->
+                            <input type="number" id="productible" name="productible" step="any" min="0.01" max="2499.99" placeholder="Ex: 1100">
+                            <input type="number" id="degradation" name="degradation" step="0.1" min="0.2" max="3.0" value="0.3" required>
+                            <input type="number" id="horizon" name="horizon" step="1" min="0" max="30" value="20" required>
+                            <input type="number" id="prodLimite" name="prodLimite" step="any" min="0.01" max="2499.99" value="1100">
+
+                            <!-- === CAPEX & OPEX === -->
+                            <input type="number" id="palT1" name="palT1" step="any" min="0" max="500" value="0">
+                            <input type="number" id="capexWc" name="capexWc" step="any" min="0" max="2.99" value="0">
+                            <input type="number" id="opexWc" name="opexWc" step="any" min="0" max="0.19" value="0">
+                            <input type="number" id="capexRacco" name="capexRacco" step="any" min="0" max="4999.99" value="0">
+
+                            <!-- === FINANCEMENT === -->
+                            <input type="number" id="fpPct" name="fpPct" step="any" min="0" max="49.99" value="20" required>
+                            <input type="number" id="tauxDette" name="tauxDette" step="any" min="0" max="19.99" value="4" required>
+                            <input type="number" id="maturite" name="maturite" step="1" min="0" max="29" value="20" required>
+                            <input type="number" id="tauxActualisation" name="tauxActualisation" step="any" min="0" max="9.99" value="3" required>
+                            <input type="number" id="tauxImpot" name="tauxImpot" step="any" min="0" max="49.99" value="25" required>
+                            <input type="number" id="deprecPct" name="deprecPct" step="any" min="0" max="100" value="100" required>
+
+                            <!-- === CHAMP TEXTUEL NOMINATIF (Assainissement HTML) === -->
+                            <input type="text" id="nom_ligne" class="dynamic-row-name" pattern="^[a-zA-Z0-9À-ÿ\s\-]*$" title="Seuls les lettres, chiffres, espaces et tirets sont autorisés.">
+                        </form>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Scripts JavaScript nécessaires pour les dépendances -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+        <!-- Script d'initialisation de la carte pour le modal paramètres -->
+        <script type="module" src="{{ url_for('static', filename='concevoir_mon_projet/javascript/parametreProjetMap/initialisationMap.js') }}?v=33"></script>
+
+        <!-- MODAL GEOMETRIE -->
+        <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrieModal.js') }}"></script>
+    </div> <!-- Fin de etude-economique-page -->
+
+    {% include 'concevoir_mon_projet/components/page_navigation.html' %}
+</body>
+</html>

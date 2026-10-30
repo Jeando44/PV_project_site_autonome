@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ projet.nom_projet }} - Projet partagé</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #de0000;
+            --secondary-color: #ff6b6b;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+
+        .header-gradient {
+            background: linear-gradient(135deg, #8b0000 0%, #de0000 30%, #ff0000 60%, #ff6b6b 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px 10px 0 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-top: 30px;
+        }
+
+        .info-section {
+            padding: 25px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .info-section:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #6c757d;
+            font-size: 0.9em;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+
+        .info-value {
+            font-size: 1.1em;
+            color: #212529;
+        }
+
+        .permission-badge {
+            display: inline-block;
+            padding: 8px 16px;
+            border-radius: 25px;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .permission-view {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .permission-edit {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .permission-admin {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .share-info-box {
+            background: #f8f9fa;
+            border-left: 4px solid var(--primary-color);
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .action-buttons {
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 0 0 10px 10px;
+        }
+
+        .btn-custom {
+            padding: 10px 25px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            opacity: 0.7;
+            font-size: 0.85em;
+            color: #6c757d;
+        }
+
+        .section-title {
+            color: var(--primary-color);
+            font-weight: 700;
+            font-size: 1.3em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .no-data {
+            color: #6c757d;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="project-card">
+            <!-- En-tête -->
+            <div class="header-gradient">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-2">
+                            <i class="fas fa-share-alt"></i> {{ projet.nom_projet }}
+                        </h1>
+                        <p class="mb-0 opacity-75">
+                            <i class="fas fa-info-circle"></i> Projet partagé par {{ share.shared_by_email }}
+                        </p>
+                    </div>
+                    <div>
+                        {% if share.permission_type == 'view' %}
+                            <span class="permission-badge permission-view">
+                                <i class="fas fa-eye"></i> Lecture seule
+                            </span>
+                        {% elif share.permission_type == 'edit' %}
+                            <span class="permission-badge permission-edit">
+                                <i class="fas fa-edit"></i> Modification
+                            </span>
+                        {% elif share.permission_type == 'admin' %}
+                            <span class="permission-badge permission-admin">
+                                <i class="fas fa-user-shield"></i> Administration
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Informations de partage -->
+            {% if share.note %}
+            <div class="info-section">
+                <div class="share-info-box">
+                    <strong><i class="fas fa-sticky-note"></i> Note du propriétaire :</strong>
+                    <p class="mb-0 mt-2">{{ share.note }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Informations générales du projet -->
+            <div class="info-section">
+                <h3 class="section-title">
+                    <i class="fas fa-info-circle"></i> Informations générales
+                </h3>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Type de projet</div>
+                        <div class="info-value">{{ projet.type_de_projet or 'Non défini' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Mode de valorisation</div>
+                        <div class="info-value">{{ projet.mode_de_valorisation or 'Non défini' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Type d'ouvrage</div>
+                        <div class="info-value">{{ projet.type_ouvrage or 'Non défini' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Nature des travaux</div>
+                        <div class="info-value">{{ projet.nature_des_traveaux or 'Non défini' }}</div>
+                    </div>
+                    {% if projet.date_livrable %}
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Date de livraison</div>
+                        <div class="info-value">{{ projet.date_livrable }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Localisation -->
+            <div class="info-section">
+                <h3 class="section-title">
+                    <i class="fas fa-map-marker-alt"></i> Localisation
+                </h3>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Adresse</div>
+                        <div class="info-value">
+                            {% if projet.adresse_projet %}
+                                {{ projet.adresse_projet | adresse_affichee }}
+                            {% else %}
+                                <span class="no-data">Non renseignée</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Pays</div>
+                        <div class="info-value">{{ projet.pays or 'Non défini' }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Zones climatiques -->
+            <div class="info-section">
+                <h3 class="section-title">
+                    <i class="fas fa-cloud-sun"></i> Zones climatiques
+                </h3>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Zone de vent</div>
+                        <div class="info-value">{{ projet.zone_de_vent or 'Non défini' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Catégorie de terrain</div>
+                        <div class="info-value">{{ projet.categorie_de_terrain or 'Non défini' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Zone de neige</div>
+                        <div class="info-value">{{ projet.zone_de_neige or 'Non défini' }}</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Zone sismique</div>
+                        <div class="info-value">{{ projet.zone_sismique or 'Non défini' }}</div>
+                    </div>
+                    {% if projet.niveau_keraunique %}
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Niveau kéraunique</div>
+                        <div class="info-value">{{ projet.niveau_keraunique }}</div>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Environnement salin</div>
+                        <div class="info-value">
+                            {% if projet.environnement_salin %}
+                                <i class="fas fa-check-circle text-success"></i> Oui
+                            {% else %}
+                                <i class="fas fa-times-circle text-danger"></i> Non
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Norme de calcul -->
+            {% if projet.norme_calcul_id and projet.norme %}
+            <div class="info-section">
+                <h3 class="section-title">
+                    <i class="fas fa-calculator"></i> Norme de calcul
+                </h3>
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <div class="info-label">Nom de la norme</div>
+                        <div class="info-value">{{ projet.norme.nom }}</div>
+                    </div>
+                    {% if projet.norme.description %}
+                    <div class="col-md-12 mb-3">
+                        <div class="info-label">Description</div>
+                        <div class="info-value">{{ projet.norme.description }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Boutons d'action -->
+            <div class="action-buttons">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if share.allow_download %}
+                        <button class="btn btn-primary btn-custom" onclick="window.print()">
+                            <i class="fas fa-download"></i> Télécharger (Imprimer)
+                        </button>
+                        {% endif %}
+
+                        {% if can_edit %}
+                        <a href="{{ url_for('concevoir_mon_projet.edit_shared_project', token=share_token) }}" class="btn btn-warning btn-custom">
+                            <i class="fas fa-edit"></i> Modifier le projet
+                        </a>
+                        {% endif %}
+
+                        {% if share.allow_copy %}
+                        <button class="btn btn-info btn-custom" onclick="copyProject()">
+                            <i class="fas fa-copy"></i> Créer une copie
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <a href="{{ url_for('index') }}" class="btn btn-secondary btn-custom">
+                            <i class="fas fa-home"></i> Retour à l'accueil
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Métadonnées -->
+        <div class="watermark">
+            <i class="fas fa-clock"></i> Consulté {{ share.view_count }} fois
+            {% if share.expires_at %}
+            <br><i class="fas fa-calendar-times"></i> Expire le {{ share.expires_at.strftime('%d/%m/%Y à %H:%M') }}
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        function copyProject() {
+            if (confirm('Voulez-vous créer une copie de ce projet dans votre compte ?')) {
+                fetch('/concevoir_mon_projet/parametre-projet/{{ projet.id }}/copy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        new_name: 'Copie de {{ projet.nom_projet }}',
+                        copy_norme: true,
+                        copy_parameters: true
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Projet copié avec succès !');
+                        if (data.redirect) {
+                            window.location.href = data.redirect;
+                        }
+                    } else {
+                        alert('Erreur : ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('Une erreur est survenue lors de la copie');
+                });
+            }
+        }
+    </script>
+</body>
+</html>

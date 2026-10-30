@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modifier : {{ projet.nom_projet }}</title>
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+
+    <style>
+        :root {
+            --primary-color: #de0000;
+            --secondary-color: #ff6b6b;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px 0;
+        }
+
+        .header-gradient {
+            background: linear-gradient(135deg, #8b0000 0%, #de0000 30%, #ff0000 60%, #ff6b6b 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px 10px 0 0;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            margin-top: 30px;
+        }
+
+        .form-section {
+            padding: 30px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .form-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            color: var(--primary-color);
+            font-weight: 700;
+            font-size: 1.2em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+
+        .form-control, .form-select {
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            padding: 10px 15px;
+        }
+
+        .form-control:focus, .form-select:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(222, 0, 0, 0.25);
+        }
+
+        .action-buttons {
+            padding: 25px 30px;
+            background: #f8f9fa;
+            border-radius: 0 0 10px 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .btn-custom {
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .guest-badge {
+            display: inline-block;
+            background: #fff3cd;
+            color: #856404;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-left: 10px;
+        }
+
+        .info-banner {
+            background: #d1ecf1;
+            border-left: 4px solid #0c5460;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="project-card">
+            <!-- En-tête -->
+            <div class="header-gradient">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="mb-2">
+                            <i class="fas fa-edit"></i> Modifier le projet
+                        </h1>
+                        <p class="mb-0 opacity-75">
+                            {{ projet.nom_projet }}
+                            <span class="guest-badge">
+                                <i class="fas fa-user-secret"></i> Mode invité
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Messages flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    <div class="p-3">
+                        {% for category, message in messages %}
+                            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            {% endwith %}
+
+            <!-- Formulaire -->
+            <form method="POST" action="{{ url_for('concevoir_mon_projet.edit_shared_project', token=share_token) }}">
+                <!-- Informations générales -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-info-circle"></i> Informations générales
+                    </h3>
+
+                    <div class="info-banner">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Note :</strong> Vous modifiez ce projet en tant qu'invité. Vos modifications seront visibles par le propriétaire.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="nom_projet" class="form-label">Nom du projet *</label>
+                            <input type="text" class="form-control" id="nom_projet" name="nom_projet"
+                                   value="{{ projet.nom_projet }}" required>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="type_de_projet" class="form-label">Type de projet</label>
+                            <select class="form-select" id="type_de_projet" name="type_de_projet">
+                                <option value="">-- Sélectionner --</option>
+                                <option value="connecte" {{ 'selected' if projet.type_de_projet == 'connecte' else '' }}>Projet connecté au réseau</option>
+                                <option value="hors-ligne" {{ 'selected' if projet.type_de_projet == 'hors-ligne' else '' }}>Site autonome ou Micro réseau</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="mode_de_valorisation" class="form-label">Mode de valorisation</label>
+                            <select class="form-select" id="mode_de_valorisation" name="mode_de_valorisation">
+                                <option value="">-- Sélectionner --</option>
+                                <option value="Vente en totalité" {{ 'selected' if projet.mode_de_valorisation == 'Vente en totalité' else '' }}>Vente en totalité</option>
+                                <option value="Autoconsommation individuelle" {{ 'selected' if projet.mode_de_valorisation == 'Autoconsommation individuelle' else '' }}>Autoconsommation individuelle</option>
+                                <option value="Autoconsommation collective" {{ 'selected' if projet.mode_de_valorisation == 'Autoconsommation collective' else '' }}>Autoconsommation collective</option>
+                                <option value="Vente en totalité + autoconsommation collective" {{ 'selected' if projet.mode_de_valorisation == 'Vente en totalité + autoconsommation collective' else '' }}>Vente en totalité + autoconsommation collective</option>
+                                <option value="Autoconsommation individuelle et collective" {{ 'selected' if projet.mode_de_valorisation == 'Autoconsommation individuelle et collective' else '' }}>Autoconsommation individuelle et collective</option>
+                                <option value="Marché libre" {{ 'selected' if projet.mode_de_valorisation == 'Marché libre' else '' }}>Marché libre</option>
+                                <option value="Micro-système" {{ 'selected' if projet.mode_de_valorisation == 'Micro-système' else '' }}>Micro-système</option>
+                                <option value="Pompage solaire" {{ 'selected' if projet.mode_de_valorisation == 'Pompage solaire' else '' }}>Pompage solaire</option>
+                                <option value="Site autonome" {{ 'selected' if projet.mode_de_valorisation == 'Site autonome' else '' }}>Site autonome</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="type_ouvrage" class="form-label">Classification de l'ouvrage</label>
+                            <select class="form-select" id="type_ouvrage" name="type_ouvrage">
+                                <option value="">-- Sélectionner --</option>
+                                <option value="Bâtiment ERP" {{ 'selected' if projet.type_ouvrage == 'Bâtiment ERP' else '' }}>Bâtiment ERP</option>
+                                <option value="Bâtiment Agricole" {{ 'selected' if projet.type_ouvrage == 'Bâtiment Agricole' else '' }}>Bâtiment Agricole</option>
+                                <option value="Bâtiment Industriel" {{ 'selected' if projet.type_ouvrage == 'Bâtiment Industriel' else '' }}>Bâtiment Industriel</option>
+                                <option value="Bâtiment Résidentiel" {{ 'selected' if projet.type_ouvrage == 'Bâtiment Résidentiel' else '' }}>Bâtiment Résidentiel</option>
+                                <option value="Hangar" {{ 'selected' if projet.type_ouvrage == 'Hangar' else '' }}>Hangar</option>
+                                <option value="Ombrière de parking" {{ 'selected' if projet.type_ouvrage == 'Ombrière de parking' else '' }}>Ombrière de parking</option>
+                                <option value="Centrale au sol" {{ 'selected' if projet.type_ouvrage == 'Centrale au sol' else '' }}>Centrale au sol</option>
+                                <option value="Non précisée" {{ 'selected' if projet.type_ouvrage == 'Non précisée' else '' }}>Non précisée</option>
+                                <option value="Autres" {{ 'selected' if projet.type_ouvrage == 'Autres' else '' }}>Autres</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="nature_des_traveaux" class="form-label">Nature des travaux</label>
+                            <select class="form-select" id="nature_des_traveaux" name="nature_des_traveaux">
+                                <option value="">-- Sélectionner --</option>
+                                <option value="renovation" {{ 'selected' if projet.nature_des_traveaux == 'renovation' else '' }}>Rénovation ou aménagement</option>
+                                <option value="existante" {{ 'selected' if projet.nature_des_traveaux == 'existante' else '' }}>Installation sur bâtiment existant</option>
+                                <option value="new" {{ 'selected' if projet.nature_des_traveaux == 'new' else '' }}>Installation nouvelle</option>
+                                <option value="Autres" {{ 'selected' if projet.nature_des_traveaux == 'Autres' else '' }}>Autres</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="date_livrable" class="form-label">Date de livraison</label>
+                            <input type="date" class="form-control" id="date_livrable" name="date_livrable"
+                                   value="{{ projet.date_livrable.strftime('%Y-%m-%d') if projet.date_livrable else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Localisation -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-map-marker-alt"></i> Localisation
+                    </h3>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="adresse_projet" class="form-label">Adresse du projet</label>
+                            <textarea class="form-control" id="adresse_projet" name="adresse_projet" rows="2">{{ projet.adresse_projet or '' }}</textarea>
+                            <small class="text-muted">Format JSON accepté pour coordonnées GPS</small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="pays" class="form-label">Pays</label>
+                            <select class="form-select" id="pays" name="pays">
+                                <option value="France" {% if projet.pays == 'France' %}selected{% endif %}>France</option>
+                                <option value="Haïti" {% if projet.pays == 'Haïti' %}selected{% endif %}>Haïti</option>
+                                <option disabled>──────────</option>
+                                <option value="Afghanistan" {% if projet.pays == 'Afghanistan' %}selected{% endif %}>Afghanistan</option>
+                                <option value="Afrique du Sud" {% if projet.pays == 'Afrique du Sud' %}selected{% endif %}>Afrique du Sud</option>
+                                <option value="Albanie" {% if projet.pays == 'Albanie' %}selected{% endif %}>Albanie</option>
+                                <option value="Algérie" {% if projet.pays == 'Algérie' %}selected{% endif %}>Algérie</option>
+                                <option value="Allemagne" {% if projet.pays == 'Allemagne' %}selected{% endif %}>Allemagne</option>
+                                <option value="Andorre" {% if projet.pays == 'Andorre' %}selected{% endif %}>Andorre</option>
+                                <option value="Angola" {% if projet.pays == 'Angola' %}selected{% endif %}>Angola</option>
+                                <option value="Arabie Saoudite" {% if projet.pays == 'Arabie Saoudite' %}selected{% endif %}>Arabie Saoudite</option>
+                                <option value="Argentine" {% if projet.pays == 'Argentine' %}selected{% endif %}>Argentine</option>
+                                <option value="Arménie" {% if projet.pays == 'Arménie' %}selected{% endif %}>Arménie</option>
+                                <option value="Australie" {% if projet.pays == 'Australie' %}selected{% endif %}>Australie</option>
+                                <option value="Autriche" {% if projet.pays == 'Autriche' %}selected{% endif %}>Autriche</option>
+                                <option value="Azerbaïdjan" {% if projet.pays == 'Azerbaïdjan' %}selected{% endif %}>Azerbaïdjan</option>
+                                <option value="Bahamas" {% if projet.pays == 'Bahamas' %}selected{% endif %}>Bahamas</option>
+                                <option value="Bahreïn" {% if projet.pays == 'Bahreïn' %}selected{% endif %}>Bahreïn</option>
+                                <option value="Bangladesh" {% if projet.pays == 'Bangladesh' %}selected{% endif %}>Bangladesh</option>
+                                <option value="Barbade" {% if projet.pays == 'Barbade' %}selected{% endif %}>Barbade</option>
+                                <option value="Belgique" {% if projet.pays == 'Belgique' %}selected{% endif %}>Belgique</option>
+                                <option value="Belize" {% if projet.pays == 'Belize' %}selected{% endif %}>Belize</option>
+                                <option value="Bénin" {% if projet.pays == 'Bénin' %}selected{% endif %}>Bénin</option>
+                                <option value="Bhoutan" {% if projet.pays == 'Bhoutan' %}selected{% endif %}>Bhoutan</option>
+                                <option value="Biélorussie" {% if projet.pays == 'Biélorussie' %}selected{% endif %}>Biélorussie</option>
+                                <option value="Birmanie" {% if projet.pays == 'Birmanie' %}selected{% endif %}>Birmanie</option>
+                                <option value="Bolivie" {% if projet.pays == 'Bolivie' %}selected{% endif %}>Bolivie</option>
+                                <option value="Bosnie-Herzégovine" {% if projet.pays == 'Bosnie-Herzégovine' %}selected{% endif %}>Bosnie-Herzégovine</option>
+                                <option value="Botswana" {% if projet.pays == 'Botswana' %}selected{% endif %}>Botswana</option>
+                                <option value="Brésil" {% if projet.pays == 'Brésil' %}selected{% endif %}>Brésil</option>
+                                <option value="Brunei" {% if projet.pays == 'Brunei' %}selected{% endif %}>Brunei</option>
+                                <option value="Bulgarie" {% if projet.pays == 'Bulgarie' %}selected{% endif %}>Bulgarie</option>
+                                <option value="Burkina Faso" {% if projet.pays == 'Burkina Faso' %}selected{% endif %}>Burkina Faso</option>
+                                <option value="Burundi" {% if projet.pays == 'Burundi' %}selected{% endif %}>Burundi</option>
+                                <option value="Cambodge" {% if projet.pays == 'Cambodge' %}selected{% endif %}>Cambodge</option>
+                                <option value="Cameroun" {% if projet.pays == 'Cameroun' %}selected{% endif %}>Cameroun</option>
+                                <option value="Canada" {% if projet.pays == 'Canada' %}selected{% endif %}>Canada</option>
+                                <option value="Cap-Vert" {% if projet.pays == 'Cap-Vert' %}selected{% endif %}>Cap-Vert</option>
+                                <option value="Chili" {% if projet.pays == 'Chili' %}selected{% endif %}>Chili</option>
+                                <option value="Chine" {% if projet.pays == 'Chine' %}selected{% endif %}>Chine</option>
+                                <option value="Chypre" {% if projet.pays == 'Chypre' %}selected{% endif %}>Chypre</option>
+                                <option value="Colombie" {% if projet.pays == 'Colombie' %}selected{% endif %}>Colombie</option>
+                                <option value="Comores" {% if projet.pays == 'Comores' %}selected{% endif %}>Comores</option>
+                                <option value="Congo" {% if projet.pays == 'Congo' %}selected{% endif %}>Congo</option>
+                                <option value="Corée du Nord" {% if projet.pays == 'Corée du Nord' %}selected{% endif %}>Corée du Nord</option>
+                                <option value="Corée du Sud" {% if projet.pays == 'Corée du Sud' %}selected{% endif %}>Corée du Sud</option>
+                                <option value="Costa Rica" {% if projet.pays == 'Costa Rica' %}selected{% endif %}>Costa Rica</option>
+                                <option value="Côte d'Ivoire" {% if projet.pays == 'Côte d\'Ivoire' %}selected{% endif %}>Côte d'Ivoire</option>
+                                <option value="Croatie" {% if projet.pays == 'Croatie' %}selected{% endif %}>Croatie</option>
+                                <option value="Cuba" {% if projet.pays == 'Cuba' %}selected{% endif %}>Cuba</option>
+                                <option value="Danemark" {% if projet.pays == 'Danemark' %}selected{% endif %}>Danemark</option>
+                                <option value="Djibouti" {% if projet.pays == 'Djibouti' %}selected{% endif %}>Djibouti</option>
+                                <option value="Dominique" {% if projet.pays == 'Dominique' %}selected{% endif %}>Dominique</option>
+                                <option value="Égypte" {% if projet.pays == 'Égypte' %}selected{% endif %}>Égypte</option>
+                                <option value="Émirats Arabes Unis" {% if projet.pays == 'Émirats Arabes Unis' %}selected{% endif %}>Émirats Arabes Unis</option>
+                                <option value="Équateur" {% if projet.pays == 'Équateur' %}selected{% endif %}>Équateur</option>
+                                <option value="Érythrée" {% if projet.pays == 'Érythrée' %}selected{% endif %}>Érythrée</option>
+                                <option value="Espagne" {% if projet.pays == 'Espagne' %}selected{% endif %}>Espagne</option>
+                                <option value="Estonie" {% if projet.pays == 'Estonie' %}selected{% endif %}>Estonie</option>
+                                <option value="Eswatini" {% if projet.pays == 'Eswatini' %}selected{% endif %}>Eswatini</option>
+                                <option value="États-Unis" {% if projet.pays == 'États-Unis' %}selected{% endif %}>États-Unis</option>
+                                <option value="Éthiopie" {% if projet.pays == 'Éthiopie' %}selected{% endif %}>Éthiopie</option>
+                                <option value="Fidji" {% if projet.pays == 'Fidji' %}selected{% endif %}>Fidji</option>
+                                <option value="Finlande" {% if projet.pays == 'Finlande' %}selected{% endif %}>Finlande</option>
+                                <option value="Gabon" {% if projet.pays == 'Gabon' %}selected{% endif %}>Gabon</option>
+                                <option value="Gambie" {% if projet.pays == 'Gambie' %}selected{% endif %}>Gambie</option>
+                                <option value="Géorgie" {% if projet.pays == 'Géorgie' %}selected{% endif %}>Géorgie</option>
+                                <option value="Ghana" {% if projet.pays == 'Ghana' %}selected{% endif %}>Ghana</option>
+                                <option value="Grèce" {% if projet.pays == 'Grèce' %}selected{% endif %}>Grèce</option>
+                                <option value="Grenade" {% if projet.pays == 'Grenade' %}selected{% endif %}>Grenade</option>
+                                <option value="Guatemala" {% if projet.pays == 'Guatemala' %}selected{% endif %}>Guatemala</option>
+                                <option value="Guinée" {% if projet.pays == 'Guinée' %}selected{% endif %}>Guinée</option>
+                                <option value="Guinée équatoriale" {% if projet.pays == 'Guinée équatoriale' %}selected{% endif %}>Guinée équatoriale</option>
+                                <option value="Guinée-Bissau" {% if projet.pays == 'Guinée-Bissau' %}selected{% endif %}>Guinée-Bissau</option>
+                                <option value="Guyana" {% if projet.pays == 'Guyana' %}selected{% endif %}>Guyana</option>
+                                <option value="Honduras" {% if projet.pays == 'Honduras' %}selected{% endif %}>Honduras</option>
+                                <option value="Hongrie" {% if projet.pays == 'Hongrie' %}selected{% endif %}>Hongrie</option>
+                                <option value="Inde" {% if projet.pays == 'Inde' %}selected{% endif %}>Inde</option>
+                                <option value="Indonésie" {% if projet.pays == 'Indonésie' %}selected{% endif %}>Indonésie</option>
+                                <option value="Irak" {% if projet.pays == 'Irak' %}selected{% endif %}>Irak</option>
+                                <option value="Iran" {% if projet.pays == 'Iran' %}selected{% endif %}>Iran</option>
+                                <option value="Irlande" {% if projet.pays == 'Irlande' %}selected{% endif %}>Irlande</option>
+                                <option value="Islande" {% if projet.pays == 'Islande' %}selected{% endif %}>Islande</option>
+                                <option value="Israël" {% if projet.pays == 'Israël' %}selected{% endif %}>Israël</option>
+                                <option value="Italie" {% if projet.pays == 'Italie' %}selected{% endif %}>Italie</option>
+                                <option value="Jamaïque" {% if projet.pays == 'Jamaïque' %}selected{% endif %}>Jamaïque</option>
+                                <option value="Japon" {% if projet.pays == 'Japon' %}selected{% endif %}>Japon</option>
+                                <option value="Jordanie" {% if projet.pays == 'Jordanie' %}selected{% endif %}>Jordanie</option>
+                                <option value="Kazakhstan" {% if projet.pays == 'Kazakhstan' %}selected{% endif %}>Kazakhstan</option>
+                                <option value="Kenya" {% if projet.pays == 'Kenya' %}selected{% endif %}>Kenya</option>
+                                <option value="Kirghizistan" {% if projet.pays == 'Kirghizistan' %}selected{% endif %}>Kirghizistan</option>
+                                <option value="Kiribati" {% if projet.pays == 'Kiribati' %}selected{% endif %}>Kiribati</option>
+                                <option value="Koweït" {% if projet.pays == 'Koweït' %}selected{% endif %}>Koweït</option>
+                                <option value="Laos" {% if projet.pays == 'Laos' %}selected{% endif %}>Laos</option>
+                                <option value="Lesotho" {% if projet.pays == 'Lesotho' %}selected{% endif %}>Lesotho</option>
+                                <option value="Lettonie" {% if projet.pays == 'Lettonie' %}selected{% endif %}>Lettonie</option>
+                                <option value="Liban" {% if projet.pays == 'Liban' %}selected{% endif %}>Liban</option>
+                                <option value="Liberia" {% if projet.pays == 'Liberia' %}selected{% endif %}>Liberia</option>
+                                <option value="Libye" {% if projet.pays == 'Libye' %}selected{% endif %}>Libye</option>
+                                <option value="Liechtenstein" {% if projet.pays == 'Liechtenstein' %}selected{% endif %}>Liechtenstein</option>
+                                <option value="Lituanie" {% if projet.pays == 'Lituanie' %}selected{% endif %}>Lituanie</option>
+                                <option value="Luxembourg" {% if projet.pays == 'Luxembourg' %}selected{% endif %}>Luxembourg</option>
+                                <option value="Macédoine du Nord" {% if projet.pays == 'Macédoine du Nord' %}selected{% endif %}>Macédoine du Nord</option>
+                                <option value="Madagascar" {% if projet.pays == 'Madagascar' %}selected{% endif %}>Madagascar</option>
+                                <option value="Malaisie" {% if projet.pays == 'Malaisie' %}selected{% endif %}>Malaisie</option>
+                                <option value="Malawi" {% if projet.pays == 'Malawi' %}selected{% endif %}>Malawi</option>
+                                <option value="Maldives" {% if projet.pays == 'Maldives' %}selected{% endif %}>Maldives</option>
+                                <option value="Mali" {% if projet.pays == 'Mali' %}selected{% endif %}>Mali</option>
+                                <option value="Malte" {% if projet.pays == 'Malte' %}selected{% endif %}>Malte</option>
+                                <option value="Maroc" {% if projet.pays == 'Maroc' %}selected{% endif %}>Maroc</option>
+                                <option value="Maurice" {% if projet.pays == 'Maurice' %}selected{% endif %}>Maurice</option>
+                                <option value="Mauritanie" {% if projet.pays == 'Mauritanie' %}selected{% endif %}>Mauritanie</option>
+                                <option value="Mexique" {% if projet.pays == 'Mexique' %}selected{% endif %}>Mexique</option>
+                                <option value="Micronésie" {% if projet.pays == 'Micronésie' %}selected{% endif %}>Micronésie</option>
+                                <option value="Moldavie" {% if projet.pays == 'Moldavie' %}selected{% endif %}>Moldavie</option>
+                                <option value="Monaco" {% if projet.pays == 'Monaco' %}selected{% endif %}>Monaco</option>
+                                <option value="Mongolie" {% if projet.pays == 'Mongolie' %}selected{% endif %}>Mongolie</option>
+                                <option value="Monténégro" {% if projet.pays == 'Monténégro' %}selected{% endif %}>Monténégro</option>
+                                <option value="Mozambique" {% if projet.pays == 'Mozambique' %}selected{% endif %}>Mozambique</option>
+                                <option value="Namibie" {% if projet.pays == 'Namibie' %}selected{% endif %}>Namibie</option>
+                                <option value="Nauru" {% if projet.pays == 'Nauru' %}selected{% endif %}>Nauru</option>
+                                <option value="Népal" {% if projet.pays == 'Népal' %}selected{% endif %}>Népal</option>
+                                <option value="Nicaragua" {% if projet.pays == 'Nicaragua' %}selected{% endif %}>Nicaragua</option>
+                                <option value="Niger" {% if projet.pays == 'Niger' %}selected{% endif %}>Niger</option>
+                                <option value="Nigeria" {% if projet.pays == 'Nigeria' %}selected{% endif %}>Nigeria</option>
+                                <option value="Norvège" {% if projet.pays == 'Norvège' %}selected{% endif %}>Norvège</option>
+                                <option value="Nouvelle-Zélande" {% if projet.pays == 'Nouvelle-Zélande' %}selected{% endif %}>Nouvelle-Zélande</option>
+                                <option value="Oman" {% if projet.pays == 'Oman' %}selected{% endif %}>Oman</option>
+                                <option value="Ouganda" {% if projet.pays == 'Ouganda' %}selected{% endif %}>Ouganda</option>
+                                <option value="Ouzbékistan" {% if projet.pays == 'Ouzbékistan' %}selected{% endif %}>Ouzbékistan</option>
+                                <option value="Pakistan" {% if projet.pays == 'Pakistan' %}selected{% endif %}>Pakistan</option>
+                                <option value="Palaos" {% if projet.pays == 'Palaos' %}selected{% endif %}>Palaos</option>
+                                <option value="Palestine" {% if projet.pays == 'Palestine' %}selected{% endif %}>Palestine</option>
+                                <option value="Panama" {% if projet.pays == 'Panama' %}selected{% endif %}>Panama</option>
+                                <option value="Papouasie-Nouvelle-Guinée" {% if projet.pays == 'Papouasie-Nouvelle-Guinée' %}selected{% endif %}>Papouasie-Nouvelle-Guinée</option>
+                                <option value="Paraguay" {% if projet.pays == 'Paraguay' %}selected{% endif %}>Paraguay</option>
+                                <option value="Pays-Bas" {% if projet.pays == 'Pays-Bas' %}selected{% endif %}>Pays-Bas</option>
+                                <option value="Pérou" {% if projet.pays == 'Pérou' %}selected{% endif %}>Pérou</option>
+                                <option value="Philippines" {% if projet.pays == 'Philippines' %}selected{% endif %}>Philippines</option>
+                                <option value="Pologne" {% if projet.pays == 'Pologne' %}selected{% endif %}>Pologne</option>
+                                <option value="Portugal" {% if projet.pays == 'Portugal' %}selected{% endif %}>Portugal</option>
+                                <option value="Qatar" {% if projet.pays == 'Qatar' %}selected{% endif %}>Qatar</option>
+                                <option value="République Centrafricaine" {% if projet.pays == 'République Centrafricaine' %}selected{% endif %}>République Centrafricaine</option>
+                                <option value="République Dominicaine" {% if projet.pays == 'République Dominicaine' %}selected{% endif %}>République Dominicaine</option>
+                                <option value="République Tchèque" {% if projet.pays == 'République Tchèque' %}selected{% endif %}>République Tchèque</option>
+                                <option value="Roumanie" {% if projet.pays == 'Roumanie' %}selected{% endif %}>Roumanie</option>
+                                <option value="Royaume-Uni" {% if projet.pays == 'Royaume-Uni' %}selected{% endif %}>Royaume-Uni</option>
+                                <option value="Russie" {% if projet.pays == 'Russie' %}selected{% endif %}>Russie</option>
+                                <option value="Rwanda" {% if projet.pays == 'Rwanda' %}selected{% endif %}>Rwanda</option>
+                                <option value="Saint-Marin" {% if projet.pays == 'Saint-Marin' %}selected{% endif %}>Saint-Marin</option>
+                                <option value="Sainte-Lucie" {% if projet.pays == 'Sainte-Lucie' %}selected{% endif %}>Sainte-Lucie</option>
+                                <option value="Salvador" {% if projet.pays == 'Salvador' %}selected{% endif %}>Salvador</option>
+                                <option value="Samoa" {% if projet.pays == 'Samoa' %}selected{% endif %}>Samoa</option>
+                                <option value="Sénégal" {% if projet.pays == 'Sénégal' %}selected{% endif %}>Sénégal</option>
+                                <option value="Serbie" {% if projet.pays == 'Serbie' %}selected{% endif %}>Serbie</option>
+                                <option value="Seychelles" {% if projet.pays == 'Seychelles' %}selected{% endif %}>Seychelles</option>
+                                <option value="Sierra Leone" {% if projet.pays == 'Sierra Leone' %}selected{% endif %}>Sierra Leone</option>
+                                <option value="Singapour" {% if projet.pays == 'Singapour' %}selected{% endif %}>Singapour</option>
+                                <option value="Slovaquie" {% if projet.pays == 'Slovaquie' %}selected{% endif %}>Slovaquie</option>
+                                <option value="Slovénie" {% if projet.pays == 'Slovénie' %}selected{% endif %}>Slovénie</option>
+                                <option value="Somalie" {% if projet.pays == 'Somalie' %}selected{% endif %}>Somalie</option>
+                                <option value="Soudan" {% if projet.pays == 'Soudan' %}selected{% endif %}>Soudan</option>
+                                <option value="Soudan du Sud" {% if projet.pays == 'Soudan du Sud' %}selected{% endif %}>Soudan du Sud</option>
+                                <option value="Sri Lanka" {% if projet.pays == 'Sri Lanka' %}selected{% endif %}>Sri Lanka</option>
+                                <option value="Suède" {% if projet.pays == 'Suède' %}selected{% endif %}>Suède</option>
+                                <option value="Suisse" {% if projet.pays == 'Suisse' %}selected{% endif %}>Suisse</option>
+                                <option value="Suriname" {% if projet.pays == 'Suriname' %}selected{% endif %}>Suriname</option>
+                                <option value="Syrie" {% if projet.pays == 'Syrie' %}selected{% endif %}>Syrie</option>
+                                <option value="Tadjikistan" {% if projet.pays == 'Tadjikistan' %}selected{% endif %}>Tadjikistan</option>
+                                <option value="Tanzanie" {% if projet.pays == 'Tanzanie' %}selected{% endif %}>Tanzanie</option>
+                                <option value="Tchad" {% if projet.pays == 'Tchad' %}selected{% endif %}>Tchad</option>
+                                <option value="Thaïlande" {% if projet.pays == 'Thaïlande' %}selected{% endif %}>Thaïlande</option>
+                                <option value="Timor oriental" {% if projet.pays == 'Timor oriental' %}selected{% endif %}>Timor oriental</option>
+                                <option value="Togo" {% if projet.pays == 'Togo' %}selected{% endif %}>Togo</option>
+                                <option value="Tonga" {% if projet.pays == 'Tonga' %}selected{% endif %}>Tonga</option>
+                                <option value="Trinité-et-Tobago" {% if projet.pays == 'Trinité-et-Tobago' %}selected{% endif %}>Trinité-et-Tobago</option>
+                                <option value="Tunisie" {% if projet.pays == 'Tunisie' %}selected{% endif %}>Tunisie</option>
+                                <option value="Turkménistan" {% if projet.pays == 'Turkménistan' %}selected{% endif %}>Turkménistan</option>
+                                <option value="Turquie" {% if projet.pays == 'Turquie' %}selected{% endif %}>Turquie</option>
+                                <option value="Tuvalu" {% if projet.pays == 'Tuvalu' %}selected{% endif %}>Tuvalu</option>
+                                <option value="Ukraine" {% if projet.pays == 'Ukraine' %}selected{% endif %}>Ukraine</option>
+                                <option value="Uruguay" {% if projet.pays == 'Uruguay' %}selected{% endif %}>Uruguay</option>
+                                <option value="Vanuatu" {% if projet.pays == 'Vanuatu' %}selected{% endif %}>Vanuatu</option>
+                                <option value="Vatican" {% if projet.pays == 'Vatican' %}selected{% endif %}>Vatican</option>
+                                <option value="Venezuela" {% if projet.pays == 'Venezuela' %}selected{% endif %}>Venezuela</option>
+                                <option value="Vietnam" {% if projet.pays == 'Vietnam' %}selected{% endif %}>Vietnam</option>
+                                <option value="Yémen" {% if projet.pays == 'Yémen' %}selected{% endif %}>Yémen</option>
+                                <option value="Zambie" {% if projet.pays == 'Zambie' %}selected{% endif %}>Zambie</option>
+                                <option value="Zimbabwe" {% if projet.pays == 'Zimbabwe' %}selected{% endif %}>Zimbabwe</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Zones climatiques -->
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-cloud-sun"></i> Zones climatiques
+                    </h3>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label">Zone de vent</label>
+                            <input type="hidden" id="zone_de_vent" name="zone_de_vent" value="{{ projet.zone_de_vent or '' }}">
+                            <div class="btn-group d-flex" role="group">
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_vent" data-value="1" {{ 'active' if projet.zone_de_vent == '1' else '' }}>1</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_vent" data-value="2" {{ 'active' if projet.zone_de_vent == '2' else '' }}>2</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_vent" data-value="3" {{ 'active' if projet.zone_de_vent == '3' else '' }}>3</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_vent" data-value="4" {{ 'active' if projet.zone_de_vent == '4' else '' }}>4</button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-4">
+                            <label class="form-label">Catégorie de terrain</label>
+                            <input type="hidden" id="categorie_de_terrain" name="categorie_de_terrain" value="{{ projet.categorie_de_terrain or '' }}">
+                            <div class="btn-group d-flex" role="group">
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="categorie_de_terrain" data-value="0" {{ 'active' if projet.categorie_de_terrain == '0' else '' }}>0</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="categorie_de_terrain" data-value="II" {{ 'active' if projet.categorie_de_terrain == 'II' else '' }}>II</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="categorie_de_terrain" data-value="IIIa" {{ 'active' if projet.categorie_de_terrain == 'IIIa' else '' }}>IIIa</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="categorie_de_terrain" data-value="IIIb" {{ 'active' if projet.categorie_de_terrain == 'IIIb' else '' }}>IIIb</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="categorie_de_terrain" data-value="IV" {{ 'active' if projet.categorie_de_terrain == 'IV' else '' }}>IV</button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12 mb-4">
+                            <label class="form-label">Zone de neige</label>
+                            <input type="hidden" id="zone_de_neige" name="zone_de_neige" value="{{ projet.zone_de_neige or '' }}">
+                            <div class="btn-group d-flex flex-wrap" role="group">
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_neige" data-value="A1" {{ 'active' if projet.zone_de_neige == 'A1' else '' }}>A1</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_neige" data-value="A2" {{ 'active' if projet.zone_de_neige == 'A2' else '' }}>A2</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_neige" data-value="B1" {{ 'active' if projet.zone_de_neige == 'B1' else '' }}>B1</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_neige" data-value="B2" {{ 'active' if projet.zone_de_neige == 'B2' else '' }}>B2</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_neige" data-value="C1" {{ 'active' if projet.zone_de_neige == 'C1' else '' }}>C1</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_neige" data-value="C2" {{ 'active' if projet.zone_de_neige == 'C2' else '' }}>C2</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_neige" data-value="D" {{ 'active' if projet.zone_de_neige == 'D' else '' }}>D</button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_de_neige" data-value="E" {{ 'active' if projet.zone_de_neige == 'E' else '' }}>E</button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-12 mb-4">
+                            <label class="form-label">Zone sismique</label>
+                            <input type="hidden" id="zone_sismique" name="zone_sismique" value="{{ projet.zone_sismique or '' }}">
+                            <div class="btn-group d-flex flex-wrap" role="group">
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_sismique" data-value="Très faible" {{ 'active' if projet.zone_sismique == 'Très faible' else '' }}>
+                                    Zone 1<br><small>Très faible</small>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_sismique" data-value="Faible" {{ 'active' if projet.zone_sismique == 'Faible' else '' }}>
+                                    Zone 2<br><small>Faible</small>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_sismique" data-value="Modérée" {{ 'active' if projet.zone_sismique == 'Modérée' else '' }}>
+                                    Zone 3<br><small>Modérée</small>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_sismique" data-value="Moyenne" {{ 'active' if projet.zone_sismique == 'Moyenne' else '' }}>
+                                    Zone 4<br><small>Moyenne</small>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary zone-btn" data-field="zone_sismique" data-value="Forte" {{ 'active' if projet.zone_sismique == 'Forte' else '' }}>
+                                    Zone 5<br><small>Forte</small>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="niveau_keraunique" class="form-label">Niveau kéraunique</label>
+                            <input type="number" step="0.1" class="form-control" id="niveau_keraunique" name="niveau_keraunique"
+                                   value="{{ projet.niveau_keraunique or '' }}" placeholder="Ex: 25.5">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Environnement salin</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="environnement_salin"
+                                       name="environnement_salin" value="on" {{ 'checked' if projet.environnement_salin else '' }}>
+                                <label class="form-check-label" for="environnement_salin">
+                                    Projet en environnement salin
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Norme de calcul -->
+                {% if normes %}
+                <div class="form-section">
+                    <h3 class="section-title">
+                        <i class="fas fa-calculator"></i> Norme de calcul
+                    </h3>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label for="norme_calcul_id" class="form-label">Sélectionner une norme</label>
+                            <select class="form-select" id="norme_calcul_id" name="norme_calcul_id">
+                                <option value="">-- Aucune norme --</option>
+                                {% for norme in normes %}
+                                    <option value="{{ norme.id }}"
+                                            {{ 'selected' if projet.norme_calcul_id == norme.id else '' }}>
+                                        {{ norme.nom }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted">Seules les normes publiques sont disponibles en mode invité</small>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Boutons d'action -->
+                <div class="action-buttons">
+                    <div>
+                        <a href="{{ url_for('concevoir_mon_projet.access_shared_project', token=share_token) }}"
+                           class="btn btn-secondary btn-custom">
+                            <i class="fas fa-times"></i> Annuler
+                        </a>
+
+                        {% if can_admin %}
+                        <button type="button" id="delete-project-btn" class="btn btn-danger btn-custom ms-2"
+                                onclick="confirmDeleteProject()">
+                            <i class="fas fa-trash"></i> Supprimer le projet
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <button type="submit" id="save-project-btn" class="btn btn-success btn-custom">
+                            <i class="fas fa-save"></i> Enregistrer les modifications
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Note de bas de page -->
+        <div class="text-center mt-4">
+            <p class="text-muted">
+                <i class="fas fa-user-secret"></i> Vous êtes connecté en tant qu'invité via un lien de partage<br>
+                <small>Token: {{ share_token[:20] }}...</small>
+            </p>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Gestion des boutons de sélection de zones (même système que le formulaire principal)
+        document.querySelectorAll('.zone-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const field = this.getAttribute('data-field');
+                const value = this.getAttribute('data-value');
+
+                // Retirer la classe active de tous les boutons du même groupe
+                document.querySelectorAll(`.zone-btn[data-field="${field}"]`).forEach(b => {
+                    b.classList.remove('active');
+                    b.classList.remove('btn-primary');
+                    b.classList.add('btn-outline-secondary');
+                });
+
+                // Ajouter la classe active au bouton cliqué
+                this.classList.add('active');
+                this.classList.remove('btn-outline-secondary');
+                this.classList.add('btn-primary');
+
+                // Mettre à jour le champ caché
+                document.getElementById(field).value = value;
+            });
+        });
+
+        // Fonction de confirmation de suppression du projet
+        function confirmDeleteProject() {
+            if (confirm('⚠️ Attention ! Êtes-vous sûr de vouloir supprimer définitivement ce projet ?\n\nCette action est irréversible et supprimera toutes les données associées.')) {
+                // Désactiver le bouton pour éviter les doubles clics
+                const deleteBtn = document.getElementById('delete-project-btn');
+                deleteBtn.disabled = true;
+                deleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Suppression...';
+
+                // Envoyer la requête de suppression
+                fetch('{{ url_for("concevoir_mon_projet.delete_shared_project", token=share_token) }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Rediriger vers la page de succès
+                        if (data.redirect_url) {
+                            window.location.href = data.redirect_url;
+                        } else {
+                            alert('✅ Projet supprimé avec succès');
+                            window.location.href = '{{ url_for("index") }}';
+                        }
+                    } else {
+                        alert('❌ Erreur : ' + data.message);
+                        deleteBtn.disabled = false;
+                        deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Supprimer le projet';
+                    }
+                })
+                .catch(error => {
+                    console.error('Erreur:', error);
+                    alert('❌ Une erreur est survenue lors de la suppression');
+                    deleteBtn.disabled = false;
+                    deleteBtn.innerHTML = '<i class="fas fa-trash"></i> Supprimer le projet';
+                });
+            }
+        }
+
+        // Validation du formulaire avant soumission
+        document.querySelector('form').addEventListener('submit', function(e) {
+            const saveBtn = document.getElementById('save-project-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+        });
+    </script>
+</body>
+</html>

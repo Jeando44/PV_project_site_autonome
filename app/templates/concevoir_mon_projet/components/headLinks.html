@@ -1,0 +1,47 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concevoir mon projet</title>
+<script>
+    // Page d'accueil (carte de calepinage) du parcours ouvert depuis Solakvan : '/concevoir_mon_projet/'
+    // (PRO) ou '/concevoir_mon_projet/residentiel/' (cf. app/utils/parcours.py). Les scripts qui
+    // testaient « suis-je sur la carte ? » ou y revenaient en dur passent par ces deux helpers.
+    window.SKV_URL_ACCUEIL = {{ (parcours_projet.url_accueil if parcours_projet else '/concevoir_mon_projet/')|tojson }};
+    window.estPageAccueil = function (chemin) {
+        var p = chemin === undefined ? window.location.pathname : chemin;
+        return p === '/concevoir_mon_projet/' || p === window.SKV_URL_ACCUEIL;
+    };
+    // Fonctions masquées par le parcours (cf. app/utils/parcours.py, liste `masquer`).
+    window.SKV_PARCOURS_MASQUER = {{ (parcours_projet.masquer if parcours_projet else [])|tojson }};
+    window.parcoursMasque = function (cle) { return window.SKV_PARCOURS_MASQUER.indexOf(cle) !== -1; };
+</script>
+<style>.skv-masque-parcours { display: none !important; }</style>
+<!-- Bootstrap CSS v5.2.0-beta1 -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
+integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor" crossorigin="anonymous">
+
+<!-- Boxicons CDN Link -->
+<link href="https://unpkg.com/boxicons@2.0.7/css/boxicons.min.css" rel="stylesheet" />
+<link href="/static/concevoir_mon_projet/CSS/Entete.css" rel="stylesheet" />
+
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+
+<!-- pdf lib-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+{% include 'concevoir_mon_projet/components/mention_essai.html' %}
+
+-->
+
+<!-- Terra Draw (outils de dessin du calepinage PV) — vendorisé localement, à charger avant GoogleMaps.js -->
+<script src="/static/concevoir_mon_projet/vendor/terra-draw.umd.js"></script>
+<script src="/static/concevoir_mon_projet/vendor/terra-draw-google-maps-adapter.umd.js"></script>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+<!-- <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"> -->
+<link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+
+<link href="/static/concevoir_mon_projet/CSS/Menu.css?v=2" rel="stylesheet" />
+<link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/menu_list.css?v=4">
+
+<!-- ces liens sont principalement pour la page paramètres projets et calepinage -->

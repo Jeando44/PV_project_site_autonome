@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    {% include 'concevoir_mon_projet/components/headLinks.html' %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/System.css') }}">
+    <title>Schéma Unifilaire - Gestion de Projet Photovoltaïque</title>
+</head>
+<body>
+    {% include 'concevoir_mon_projet/components/menu_list.html' %}
+    {% include 'concevoir_mon_projet/pages/parametre.html' %}
+
+    <div class="system-page">
+        <div class="app-container">
+            <main id="main-content">
+            <div class="page-content">
+                <div class="split-layout">
+                    <div class="split-main">
+                         <img src="https://placehold.co/200x600/005A9C/FFC107?text=Aperçu+Dynamique&font=inter" alt="Schéma unifilaire" style="max-width:100%; max-height:100%; border-radius: 12px; object-fit: contain;">
+                    </div>
+                    <div class="split-sidebar">
+                        <h3>Projet Photovoltaïque</h3>
+
+                        <div class="form-group">
+                            <label>Mode de connexion</label>
+                            <div class="choice-buttons" data-save-group="connectionMode">
+                                <button class="choice-btn" data-value="BT">Production raccordée sur le réseau BT</button>
+                                <button class="choice-btn" data-value="HTA">Production raccordée sur le réseau HTA</button>
+                                <button class="choice-btn" data-value="BT_CONSO_BT">Production en BT et consommation avec soutirage en BT</button>
+                                <button class="choice-btn" data-value="BT_CONSO_HTA">Production en BT et consommation avec soutirage en HTA</button>
+                                <button class="choice-btn" data-value="HTA_CONSO_HTA">Production en HTA et consommation avec soutirage en HTA</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group-title">Résumé du Calepinage</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="installedPower">Puissance installée (kWc)</label>
+                                <input type="number" id="installedPower" data-save="installedPower">
+                            </div>
+                            <div class="form-group">
+                                <label for="nbre_pv_calepinage">Nombre de panneaux (Qté)</label>
+                                <input type="number" id="nbre_pv_calepinage" data-save="nbre_pv_calepinage">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group-title">Paramètres Globaux</div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="cosPhi">Cos phi (0.8 - 1)</label>
+                                <input type="number" id="cosPhi" name="cosPhi" min="0.8" max="1" step="0.001" value="0.944">
+                            </div>
+                            <div class="form-group">
+                                <label for="minTemp">Temp.min ambiante (°C)</label>
+                                <input type="number" id="minTemp" name="temp_min_absolue" value="-10">
+                            </div>
+                             <div class="form-group">
+                                <label for="temp_de_fonctionnement">Temp.de fonctionnement (°C)</label>
+                                <input type="number" id="temp_de_fonctionnement" name="foncTemp" value="20">
+                            </div>                           
+                            <div class="form-group">
+                                <label for="temp_max_absolue">Temp.max ambiante (°C)</label>
+                                <input type="number" id="temp_max_absolue" name="maxTemp" value="70">
+                            </div>
+                        </div>
+
+                        <div class="form-group-title">Panneaux Photovoltaïques</div>
+                        <div class="panel-selection-header">
+                             <div class="form-group" style="flex-grow: 1; margin-bottom: 0;">
+                                <label for="panelManufacturer">Filtrer par fabricant</label>
+                                <select id="panelManufacturer"></select>
+                            </div>
+                            <button id="addPanelBtn" class="btn btn-secondary btn-small" title="Ajouter un nouveau panneau">+ Ajouter</button>
+                            <button id="showPanelInfo" title="Voir les détails du panneau" disabled>ℹ️</button>
+                        </div>
+                        <div class="panel-table-container">
+                            <table id="panelSelectionTable">
+                                <thead><tr><th></th><th>Référence</th><th>Puissance</th></tr></thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                        
+                        <div class="form-group-title">Onduleurs</div>
+                        <div class="inverter-toolbar">
+                            <button id="addInverterBtn" class="btn">+ Ajouter un onduleur</button>
+                            <div id="calepinageError">
+                                ⚠️ Le nombre de panneaux et/ou la puissance ne correspondent pas aux totaux.
+                            </div>
+                            <div class="filter-buttons" id="inverterFilters">
+                                <button class="filter-btn" data-filter="triphase">Triphasé</button>
+                                <button class="filter-btn" data-filter="monophase">Monophasé</button>
+                                <button class="filter-btn" data-filter="hybride">Hybride</button>
+                                <button class="filter-btn" data-filter="optimiseur">Compatible Optimiseur</button>
+                            </div>
+                        </div>
+                        <div class="table-container">
+                            <table id="inverterTable">
+                                <thead>
+                                    <tr>
+                                        <th>N°</th>
+                                        <th>Onduleur</th>
+                                        <th>N° sous champ PV</th>
+                                        <th>Configuration Chaînes PV</th>
+                                        <th>Nb. Panneaux</th>
+                                        <th>Bridage (%)</th>
+                                        <th>Nb PV / chaine (Sys)</th><th>Nb PV / chaine (MPPT)</th>
+                                        <th>Nb PV Opt. / Chaine</th>
+                                        <th>Ch. Max / MPPT</th>
+                                        <th>P. PV (kWc)</th>
+                                        <th>P. App. (kVA)</th>
+                                        <th>P. Active (kW)</th>
+                                        <th>Ratio DC/AC</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inverterTableBody"></tbody>
+                                <tfoot>
+                                    <tr style="font-weight:bold;">
+                                        <td colspan="3">Total</td>
+                                        <td></td>
+                                        <td id="totalNbPanneaux">0</td>
+                                        <td colspan="5"></td>
+                                        <td id="totalPPV">0.00 kWc</td>
+                                        <td id="totalPApp">0.00 kVA</td>
+                                        <td id="totalPActive">0.00 kW</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+        </div> <!-- Fin de app-container -->
+
+        <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 id="detailsModalTitle">Détails</h4>
+                <span class="close-btn">&times;</span>
+            </div>
+           <div class="modal-body table-container"><table id="detailsModalTable"></table></div>
+        </div>
+   </div>
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                 <h4 id="addModalTitle">Ajouter</h4>
+                 <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="addPanelContainer" style="display:none;">
+                    <form id="addPanelForm">
+                       <div class="form-row">
+                            <div class="form-group"><label>Fabricant</label><input type="text" name="fabricant" required></div>
+                            <div class="form-group"><label>Référence</label><input type="text" name="reference" required></div>
+                            <div class="form-group"><label>Puissance Nominale (Wc)</label><input type="text" name="puissance_wc" required></div>
+                            <div class="form-group"><label>Type de module</label><input type="text" name="type_module" placeholder="Monofacial / Bifacial"></div>
+                            <div class="form-group"><label>V_mpp (V)</label><input type="number" step="any" name="pv_vmpp"></div>
+                            <div class="form-group"><label>V_oc (V)</label><input type="number" step="any" name="pv_voc"></div>
+                            <div class="form-group"><label>I_mpp (A)</label><input type="number" step="any" name="i_mpp"></div>
+                            <div class="form-group"><label>I_sc (A)</label><input type="number" step="any" name="pv_isc"></div>
+                            <div class="form-group"><label>K_Voc (%/°C)</label><input type="number" step="any" name="pv_k_voc"></div>
+                            <div class="form-group"><label>K_P (%/°C)</label><input type="number" step="any" name="pv_k_p"></div>
+                            <div class="form-group"><label>Rendement (%)</label><input type="text" name="rendement"></div>
+                            <div class="form-group"><label>Tension système (V)</label><input type="number" name="pv_tension_systeme"></div>
+                            <div class="form-group"><label>Protection sur intensité (A)</label><input type="text" name="protection"></div>
+                            <div class="form-group"><label>Dimensions Lxl (mm)</label><input type="text" name="dimensions"></div>
+                            <div class="form-group"><label>Poids (kg)</label><input type="number" step="any" name="poids"></div>
+                       </div>
+                       <button type="submit" class="btn" style="margin-top: 20px;">Enregistrer</button>
+                   </form>
+               </div>
+               <div id="addInverterContainer" style="display:none;">
+                    <form id="addInverterForm">
+                        <div class="form-row">
+                            <div class="form-group"><label>Fabricant</label><input type="text" name="fabricant" required></div>
+                            <div class="form-group"><label>Référence</label><input type="text" name="reference" required></div>
+                            <div class="form-group"><label>P. Nominale (kVA)</label><input type="number" step="any" name="p_nominale_kva" required></div>
+                            <div class="form-group"><label>P. Apparente Max (kVA)</label><input type="number" step="any" name="p_apparente_kva" required></div>
+                            <div class="form-group"><label>Nb MPPT / Entrées</label><input type="text" name="mppt_inputs" placeholder="ex: 2 / 2"></div>
+                            <div class="form-group"><label>Tension Max DC (V)</label><input type="number" step="any" name="ond_tension_max_dc"></div>
+                            <div class="form-group"><label>Tension Min DC (V)</label><input type="number" step="any" name="ond_tension_min_dc"></div>
+                            <div class="form-group"><label>Plage MPPT (V)</label><input type="text" name="plage_mppt" placeholder="ex: 200-1000"></div>
+                            <div class="form-group"><label>Plage MPPT_MIN (V)</label><input type="text" name="ond_plage_mppt_min"></div>
+                            <div class="form-group"><label>Plage MPPT_MAX (V)</label><input type="text" name="ond_plage_mppt_max"></div>
+                            <div class="form-group"><label>Imax_MPPT (A)</label><input type="number" step="any" name="ond_imax_mppt"></div>
+                            <div class="form-group"><label>Rendement Max (%)</label><input type="number" step="any" name="rendement_max"></div>
+                            <div class="form-group"><label>Courant max AC (A)</label><input type="number" step="any" name="courant_max_ac"></div>
+                            <div class="form-group"><label>Type de tension</label><select name="type_tension"><option>Monophasé</option><option>Biphasé</option><option selected>Triphasé</option></select></div>
+                            <div class="form-group"><label>Tension nominale AC</label><input type="text" name="tension_nominale_ac" placeholder="ex: 400V, 480V"></div>
+                            <div class="form-group"><label>Compatible Optimiseur</label><select name="compat_optimiseur"><option>Non</option><option>Oui</option></select></div>
+                            <div class="form-group"><label>Onduleur Hybride</label><select name="hybride"><option>Non</option><option>Oui</option></select></div>
+                            <div class="form-group"><label>Poids (kg)</label><input type="number" step="any" name="poids"></div>
+                        </div>
+                        <button type="submit" class="btn" style="margin-top: 20px;">Enregistrer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="inverterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>Choisir un Onduleur</h4>
+                <button id="addNewInverterFromPopupBtn" class="btn btn-secondary">+ Ajouter un nouvel onduleur</button>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table id="inverterSelectionTable">
+                        <thead><tr><th>Fabricant</th><th>Référence</th><th>P. Nom.</th><th>Type</th><th>Actions</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const LOCAL_STORAGE_KEY = 'photovoltaicProjectData_v14_design';
+        const PANEL_DB_KEY = 'photovoltaicCustomPanels_v14_design';
+        const INVERTER_DB_KEY = 'photovoltaicCustomInverters_v14_design';
+
+        let panelDatabase = [
+            { isDefault: true, fabricant: "DEMEGC", reference: "DM450M10RT-B54HBT", puissance_wc: "480 Wc", type_module: "Biface", pv_vmpp: 33.95, pv_voc: 40.25, i_mpp: 14.64, pv_isc: 15.59, pv_k_voc: -0.25, pv_k_p: -0.29, rendement: "23.15%", pv_tension_systeme: 1500, protection: "30A", dimensions: "1762*1134*30", poids: 25 },
+            { isDefault: true, fabricant: "JASOLAR", reference: "JAM54S30-415-MR", puissance_wc: "415 Wc", type_module: "Biface", pv_vmpp: 31.45, pv_voc: 37.55, i_mpp: 13.20, pv_isc: 14.05, pv_k_voc: -0.27, pv_k_p: -0.35, rendement: "21.3%", pv_tension_systeme: 1500, protection: "25A", dimensions: "1722*1134*30", poids: 21.5 },
+            { isDefault: true, fabricant: "JASOLAR", reference: "JAM66S30-500-MR", puissance_wc: "500 Wc", type_module: "Monofacial", pv_vmpp: 38.35, pv_voc: 45.59, i_mpp: 13.04, pv_isc: 13.93, pv_k_voc: -0.275, pv_k_p: -0.35, rendement: "21.1%", pv_tension_systeme: 1500, protection: "30A", dimensions: "2279*1134*35", poids: 28.6 }
+        ];
+
+        let inverterDatabase = [
+            { isDefault: true, fabricant: "Huawei", reference: "SUN2000-100KTL-M2", p_nominale_kva: 100, p_apparente_kva: 110, mppt_inputs: "10 / 2", ond_tension_max_dc: 1100, ond_tension_min_dc: 200, ond_plage_mppt_min: 200, ond_plage_mppt_max: 1000, ond_imax_mppt: 40, rendement_max: 98.6, courant_max_ac: 160.4, type_tension: "Triphasé", tension_nominale_ac: "400V, 480V", compat_optimiseur: "Non", hybride: "Oui", poids: 25 },
+            { isDefault: true, fabricant: "Sungrow", reference: "SG125CX-P2", p_nominale_kva: 125, p_apparente_kva: 125, mppt_inputs: "12 / 2", ond_tension_max_dc: 1100, ond_tension_min_dc: 180, ond_plage_mppt_min: 180, ond_plage_mppt_max: 1000, ond_imax_mppt: 40, rendement_max: 98.6, courant_max_ac: 181.1, type_tension: "Triphasé", tension_nominale_ac: "400V", compat_optimiseur: "Non", hybride: "Non", poids: 89 }
+        ];
+        let projectInverters = [];
+        let editingInverterIndex = null;
+
+        const cosPhiInput = document.getElementById('cosPhi');
+        const minTempInput = document.getElementById('minTemp');
+        const funcTempInput = document.getElementById('temp_de_fonctionnement');
+        const maxTempInput = document.getElementById('temp_max_absolue');
+        const panelManufacturerSelect = document.getElementById('panelManufacturer');
+        const panelTableBody = document.querySelector('#panelSelectionTable tbody');
+        const showPanelInfoBtn = document.getElementById('showPanelInfo');
+        const detailsModal = document.getElementById('detailsModal');
+        const addModal = document.getElementById('addModal');
+        const inverterTableBody = document.getElementById('inverterTableBody');
+        const inverterModal = document.getElementById('inverterModal');
+        const addInverterBtn = document.getElementById('addInverterBtn');
+        
+        const showDetailsModal = (title, dataObject) => {
+            detailsModal.querySelector('#detailsModalTitle').textContent = title;
+            const tableBody = detailsModal.querySelector('#detailsModalTable');
+            tableBody.innerHTML = Object.entries(dataObject)
+                .filter(([key]) => key !== 'isDefault' && key !== 'plage_mppt')
+                .map(([key, value]) => `<tr><td>${key.replace(/_/g, ' ')}</td><td>${value}</td></tr>`)
+                .join('');
+            detailsModal.style.display = 'block';
+        };
+        const openAddModal = (type) => {
+            document.getElementById('addPanelContainer').style.display = type === 'panel' ? 'block' : 'none';
+            document.getElementById('addInverterContainer').style.display = type === 'inverter' ? 'block' : 'none';
+            document.getElementById('addModalTitle').textContent = type === 'panel' ? 'Ajouter un panneau personnalisé' : 'Ajouter un onduleur personnalisé';
+            addModal.style.display = 'block';
+        };
+        
+        document.querySelectorAll('.modal .close-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.target.closest('.modal').style.display = 'none';
+            });
+        });
+        window.addEventListener('click', (event) => {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = "none";
+            }
+        });
+
+        function checkCalepinageTotals() {
+            const errorContainer = document.getElementById('calepinageError');
+            const installedPowerInput = document.getElementById('installedPower');
+            const nbPanneauxInput = document.getElementById('nbre_pv_calepinage');
+            const calepinagePower = parseFloat(installedPowerInput.value) || 0;
+            const calepinagePanels = parseInt(nbPanneauxInput.value, 10) || 0;
+            if (calepinagePower === 0 && calepinagePanels === 0) {
+                errorContainer.style.display = 'none';
+                return;
+            }
+            const totalPowerText = document.getElementById('totalPPV').textContent;
+            const totalPanelsText = document.getElementById('totalNbPanneaux').textContent;
+            const totalCalculatedPower = parseFloat(totalPowerText) || 0;
+            const totalCalculatedPanels = parseInt(totalPanelsText, 10) || 0;
+            if (calepinagePower.toFixed(2) !== totalCalculatedPower.toFixed(2) || calepinagePanels !== totalCalculatedPanels) {
+                errorContainer.style.display = 'block';
+            } else {
+                errorContainer.style.display = 'none';
+            }
+        }
+
+        function populateManufacturersFilter() {
+            const manufacturers = ['all', ...new Set(panelDatabase.map(p => p.fabricant).sort())];
+            panelManufacturerSelect.innerHTML = manufacturers.map(m => `<option value="${m}">${m === 'all' ? 'Tous les fabricants' : m}</option>`).join('');
+        }
+        function populatePanelTable() {
+            const filter = panelManufacturerSelect.value;
+            panelTableBody.innerHTML = '';
+            const panelsToShow = (filter === 'all') ? panelDatabase : panelDatabase.filter(p => p.fabricant === filter);
+            const groupedByManufacturer = panelsToShow.reduce((acc, panel) => {
+                (acc[panel.fabricant] = acc[panel.fabricant] || []).push(panel);
+                return acc;
+            }, {});
+            for (const manufacturer in groupedByManufacturer) {
+                const headerRow = panelTableBody.insertRow();
+                headerRow.className = 'manufacturer-header';
+                headerRow.innerHTML = `<td colspan="3">${manufacturer}</td>`;
+                groupedByManufacturer[manufacturer].forEach(panel => {
+                    const row = panelTableBody.insertRow();
+                    row.className = 'panel-row';
+                    row.dataset.ref = panel.reference;
+                    row.innerHTML = `<td></td><td>${panel.reference}</td><td>${panel.puissance_wc}</td>`;
+                });
+            }
+        }
+        function handlePanelRowClick(e) {
+            const clickedRow = e.target.closest('tr.panel-row');
+            if (!clickedRow) return;
+            panelTableBody.querySelectorAll('tr').forEach(r => r.classList.remove('selected'));
+            clickedRow.classList.add('selected');
+            showPanelInfoBtn.disabled = false;
+            recalculateAllInverterRows();
+            saveData();
+        }
+        function getSelectedPanelData() {
+            const selectedRow = panelTableBody.querySelector('tr.selected');
+            return selectedRow ? panelDatabase.find(p => p.reference === selectedRow.dataset.ref) : null;
+        }
+
+        panelManufacturerSelect.addEventListener('change', populatePanelTable);
+        document.getElementById('addPanelBtn').addEventListener('click', () => openAddModal('panel'));
+        panelTableBody.addEventListener('click', handlePanelRowClick);
+        showPanelInfoBtn.addEventListener('click', () => {
+            const panel = getSelectedPanelData();
+            if (panel) showDetailsModal('Détails du Panneau', panel);
+        });
+        
+        // --- Fonctions de Calcul ---
+        function calculateStringSizing(panel, inverter, globalSettings) {
+            const NA_RESULT = { 
+                nbChaineMaxParMppt: 'N/A', 
+                nbPvParChaine: 'N/A',
+                nbPvParChaineMppt: 'N/A',
+                nbPvRendOptimal: 'N/A'
+            };
+            if (!panel || !inverter || !globalSettings) return NA_RESULT;
+            
+            const {tempMin, tempMax, tempFunc} = globalSettings;
+            const {pv_voc=0, pv_k_voc=0, pv_vmpp=0, pv_k_p=0, pv_isc=0, pv_tension_systeme=0} = panel;
+            const {ond_tension_max_dc=0, ond_tension_min_dc=0, ond_plage_mppt_min=0, ond_plage_mppt_max=0, ond_imax_mppt=0} = inverter;
+
+            const pv_k_voc_dec = parseFloat(pv_k_voc) / 100;
+            const pv_k_p_dec = parseFloat(pv_k_p) / 100;
+
+            const voc_T = parseFloat(pv_voc) * (1 + pv_k_voc_dec * (tempMin - 25));
+            const vmpp_T = parseFloat(pv_vmpp) * (1 + pv_k_p_dec * (tempMax - 25));
+            const vmpp_T_func = parseFloat(pv_vmpp) * (1 + pv_k_p_dec * (tempFunc - 25));
+
+            const nbChaineMaxParMppt = (pv_isc > 0) ? Math.floor(ond_imax_mppt / (parseFloat(pv_isc) * 1.25)) : 0;
+            
+            const tensionMaxSysteme = Math.min(ond_tension_max_dc, pv_tension_systeme);
+            const nbPvParChaine_Max_Sys = (voc_T > 0) ? Math.floor(tensionMaxSysteme / voc_T) : 0;
+            const nbPvParChaine_Min_Sys = (vmpp_T > 0) ? Math.ceil(ond_tension_min_dc / vmpp_T) : 0;
+
+            const nbPvParChaine_Max_MPPT = (vmpp_T > 0) ? Math.floor(ond_plage_mppt_max / vmpp_T) : 0;
+            const nbPvParChaine_Min_MPPT = (voc_T > 0) ? Math.ceil(ond_plage_mppt_min / voc_T) : 0;
+
+            const optimalMpptVoltage = (ond_plage_mppt_min + ond_plage_mppt_max) / 2;
+            const nbPvRendOptimal = (vmpp_T_func > 0) ? Math.round(optimalMpptVoltage / vmpp_T_func) : 0;
+
+            return {
+                nbChaineMaxParMppt,
+                nbPvParChaine: `${nbPvParChaine_Min_Sys} / ${nbPvParChaine_Max_Sys}`,
+                nbPvParChaineMppt: `${nbPvParChaine_Min_MPPT} / ${nbPvParChaine_Max_MPPT}`,
+                nbPvRendOptimal
+            };
+        }
+
+        function calculateOptimalStrings(totalPanels, minPv, maxPv) {
+            if (totalPanels === 0 || isNaN(minPv) || isNaN(maxPv) || minPv === 0 || maxPv === 0) {
+                return { displayText: 'N/A', totalStrings: 0 };
+            }
+            if (totalPanels < minPv) {
+                 return { displayText: `Total insuffisant`, totalStrings: 0 };
+            }
+
+            for (let numStrings = Math.floor(totalPanels / maxPv); numStrings <= Math.ceil(totalPanels / minPv) +1; numStrings++) {
+                if(numStrings === 0) continue;
+
+                const basePanels = Math.floor(totalPanels / numStrings);
+                const remainder = totalPanels % numStrings;
+                
+                if (basePanels >= minPv && basePanels <= maxPv && (basePanels + (remainder > 0 ? 1:0)) <= maxPv) {
+                     const numStringsLen1 = numStrings - remainder;
+                     const numStringsLen2 = remainder;
+
+                     let displayText = '';
+                     if (numStringsLen2 === 0) {
+                         displayText = `${numStringsLen1} Ch x ${basePanels} PV`;
+                     } else if (numStringsLen1 === 0) {
+                         displayText = `${numStringsLen2} Ch x ${basePanels + 1} PV`;
+                     } else {
+                         displayText = `${numStringsLen2} Ch x ${basePanels + 1} PV + ${numStringsLen1} Ch x ${basePanels} PV`;
+                     }
+                    return { displayText, totalStrings: numStrings };
+                }
+            }
+            return { displayText: 'Aucune solution', totalStrings: 0 };
+        }
+
+        // --- GESTION DES ONDULEURS ---
+        function renderInverters() {
+            inverterTableBody.innerHTML = "";
+            projectInverters.forEach((inv, index) => {
+                const dbInv = inverterDatabase.find(db => db.reference === inv.reference) || {};
+                const row = inverterTableBody.insertRow();
+                row.dataset.index = index;
+                row.innerHTML = `<td>${index + 1}</td>
+                                 <td><div class="inverter-name">${inv.fabricant || 'Choisir...'}</div><div class="inverter-ref">${inv.reference || ''}</div><button class="btn-secondary btn-small" data-action="select">Choisir</button></td>
+                                 <td><input type="text" class="sous-champ-pv" value="${inv.sousChampPV || ''}"></td>
+                                 <td class="string-config-cell"><input type="text" class="nb-chaine-pv" readonly></td>
+                                 <td><input type="number" class="nb-panneaux" value="${inv.nbPanneaux || 0}"></td>
+                                 <td><input type="number" class="bridage" min="0" max="100" value="${inv.bridage || 0}"></td>
+                                 <td class="pv-per-string-system calculated-cell">N/A</td>
+                                 <td class="pv-per-string-mppt calculated-cell">N/A</td>
+                                 <td class="pv-optimal-per-string calculated-cell">N/A</td>
+                                 <td class="max-strings-per-mppt calculated-cell">N/A</td>
+                                 <td class="p-pv">0.00</td>
+                                 <td>${dbInv.p_apparente_kva || 0}</td>
+                                 <td class="p-active">0.00</td>
+                                 <td class="ratio-dc-ac">0.00</td>
+                                 <td>
+                                     <button class="action-btn" data-action="copy" title="Copier">📄</button>
+                                     <button class="action-btn" data-action="delete" title="Supprimer">❌</button>
+                                 </td>`;
+            });
+            attachInverterRowListeners();
+            recalculateAllInverterRows();
+        }
+
+        function attachInverterRowListeners() {
+            inverterTableBody.querySelectorAll('tr').forEach(row => {
+                const index = parseInt(row.dataset.index, 10);
+                row.querySelector('[data-action="select"]').addEventListener('click', () => openInverterModal(index));
+                row.querySelector('[data-action="copy"]').addEventListener('click', () => copyInverter(index));
+                row.querySelector('[data-action="delete"]').addEventListener('click', () => deleteInverter(index));
+                
+                const update = (prop, val, needsRecalc = false) => { projectInverters[index][prop] = val; if(needsRecalc) { recalculateInverterRow(row); } saveData(); };
+                
+                row.querySelector('.bridage').addEventListener('change', e => update('bridage', parseFloat(e.target.value), true));
+                row.querySelector('.nb-panneaux').addEventListener('change', e => update('nbPanneaux', parseInt(e.target.value, 10), true));
+                row.querySelector('.sous-champ-pv').addEventListener('change', e => update('sousChampPV', e.target.value));
+            });
+        }
+
+        function recalculateAllInverterRows() {
+            inverterTableBody.querySelectorAll('tr').forEach(recalculateInverterRow);
+        }
+        
+        function recalculateInverterRow(row) {
+            const index = parseInt(row.dataset.index, 10);
+            if (isNaN(index)) return;
+
+            const inv = projectInverters[index];
+            const dbInv = inverterDatabase.find(db => db.reference === inv.reference);
+            const panel = getSelectedPanelData();
+            
+            const nbPanneauxInput = row.querySelector('.nb-panneaux');
+            const nbChaineInput = row.querySelector('.nb-chaine-pv');
+            
+            nbPanneauxInput.classList.remove('input-error');
+            nbPanneauxInput.title = '';
+            
+            if (dbInv && panel) {
+                const globalSettings = {
+                    tempMin: parseFloat(minTempInput.value), tempMax: parseFloat(maxTempInput.value), tempFunc: parseFloat(funcTempInput.value)
+                };
+                const sizingResults = calculateStringSizing(panel, dbInv, globalSettings);
+                
+                row.querySelector('.pv-per-string-system').textContent = sizingResults.nbPvParChaine;
+                row.querySelector('.pv-per-string-mppt').textContent = sizingResults.nbPvParChaineMppt;
+                row.querySelector('.max-strings-per-mppt').textContent = sizingResults.nbChaineMaxParMppt;
+                
+                // MODIFIÉ: Utilisation de nbPvParChaine (Sys) pour le calcul de la configuration
+                const [minPv, maxPv] = sizingResults.nbPvParChaine.split(' / ').map(Number);
+                
+                let validOptimalPanels = 'N/A';
+                if (!isNaN(minPv) && !isNaN(maxPv)) {
+                    const idealOptimal = sizingResults.nbPvRendOptimal;
+                    row.querySelector('.pv-optimal-per-string').textContent = idealOptimal;
+                    validOptimalPanels = Math.max(minPv, Math.min(idealOptimal, maxPv));
+                }
+                
+                const nbPanneaux = parseInt(nbPanneauxInput.value, 10) || 0;
+                const stringConfig = calculateOptimalStrings(nbPanneaux, minPv, maxPv);
+                nbChaineInput.value = stringConfig.displayText;
+                projectInverters[index].nbChainePV = stringConfig.totalStrings;
+                
+            } else {
+                ['.pv-per-string-system', '.pv-per-string-mppt', '.max-strings-per-mppt', '.pv-optimal-per-string'].forEach(cls => row.querySelector(cls).textContent = 'N/A');
+                nbChaineInput.value = 'N/A';
+            }
+            
+            if (!dbInv) return;
+
+            const pApparente = dbInv.p_apparente_kva || 0;
+            const bridage = inv.bridage || 0;
+            const nbPanneauxValue = inv.nbPanneaux || 0;
+            const cosPhi = parseFloat(cosPhiInput.value) || 0.944;
+            const pActive = (1 - (bridage / 100)) * pApparente * cosPhi;
+            row.querySelector('.p-active').textContent = pActive.toFixed(2);
+            
+            let pPv = 0;
+            if (panel) {
+                const pWc = parseFloat(panel.puissance_wc);
+                if (!isNaN(pWc)) pPv = (nbPanneauxValue * pWc) / 1000;
+            }
+            row.querySelector('.p-pv').textContent = pPv.toFixed(2);
+            row.querySelector('.ratio-dc-ac').textContent = (pActive > 0 ? (pPv / pActive).toFixed(2) : '∞');
+            
+            updateInverterTotals();
+        }
+
+        function updateInverterTotals() { 
+            let totalPActive = 0, totalNbPanneaux = 0, totalPPV = 0, totalPApp = 0;
+            inverterTableBody.querySelectorAll('tr').forEach(row => {
+                const index = parseInt(row.dataset.index, 10);
+                const inv = projectInverters[index];
+                const dbInv = inv ? inverterDatabase.find(db => db.reference === inv.reference) : null;
+                if (dbInv) { totalPApp += dbInv.p_apparente_kva || 0; }
+                totalPActive += parseFloat(row.querySelector('.p-active').textContent) || 0;
+                totalNbPanneaux += parseInt(row.querySelector('.nb-panneaux').value) || 0;
+                totalPPV += parseFloat(row.querySelector('.p-pv').textContent) || 0;
+            });
+            document.getElementById('totalPApp').textContent = `${totalPApp.toFixed(2)} kVA`;
+            document.getElementById('totalPActive').textContent = `${totalPActive.toFixed(2)} kW`;
+            document.getElementById('totalNbPanneaux').textContent = totalNbPanneaux;
+            document.getElementById('totalPPV').textContent = `${totalPPV.toFixed(2)} kWc`;
+            checkCalepinageTotals(); 
+        }
+        
+        function openInverterModal(index) { 
+            editingInverterIndex = index; 
+            populateInverterSelectionTable(); 
+            inverterModal.style.display = 'block'; 
+        }
+        function populateInverterSelectionTable() { 
+            const tbody = inverterModal.querySelector('#inverterSelectionTable tbody'); 
+            tbody.innerHTML = inverterDatabase.map(dbInv => `<tr>
+                <td>${dbInv.fabricant}</td>
+                <td>${dbInv.reference}</td>
+                <td>${dbInv.p_nominale_kva} kVA</td>
+                <td>${dbInv.type_tension}</td>
+                <td>
+                    <button class="btn btn-small btn-secondary" data-action="details" data-ref="${dbInv.reference}">Détails</button> 
+                    <button class="btn btn-small" data-action="select" data-ref="${dbInv.reference}">Choisir</button>
+                </td>
+            </tr>`).join(''); 
+        }
+        function addInverter() { projectInverters.push({ nbPanneaux: 0 }); renderInverters(); openInverterModal(projectInverters.length - 1); }
+        function deleteInverter(index) { projectInverters.splice(index, 1); renderInverters(); saveData(); }
+        function copyInverter(index) { projectInverters.splice(index + 1, 0, JSON.parse(JSON.stringify(projectInverters[index]))); renderInverters(); saveData(); }
+        
+        addInverterBtn.addEventListener('click', addInverter);
+        document.getElementById('inverterFilters').addEventListener('click', e => { if (e.target.classList.contains('filter-btn')) e.target.classList.toggle('active'); });
+        document.getElementById('addNewInverterFromPopupBtn').addEventListener('click', () => { inverterModal.style.display = 'none'; openAddModal('inverter'); });
+        
+        document.querySelectorAll('.form-row input[type="number"]').forEach(input => input.addEventListener('change', recalculateAllInverterRows));
+
+        inverterModal.querySelector('#inverterSelectionTable').addEventListener('click', e => {
+            const target = e.target;
+            const { action, ref } = target.dataset;
+            if (!action || !ref) return;
+
+            const selectedDbInv = inverterDatabase.find(i => i.reference === ref);
+            if (!selectedDbInv) return;
+
+            if (action === 'details') {
+                showDetailsModal(`Détails Onduleur: ${selectedDbInv.reference}`, selectedDbInv);
+            } else if (action === 'select') {
+                if (editingInverterIndex !== null) {
+                    projectInverters[editingInverterIndex] = {...projectInverters[editingInverterIndex], ...selectedDbInv};
+                    renderInverters();
+                    saveData();
+                }
+                inverterModal.style.display = 'none';
+                editingInverterIndex = null;
+            }
+        });
+
+        function saveData() {
+            const dataToSave = {
+                globalSettings: {
+                    cosPhi: cosPhiInput.value, minTemp: minTempInput.value, maxTemp: maxTempInput.value, funcTemp: funcTempInput.value
+                },
+                selectedPanelRef: getSelectedPanelData()?.reference,
+                projectInverters,
+                calepinagePower: document.getElementById('installedPower').value,
+                calepinagePanels: document.getElementById('nbre_pv_calepinage').value,
+                connectionMode: document.querySelector('.choice-btn.active')?.dataset.value
+            };
+            localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(dataToSave));
+        }
+
+        function loadData() {
+            panelDatabase.push(...JSON.parse(localStorage.getItem(PANEL_DB_KEY) || '[]'));
+            inverterDatabase.push(...JSON.parse(localStorage.getItem(INVERTER_DB_KEY) || '[]'));
+            
+            const savedData = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY));
+            if (savedData) {
+                if (savedData.globalSettings) {
+                    cosPhiInput.value = savedData.globalSettings.cosPhi || 0.944;
+                    minTempInput.value = savedData.globalSettings.minTemp || -10;
+                    funcTempInput.value = savedData.globalSettings.funcTemp || 20;
+                    maxTempInput.value = savedData.globalSettings.maxTemp || 70;
+                }
+                projectInverters = savedData.projectInverters || [];
+                document.getElementById('installedPower').value = savedData.calepinagePower || '';
+                document.getElementById('nbre_pv_calepinage').value = savedData.calepinagePanels || '';
+                if(savedData.connectionMode) {
+                    document.querySelector(`.choice-btn[data-value="${savedData.connectionMode}"]`)?.classList.add('active');
+                }
+            }
+            populateManufacturersFilter();
+            populatePanelTable();
+            if (savedData?.selectedPanelRef) {
+                const savedRow = panelTableBody.querySelector(`tr[data-ref="${savedData.selectedPanelRef}"]`);
+                if (savedRow) { 
+                    savedRow.classList.add('selected'); 
+                    showPanelInfoBtn.disabled = false; 
+                }
+            }
+            renderInverters();
+
+            document.getElementById('installedPower').addEventListener('input', checkCalepinageTotals);
+            document.getElementById('nbre_pv_calepinage').addEventListener('input', checkCalepinageTotals);
+        }
+
+        document.querySelectorAll('.choice-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const group = button.closest('.choice-buttons');
+                group.querySelectorAll('.choice-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                saveData();
+            });
+        });
+
+        loadData();
+    });
+    </script>
+
+        <!-- Scripts JavaScript nécessaires pour les dépendances -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+        <!-- Script d'initialisation de la carte pour le modal paramètres -->
+        <script type="module" src="{{ url_for('static', filename='concevoir_mon_projet/javascript/parametreProjetMap/initialisationMap.js') }}?v=33"></script>
+
+        <!-- MODAL GEOMETRIE -->
+        <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrieModal.js') }}"></script>
+    </div> <!-- Fin de system-page -->
+
+    {% include 'concevoir_mon_projet/components/page_navigation.html' %}
+</body>
+</html>

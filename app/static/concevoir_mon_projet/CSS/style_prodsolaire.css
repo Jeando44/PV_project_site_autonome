@@ -1,0 +1,435 @@
+
+:root {
+      --gap: 14px;
+      --radius: 10px;
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-light: #eff6ff;
+      --success: #059669;
+      --success-dark: #047857;
+      --warn: #d97706;
+      --error: #dc2626;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --surface: #ffffff;
+      --bg: #f1f5f9;
+    }
+
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      line-height: 1.5;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 15px;
+    }
+
+/* ---- Modale ---- */
+#prodsolaire-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 2000;
+}
+
+#prodsolaire-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 95vw;
+  max-width: 1400px;
+  height: 95vh;
+  background: var(--bg);
+  border-radius: var(--radius);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  z-index: 2001;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#close-prodsolaire-btn {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 2rem;
+  cursor: pointer;
+  transition: color 0.2s;
+  line-height: 1;
+}
+
+#close-prodsolaire-btn:hover {
+  color: #ffffff;
+}
+
+    /* ---- En-tête ---- */
+    header {
+      background: var(--error);
+      color: #fff;
+      padding: 18px 32px;
+      box-shadow: 0 2px 10px rgba(37, 99, 235, .3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      margin-bottom: 3px;
+    }
+
+    header p.sub {
+      color: rgba(255, 255, 255, .82);
+      font-size: .93rem;
+    }
+
+    /* ---- Contenu principal ---- */
+    main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+  flex-grow: 1;
+  overflow-y: auto;
+  width: 100%;
+    }
+
+    /* ---- Onglets ---- */
+    .tabs {
+      display: flex;
+      gap: 6px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 6px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .1);
+      margin-bottom: 20px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 14px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: .93rem;
+      font-weight: 500;
+      transition: all .15s ease;
+    }
+
+    .tab-btn:hover:not(.active) {
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      color: #fff;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, .35);
+    }
+
+    /* ---- Panneaux ---- */
+    .panel {
+      display: none;
+    }
+
+    .panel.active {
+      display: block;
+    }
+
+    /* ---- Cartes ---- */
+    .card {
+      background: var(--surface);
+      border-radius: var(--radius);
+      box-shadow: 0 1px 4px rgba(0, 0, 0, .08);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: .82rem;
+      font-weight: 700;
+      text-transform: lowercase;
+      letter-spacing: .06em;
+      color: var(--error);
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid var(--primary-light);
+    }
+
+    .card-title::first-letter {
+      text-transform: uppercase;
+    }
+
+    /* ---- Grille 12 colonnes ---- */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: var(--gap);
+    }
+
+    .col-2 {
+      grid-column: span 2;
+    }
+
+    .col-3 {
+      grid-column: span 3;
+    }
+
+    .col-4 {
+      grid-column: span 4;
+    }
+
+    .col-6 {
+      grid-column: span 6;
+    }
+
+    .col-8 {
+      grid-column: span 8;
+    }
+
+    .col-9 {
+      grid-column: span 9;
+    }
+
+    .col-12 {
+      grid-column: 1 / -1;
+    }
+
+    @media (max-width: 700px) {
+
+      .col-2,
+      .col-3,
+      .col-4,
+      .col-6,
+      .col-8,
+      .col-9 {
+        grid-column: 1 / -1;
+      }
+    }
+
+    /* ---- Groupes de formulaire ---- */
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    label {
+      font-size: .84rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* Style spécifique pour les labels dans le modal des paramètres projet */
+    #parametres-modal .form-label {
+        font-size: .84rem;
+        font-weight: 600;
+        color: var(--text-muted);
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 7px;
+      border: 1.5px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      font-size: .94rem;
+      transition: border-color .15s, box-shadow .15s;
+    }
+
+    input:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+    }
+
+    input[type="number"]::-webkit-outer-spin-button,
+    input[type="number"]::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+    }
+
+    input:disabled {
+      background: var(--bg);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    input:read-only {
+      background: var(--bg);
+      color: var(--text-muted);
+      cursor: not-allowed;
+    }
+
+    /* ---- Boutons ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 10px 20px;
+      border-radius: 8px;
+      border: none;
+      font-size: .94rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all .15s ease;
+      white-space: nowrap;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(37, 99, 235, .3);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .btn-secondary {
+      background: var(--bg);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+
+    .btn-secondary:hover {
+      background: var(--border);
+    }
+
+    .btn-success {
+      background: var(--success);
+      color: #fff;
+      box-shadow: 0 2px 6px rgba(5, 150, 105, .3);
+    }
+
+    .btn-success:hover {
+      background: var(--success-dark);
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    /* ---- Actions ---- */
+    .actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    /* ---- Boîte URL ---- */
+    .urlbox {
+      margin-top: 12px;
+      background: var(--bg);
+      border: 1.5px solid var(--border);
+      border-radius: 7px;
+      padding: 10px 14px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: .83rem;
+      color: #334155;
+      word-break: break-all;
+      white-space: normal;
+      min-height: 36px;
+    }
+
+    /* ---- Messages de statut ---- */
+    .status {
+      font-size: .9rem;
+      font-weight: 500;
+    }
+
+    .status.ok {
+      color: var(--success);
+    }
+
+    .status.warn {
+      color: var(--warn);
+    }
+
+    .status.error {
+      color: var(--error);
+    }
+
+    /* ---- Note ---- */
+    .note {
+      color: var(--text-muted);
+      font-size: .86rem;
+      line-height: 1.6;
+    }
+
+    /* ---- Barre de progression ---- */
+    .progress-wrap {
+      display: none;
+      margin-top: 12px;
+    }
+
+    .progress-bar {
+      height: 7px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .progress-bar-inner {
+      height: 100%;
+      background: var(--primary);
+      border-radius: 99px;
+      transition: width .4s ease;
+      width: 0%;
+    }
+
+    .progress-label {
+      font-size: .82rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ---- Pied de page ---- */
+    footer {
+      max-width: 1400px;
+      margin: 0 auto 24px;
+      padding: 0 24px;
+      color: var(--text-muted);
+      font-size: .88rem;
+  flex-shrink: 0;
+    }
+
+    a {
+      color: var(--primary);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    code {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: .88em;
+      color: #1e293b;
+    }
+  

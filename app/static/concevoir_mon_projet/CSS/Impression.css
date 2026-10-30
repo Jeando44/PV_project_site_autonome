@@ -1,0 +1,268 @@
+/* ==================================================
+   IMPRESSION PAGE - Gestion d'impression de projet
+   Styles isolés pour éviter les conflits
+   ================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+
+.impression-page {
+    --primary-color: #dc3545;
+    --primary-hover-color: #bd2130;
+    --secondary-color: #6c757d;
+    --background-color: #f8f9fa;
+    --container-bg: #ffffff;
+    --text-color: #333;
+    --border-color: #dee2e6;
+    --hover-color: #f1f1f1;
+    --readonly-bg: #e9ecef;
+
+    font-family: 'Roboto', sans-serif;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    margin: 0;
+    padding: 2rem;
+    min-height: 100vh;
+    margin-left: 2%;
+}
+
+.impression-page .main-wrapper {
+    display: flex;
+    gap: 2rem;
+    width: 100%;
+    max-width: 1800px;
+    margin: 0 auto;
+    margin-top: 50px;
+}
+
+.impression-page .left-panel {
+    flex: 1;
+    padding: 2.5rem;
+    background-color: var(--container-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    height: fit-content;
+}
+
+.impression-page .left-panel h2 {
+    color: var(--primary-color);
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+    font-weight: 700;
+}
+
+.impression-page #report-summary {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    background-color: var(--readonly-bg);
+    font-family: 'Roboto', sans-serif;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    box-sizing: border-box;
+    color: #495057;
+}
+
+.impression-page #report-summary p {
+    margin: 0 0 1em 0;
+}
+
+.impression-page #report-summary p:last-child {
+    margin-bottom: 0;
+}
+
+.impression-page #map {
+    height: 400px;
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.impression-page .container {
+    flex: 1;
+    max-width: none;
+    background-color: var(--container-bg);
+    border-radius: 12px;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    padding: 2.5rem;
+    box-sizing: border-box;
+}
+
+.impression-page h1 {
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 2.5rem;
+    font-weight: 700;
+}
+
+.impression-page .controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.impression-page .select-all-label {
+    display: flex;
+    align-items: center;
+    font-weight: 700;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+.impression-page .select-all-label input {
+    margin-right: 0.75rem;
+    width: 18px;
+    height: 18px;
+}
+
+.impression-page .action-buttons {
+    display: flex;
+    gap: 1rem;
+}
+
+.impression-page .btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    display: inline-block;
+    text-align: center;
+}
+
+.impression-page .btn-print {
+    background-color: var(--primary-color);
+}
+
+.impression-page .btn-print:hover {
+    background-color: var(--primary-hover-color);
+    transform: translateY(-2px);
+}
+
+.impression-page .btn-share {
+    background-color: var(--primary-color);
+}
+
+.impression-page .btn-share:hover {
+    background-color: var(--primary-hover-color);
+    transform: translateY(-2px);
+}
+
+.impression-page ul#document-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+}
+
+.impression-page li {
+    padding: 1rem 1.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.impression-page li:hover {
+    background-color: var(--hover-color);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.impression-page li.annexe-item {
+    margin-left: 2rem;
+    border-left: 3px solid var(--primary-color);
+}
+
+.impression-page .doc-title {
+    font-weight: 400;
+    flex-grow: 1;
+    margin-left: 1rem;
+}
+
+.impression-page .doc-link {
+    text-decoration: none;
+    color: var(--secondary-color);
+    font-size: 0.9rem;
+    transition: color 0.3s;
+}
+
+.impression-page .doc-link:hover {
+    color: var(--primary-color);
+}
+
+.impression-page input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+}
+
+.impression-page #share-link-container {
+    margin-top: 2rem;
+    padding: 1rem;
+    background-color: #e9ecef;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    text-align: center;
+    display: none;
+    word-wrap: break-word;
+    grid-column: 1 / -1;
+}
+
+.impression-page #share-link-container p {
+    margin: 0;
+    font-weight: 700;
+}
+
+.impression-page #share-link {
+    color: var(--primary-color);
+    font-family: monospace;
+    font-size: 1rem;
+    margin-top: 0.5rem;
+    display: block;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+    .impression-page .main-wrapper {
+        flex-direction: column;
+    }
+    .impression-page ul#document-list {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    .impression-page {
+        padding: 1rem;
+    }
+    .impression-page .left-panel,
+    .impression-page .container {
+        padding: 1.5rem;
+    }
+    .impression-page .controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .impression-page .action-buttons {
+        width: 100%;
+        flex-direction: column;
+    }
+    .impression-page li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+}

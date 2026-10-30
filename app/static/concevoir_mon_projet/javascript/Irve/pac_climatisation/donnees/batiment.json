@@ -1,0 +1,168 @@
+{
+  "_source": "Valeurs par défaut du bâtiment, toutes modifiables. Coefficients U : ordres de grandeur de parois représentatives de chaque époque ; pour RT 2005 et suivantes, en deçà des garde-fous fixés par les arrêtés publics (arrêté du 24 mai 2006 ; arrêté du 26 octobre 2010 ; arrêté du 4 août 2021). Le coefficient G de la méthode simplifiée n'est PAS une valeur tabulée : il est recalculé par pac_dimensionnement.js (gDepuisNiveau) à partir de ces U, de la ventilation et de la maison de référence ci-dessous.",
+  "maison_reference": {
+    "_source": "Géométrie de référence servant uniquement à déduire G (W/(m³·K)) d'un niveau d'isolation : plain-pied 10 m x 10 m.",
+    "surface_m2": 100,
+    "hauteur_m": 2.5,
+    "perimetre_m": 40,
+    "part_vitree_surface_pct": 16
+  },
+  "niveaux_isolation": [
+    {
+      "id": "ancien_non_isole",
+      "libelle": "Bâti ancien non isolé (avant 1975)",
+      "u_mur": 2.0,
+      "u_toit": 2.5,
+      "u_sol": 1.2,
+      "u_fenetre": 4.5,
+      "g_fenetre": 0.75,
+      "ponts_thermiques_pct": 5,
+      "n50": 10,
+      "ventilation": "naturelle"
+    },
+    {
+      "id": "ancien_partiel",
+      "libelle": "Bâti ancien partiellement isolé (1975-1988 ou rénovation partielle)",
+      "u_mur": 1.0,
+      "u_toit": 0.5,
+      "u_sol": 0.9,
+      "u_fenetre": 2.9,
+      "g_fenetre": 0.65,
+      "ponts_thermiques_pct": 15,
+      "n50": 7,
+      "ventilation": "naturelle"
+    },
+    {
+      "id": "annees_1990",
+      "libelle": "Construction 1989-2005",
+      "u_mur": 0.5,
+      "u_toit": 0.3,
+      "u_sol": 0.45,
+      "u_fenetre": 2.6,
+      "g_fenetre": 0.62,
+      "ponts_thermiques_pct": 20,
+      "n50": 5,
+      "ventilation": "vmc_autoreglable"
+    },
+    {
+      "id": "rt2005",
+      "libelle": "RT 2005",
+      "u_mur": 0.36,
+      "u_toit": 0.2,
+      "u_sol": 0.27,
+      "u_fenetre": 1.8,
+      "g_fenetre": 0.6,
+      "ponts_thermiques_pct": 20,
+      "n50": 4,
+      "ventilation": "vmc_hygro_b"
+    },
+    {
+      "id": "rt2012",
+      "libelle": "RT 2012 / BBC",
+      "u_mur": 0.23,
+      "u_toit": 0.14,
+      "u_sol": 0.2,
+      "u_fenetre": 1.3,
+      "g_fenetre": 0.55,
+      "ponts_thermiques_pct": 15,
+      "n50": 2.5,
+      "ventilation": "vmc_hygro_b"
+    },
+    {
+      "id": "re2020",
+      "libelle": "RE 2020",
+      "u_mur": 0.18,
+      "u_toit": 0.12,
+      "u_sol": 0.16,
+      "u_fenetre": 1.1,
+      "g_fenetre": 0.5,
+      "ponts_thermiques_pct": 12,
+      "n50": 1.7,
+      "ventilation": "vmc_hygro_b"
+    },
+    {
+      "id": "passif",
+      "libelle": "Très haute performance (niveau passif)",
+      "u_mur": 0.12,
+      "u_toit": 0.1,
+      "u_sol": 0.12,
+      "u_fenetre": 0.8,
+      "g_fenetre": 0.5,
+      "ponts_thermiques_pct": 5,
+      "n50": 0.6,
+      "ventilation": "double_flux"
+    }
+  ],
+  "infiltration": {
+    "_source": "Infiltrations moyennes en conditions naturelles ≈ n50 / 20 (règle empirique de Sherman, Lawrence Berkeley National Laboratory, 1987 — publication scientifique publique).",
+    "diviseur_n50": 20
+  },
+  "ventilations": [
+    {
+      "id": "naturelle",
+      "libelle": "Naturelle (grilles, conduits)",
+      "renouvellement_vol_h": 0.6,
+      "rendement_recuperation": 0,
+      "_source": "Hypothèse : ordre de grandeur des débits de ventilation naturelle d'un logement."
+    },
+    {
+      "id": "vmc_autoreglable",
+      "libelle": "VMC simple flux autoréglable",
+      "renouvellement_vol_h": 0.5,
+      "rendement_recuperation": 0,
+      "_source": "Ordre de grandeur des débits d'extraction de l'arrêté du 24 mars 1982 (aération des logements, texte public) rapportés au volume d'un logement de 4 pièces."
+    },
+    {
+      "id": "vmc_hygro_b",
+      "libelle": "VMC simple flux hygroréglable",
+      "renouvellement_vol_h": 0.35,
+      "rendement_recuperation": 0,
+      "_source": "Hypothèse : débit moyen modulé par l'humidité, inférieur au débit autoréglable."
+    },
+    {
+      "id": "double_flux",
+      "libelle": "VMC double flux",
+      "renouvellement_vol_h": 0.5,
+      "rendement_recuperation": 0.8,
+      "_source": "Hypothèse : rendement d'échangeur courant ; modifiable."
+    }
+  ],
+  "inerties": {
+    "_source": "Capacité thermique effective par m² de plancher : masse participant au cycle journalier, estimée par la profondeur de pénétration d'une onde de 24 h dans les matériaux (≈ 10 cm de béton : ρ·c ≈ 2,2 MJ/(m³·K)) et la surface intérieure exposée. Valeurs propres à ce module (pas de tableau normatif).",
+    "classes": [
+      {
+        "id": "legere",
+        "libelle": "Légère (ossature bois, cloisons sèches)",
+        "capacite_kj_m2k": 70
+      },
+      {
+        "id": "moyenne",
+        "libelle": "Moyenne (maçonnerie isolée par l'intérieur)",
+        "capacite_kj_m2k": 130
+      },
+      {
+        "id": "lourde",
+        "libelle": "Lourde (maçonnerie lourde, dalles béton, isolation par l'extérieur)",
+        "capacite_kj_m2k": 220
+      }
+    ]
+  },
+  "modele_5r1c": {
+    "_source": "Coefficients du modèle horaire à 5 résistances et 1 capacité (méthode horaire simple décrite par l'ISO 13790 et reprise par l'ISO 52016-1, utilisée ici comme référence méthodologique). Implémentation libre de référence : RC_BuildingSimulator (ETH Zurich, licence MIT). h_is : échange convectif + radiatif entre l'air et les surfaces intérieures ; h_ms : échange entre la masse et les surfaces.",
+    "ratio_surfaces_interieures": 4.5,
+    "ratio_surface_masse": 2.5,
+    "h_is_w_m2k": 3.45,
+    "h_ms_w_m2k": 9.1
+  },
+  "apports_internes": {
+    "_source": "Occupant : dégagement de chaleur sensible d'un adulte au repos ≈ 70 W (sur environ 100 W de métabolisme, le reste étant latent) — physiologie, ordre de grandeur public. Appareils : hypothèse résidentielle, modifiable.",
+    "occupant_sensible_w": 70,
+    "appareils_w_m2": 3
+  },
+  "vitrages": {
+    "_source": "Hypothèses modifiables : part vitrée du tableau de fenêtre (cadre déduit), facteur d'ombrage (masques, rideaux) en hiver, facteur des protections solaires fermées (volets, stores) en été.",
+    "part_vitree_cadre": 0.7,
+    "facteur_ombrage_hiver": 0.8,
+    "facteur_protection_ete": 0.35
+  }
+}

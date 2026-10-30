@@ -1,0 +1,1836 @@
+/*
+  NOTES CSS (CORRIGÉES) :
+  - .modal-header : Fond passé en rouge (#de0000)
+  - .modal-header h4 : Couleur passée en blanc (#ffffff)
+  - .modal-header-btn, .modal-close : Couleur passée en blanc (#ffffff) et hover ajusté.
+  - .modal-container : width passé à 90vw (au lieu de 70vw) et max-width augmenté.
+  - #mes_projets : Centrage de TOUS les 'th' et 'td' du tableau.
+  - .modal-nav-buttons : 'justify-content' passé à 'center' (au lieu de 'space-between')
+                       et 'padding' vertical réduit (10px) pour réduire la hauteur.
+  - .modal-nav-buttons .ms-auto : Règle supprimée (n'est plus utile avec le centrage).
+*/
+
+/* Section repliable "Hypothèses climatiques" (onglet "Créer un nouveau projet") — pattern <details>/
+   <summary> déjà utilisé 5x dans calepinage.html (form-section-details), repris ici tel quel pour rester
+   cohérent avec le reste de l'app. */
+.form-section-details {
+  margin-bottom: 15px;
+  background: #fff;
+  padding: 0 10px;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.form-section-details summary {
+  border: none;
+  list-style: none;
+  outline: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 10px 0;
+  margin-bottom: 0;
+  font-weight: 600;
+}
+
+.form-section-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.form-section-details[open] summary .fa-chevron-down {
+  transform: rotate(180deg);
+}
+
+.form-section-details summary i {
+  transition: transform 0.3s ease;
+}
+
+/* Styles des onglets */
+#button_mes_projets {
+  color: #de0000;
+}
+
+#button_parametre_projet,
+#button_mode_et_normes {
+  color: #232323;
+}
+
+/* #mode_et_normes n'est plus un onglet : section de #parametre_projet (fusion des onglets),
+   affichée avec lui. */
+#parametre_projet,
+#climat_haiti,
+#climat_autres {
+  display: none;
+}
+
+/* ── Fusion des onglets « Informations projet & Données d'irradiation » ─────────────────────────── */
+/* Barre d'actions collante en bas du modal : « Sauvegarder le projet » reste accessible sans
+   redescendre tout le formulaire, désormais long d'un seul tenant. */
+#parametre_projet .modal-nav-buttons-sticky {
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  background: #ffffff;
+  padding: 12px 0;
+  margin-top: 24px;
+  box-shadow: 0 -6px 12px -8px rgba(15, 23, 42, 0.25);
+}
+
+/* Action principale mise en évidence. Même vert que le bouton « Système » de la palette de la carte
+   (#28a745, survol #218838 — cf. ButtonControl.js), demande explicite : une seule couleur pour les
+   actions principales de l'application. */
+#parametre_projet .modal-nav-buttons .btn-nav-save {
+  background-color: #28a745;
+  border-color: #28a745;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+#parametre_projet .modal-nav-buttons .btn-nav-save:hover,
+#parametre_projet .modal-nav-buttons .btn-nav-save:focus {
+  background-color: #218838;
+  border-color: #218838;
+  color: #ffffff;
+}
+
+#parametre_projet .modal-nav-buttons .btn-nav-save i {
+  margin-right: 6px;
+}
+
+/* CORRECTIF (bugs rapportés : bouton « Précédent » invisible, « Sauvegarder le projet » sur 2 lignes) :
+   la règle globale `.btn` d'Entete.css (width: 27.5 % ; margin-left/right: 10 % ; padding: 2 %) s'applique
+   aussi aux boutons de cette barre — 5 boutons × (27,5 % + 20 %) débordaient de la barre : « Précédent »
+   sortait à gauche, « Fermer » à droite, et chaque libellé passait sur 2 lignes. Boutons à leur largeur
+   naturelle, sur une ligne ; la barre passe à la ligne sur les petits écrans plutôt que de déborder. */
+#parametres-modal .modal-nav-buttons {
+  flex-wrap: wrap;
+  row-gap: 12px;
+  /* Espacement entre boutons (demande explicite : « trop serrés », 20 puis 36 px encore insuffisants). */
+  column-gap: 56px;
+}
+
+/* Cartes cliquables de l'onglet (Type d'études, Type de connexion, Typologie, Mode de valorisation,
+   Options pour projet hors ligne) : sélection signalée par le seul CONTOUR rouge (demande explicite :
+   le fond rouge, en plus du rouge du menu et des titres, était trop agressif ; essai en jaune doré
+   abandonné à la demande de l'utilisateur, retour au contour rouge). Surcharge le dégradé
+   rouge / noir et le texte blanc de menu_list.css (.project-type-card.selected, #id_projet_connecter
+   .selected, .option-card.selected) ; le contour est épaissi par une ombre pour ne pas décaler la carte. */
+#parametre_projet .project-type-card.selected,
+#parametre_projet .option-card.selected {
+  background: #ffffff;
+  color: var(--accent-color, #222222);
+  border-color: #de0000;
+  /* Contour fin (demande explicite : l'ancien anneau de 2 px, ajouté au bord de 1 px, faisait un trait
+     de 3 px trop épais). 1 px d'anneau suffit à rendre la sélection lisible sans alourdir la carte. */
+  box-shadow: 0 0 0 1px #de0000, 0 6px 16px rgba(222, 0, 0, 0.10);
+  transform: translateY(-3px);
+}
+
+#parametre_projet .project-type-card.selected .icon-container,
+#parametre_projet .option-card.selected .icon-container {
+  color: #de0000;
+  transform: none;
+}
+
+#parametre_projet .project-type-card.selected h5,
+#parametre_projet .option-card.selected h5 {
+  color: var(--accent-color, #222222);
+}
+
+#parametre_projet .project-type-card.selected p,
+#parametre_projet .option-card.selected p {
+  color: #6c757d;
+}
+
+#parametres-modal .modal-nav-buttons .btn {
+  width: auto;
+  margin: 0;
+  padding: 9px 22px;
+  flex: 0 0 auto;
+  white-space: nowrap;
+  /* Même règle .btn d'Entete.css : son dégradé rouge (background-image) recouvrait la couleur propre
+     de chaque bouton — « Sauvegarder le projet » (vert) et « Précédent » (gris) s'affichaient rouges. */
+  background-image: none;
+}
+
+/* Titres de section de l'onglet : soulignement rouge uni (au lieu du dégradé), identique pour toutes les
+   sections, y compris « Base de données d'irradiation » et « Personnalisation du rapport ». */
+#parametre_projet .step h4::after {
+  background: #de0000;
+}
+
+/* « Personnalisation du rapport » : section optionnelle repliée par défaut. */
+#company-settings-module .personnalisation-toggle-wrap {
+  display: flex;
+  justify-content: center;
+  margin-top: -1.5rem;
+}
+
+#company-settings-module .personnalisation-toggle,
+#parametre_projet .personnalisation-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  border: 1px solid #de0000;
+  color: #de0000;
+  border-radius: 999px;
+  padding: 6px 18px;
+  font-weight: 600;
+  cursor: pointer;
+  width: auto;
+  margin: 0;
+}
+
+#company-settings-module .personnalisation-toggle:hover,
+#company-settings-module .personnalisation-toggle:focus-visible,
+#parametre_projet .personnalisation-toggle:hover,
+#parametre_projet .personnalisation-toggle:focus-visible {
+  background: #fff1f1;
+}
+
+#company-settings-module .personnalisation-toggle i,
+#parametre_projet .personnalisation-toggle i {
+  transition: transform 0.2s ease;
+}
+
+#company-settings-module .personnalisation-toggle.ouvert i,
+#parametre_projet .personnalisation-toggle.ouvert i {
+  transform: rotate(180deg);
+}
+
+#company-settings-module .personnalisation-toggle-optionnel,
+#parametre_projet .personnalisation-toggle-optionnel {
+  color: #6b7280;
+  font-weight: 400;
+}
+
+#company-settings-module #company-settings-content {
+  margin-top: 1.5rem;
+}
+
+/* Tout le contenu de l'onglet reste accessible quelle que soit la taille de l'écran : sous 700 px, le
+   modal (largeur minimale de 600 px, débordement masqué) occupait plus que l'écran et coupait son bord. */
+/* Groupes de boutons du formulaire (ex. zones climatiques) : passage à la ligne plutôt que débordement. */
+#parametre_projet .btn-group {
+  flex-wrap: wrap;
+}
+
+@media (max-width: 700px) {
+  /* La superposition garde 20 px de marge intérieure : sur petit écran, le modal prend tout l'écran. */
+  #parametres-modal {
+    padding: 0 !important;
+  }
+
+  #parametres-modal .modal-container {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    margin: 0;
+    border-radius: 0;
+  }
+
+  #company-settings-module {
+    padding: 1.5rem 1rem !important;
+  }
+}
+
+/* Correction de la capitalisation des titres de zone */
+#climat_france h6,
+#climat_haiti h6,
+#climat_autres h6 {
+  text-transform: none;
+  /* Annule la transformation en majuscules */
+}
+
+
+/* Alignement du bouton Suivant sur l'onglet "Mes Projets" */
+#mes_projets .modal-nav-buttons {
+  justify-content: space-between;
+  /* Aligne les enfants aux extrémités */
+}
+
+/* Styles onglet "Mes Projets" */
+.bouton_mes_projets i {
+  cursor: pointer;
+  margin: 0 4px;
+  /* Ajouté pour l'espacement */
+  transition: transform 0.2s;
+}
+
+.bouton_mes_projets i:hover {
+  transform: scale(1.1);
+}
+
+
+
+/* CORRIGÉ : Centrer tout le contenu du tableau */
+#mes_projets table th,
+#mes_projets table td {
+  text-align: center;
+  vertical-align: middle;
+  /* Assure un bon alignement vertical */
+}
+
+/* Lignes de projets un peu plus hautes (lisibilité) ; le mode « Auto » de la pagination
+   mesure la hauteur réelle des lignes, il s'adapte seul. */
+#mes_projets table tbody td {
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
+
+/* CORRECTION : Ajout des largeurs de colonnes spécifiques (Tâche 2) */
+#mes_projets table th:nth-child(1),
+#mes_projets table td:nth-child(1) {
+  width: 5%;
+}
+
+#mes_projets table th:nth-child(2),
+#mes_projets table td:nth-child(2) {
+  width: 18%;
+}
+
+#mes_projets table th:nth-child(3),
+#mes_projets table td:nth-child(3) {
+  width: 15%;
+}
+
+/* Adresse */
+#mes_projets table th:nth-child(4),
+#mes_projets table td:nth-child(4) {
+  width: 20%;
+}
+
+/* Date */
+#mes_projets table th:nth-child(5),
+#mes_projets table td:nth-child(5) {
+  width: 10%;
+}
+
+/* Créé(e) par */
+#mes_projets table th:nth-child(6),
+#mes_projets table td:nth-child(6) {
+  width: 12%;
+}
+
+/* Type d’études */
+#mes_projets table th:nth-child(7),
+#mes_projets table td:nth-child(7) {
+  width: 15%;
+}
+
+/* Actions */
+
+
+/* Colonne Actions d'édition (conserver la largeur min) */
+#mes_projets th:last-child,
+#mes_projets td:last-child {
+  min-width: 140px;
+}
+
+#mes_projets table th span {
+  color: #232323;
+}
+
+/* Styles onglet "Paramètres Projets" (Boutons de zone) */
+.btn_reset_parametre {
+  color: #333;
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  background-color: #f8f9fa;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  font-size: 0.9em;
+  line-height: 1.3;
+  margin: 2px;
+  border-radius: 6px;
+  cursor: pointer;
+  /* Added cursor */
+  text-transform: none;
+  /* Ensure no unwanted capitalization */
+}
+
+.btn_reset_parametre:hover {
+  background-color: #e2e6ea;
+  border-color: #adb5bd;
+  color: #000;
+}
+
+.btn_reset_parametre_js {
+  background-color: #de0000;
+  border-color: #de0000;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 6px;
+}
+
+/* Amélioration pour les boutons sismiques (multi-ligne) */
+.zone_sismique .btn-group,
+.zone_de_vent .btn-group {
+  flex-wrap: wrap;
+}
+
+.zone_sismique .btn_reset_parametre {
+  min-width: 100px;
+}
+
+.zone_de_vent .btn_reset_parametre {
+  font-size: 0.85em;
+}
+
+.form-label {
+  text-transform: inherit;
+  font-size: 14px;
+}
+
+/* --- CORRIGÉ : Styles Boutons de Navigation (Bas de page) --- */
+.modal-nav-buttons {
+  display: flex;
+  justify-content: center;
+  /* CORRIGÉ : Centrage des boutons */
+  align-items: center;
+  gap: 10px;
+  padding: 10px 20px;
+  /* CORRIGÉ : Padding vertical réduit */
+  border-top: 1px solid #e9ecef;
+  /* Ligne de séparation */
+  margin-top: 20px;
+  /* Espace au dessus */
+  background-color: #f8f9fa;
+  position: sticky;
+  /* Pour le garder visible en bas si contenu long */
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 5;
+  /* Au dessus du contenu scrollable mais sous le header */
+}
+
+/* Style commun pour les boutons de navigation rouges */
+.modal-nav-buttons .btn-nav {
+  background-color: #de0000;
+  border: 1px solid #de0000;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-transform: inherit;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.modal-nav-buttons .btn-nav:hover {
+  background-color: #b00000;
+  border-color: #a00000;
+  color: #ffffff;
+}
+
+/* Style pour le bouton Haut (maintenant plein) */
+.modal-nav-buttons .btn-nav-outline {
+  background-color: #de0000;
+  /* MODIFIÉ */
+  border: 1px solid #de0000;
+  color: #ffffff;
+  /* MODIFIÉ */
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-transform: inherit;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.modal-nav-buttons .btn-nav-outline:hover {
+  background-color: #b00000;
+  /* MODIFIÉ : Survol rouge foncé */
+  border-color: #a00000;
+  /* MODIFIÉ : Survol rouge foncé */
+  color: #ffffff;
+}
+
+/* Cas spécifiques (bouton Précédent en gris) */
+.modal-nav-buttons #goto_mes_projets_from_params,
+.modal-nav-buttons #goto_params_from_mode {
+  background-color: #6c757d;
+  border-color: #de0000;
+}
+
+.modal-nav-buttons #goto_mes_projets_from_params:hover,
+.modal-nav-buttons #goto_params_from_mode:hover {
+  background-color: #5a6268;
+  border-color: #a00000;
+}
+
+/* Rouge adouci pour "Précédent"/"Suivant" dans l'onglet "Créer un nouveau projet" uniquement (les
+   mêmes boutons ailleurs, ex. #goto_params_from_mode dans l'onglet "Données d'irradiation", gardent
+   le rouge d'origine) : surcharge scopée par #parametre_projet, plus spécifique que la règle
+   partagée ci-dessus. */
+#parametre_projet .modal-nav-buttons #goto_mes_projets_from_params {
+  border-color: #e2726d;
+}
+
+#parametre_projet .modal-nav-buttons #goto_mes_projets_from_params:hover {
+  border-color: #c85652;
+}
+
+/* CORRIGÉ : Règle .ms-auto n'est plus nécessaire */
+/*
+.modal-nav-buttons .ms-auto {
+    margin-left: auto !important;
+}
+*/
+
+/* Bandeau de guidage en fin d'onglet "Créer un nouveau projet" : met en avant
+   le passage vers "Données d'irradiation" à la place du bouton Sauvegarder retiré. */
+.next-step-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 24px;
+  padding: 14px 18px;
+  background-color: #fff4f4;
+  border: 1px solid #f3c2c2;
+  border-left: 4px solid #de0000;
+  border-radius: 6px;
+}
+
+.next-step-banner-text {
+  margin: 0;
+  font-weight: 500;
+  color: #5a1a1a;
+}
+
+.next-step-banner-text i {
+  color: #de0000;
+  margin-right: 6px;
+}
+
+.next-step-banner .btn-nav {
+  /* Rouge adouci (par rapport au rouge de marque #de0000) : ce bouton concentre l'attention en fin
+     d'onglet "Créer un nouveau projet", un rouge moins saturé le rend visible sans être agressif. */
+  background-color: #e2726d;
+  border: 1px solid #e2726d;
+  color: #ffffff;
+  padding: 8px 16px;
+  border-radius: 6px;
+  text-transform: inherit;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.next-step-banner .btn-nav:hover {
+  background-color: #c85652;
+  border-color: #c85652;
+  color: #ffffff;
+}
+
+.modal-nav-buttons .btn-nav-cta,
+.next-step-banner .btn-nav-cta {
+  padding: 10px 22px;
+  font-size: 1rem;
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(226, 114, 109, 0.35);
+}
+
+.next-step-banner .btn-nav-cta i {
+  margin-left: 6px;
+}
+
+/* Rangée d'actions de l'onglet "Mes projets" ("Mes projets" / "Créer un [nouveau] projet" /
+   "Ouvrir mon projet" / recherche, cf. parametre.html + addInfoMessage() dans
+   parametreProjetFormManager.js). Classe UNIQUE et volontairement indépendante de Bootstrap .btn et
+   des anciennes classes .btn-nav/.btn-nav-cta (chacune ayant sa propre cascade/spécificité, source
+   récurrente d'espacements incohérents entre ces 3 boutons) : un seul point de vérité pour la taille,
+   garanti de ne jamais être court-circuité par une autre règle .btn-* ailleurs dans l'app. */
+.mp-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+  color: #ffffff;
+}
+
+.mp-toolbar-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.mp-toolbar-btn-grey {
+  background-color: #6c757d;
+  border: 1px solid #6c757d;
+}
+
+.mp-toolbar-btn-grey:hover {
+  background-color: #5a6268;
+  border-color: #5a6268;
+}
+
+.mp-toolbar-btn-yellow {
+  background-color: #ffc107;
+  border: 1px solid #ffc107;
+}
+
+.mp-toolbar-btn-yellow:hover {
+  background-color: #e0a800;
+  border-color: #e0a800;
+}
+
+.mp-toolbar-btn-red {
+  background-color: #de0000;
+  border: 1px solid #de0000;
+}
+
+.mp-toolbar-btn-red:hover {
+  background-color: #b00000;
+  border-color: #a00000;
+}
+
+/* Style Modal Principal (Drag, Resize, Ratio) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 1999;
+}
+
+/* Message "Obligation de projet actif" (cf. ParametresProjet.js closeMainModal / DOMContentLoaded)
+   Affiché au centre du modal principal, au-dessus de .modal-container, tant qu'aucun projet
+   n'est actif — remplace les alert() natifs par un rendu cohérent avec le reste de l'UI. */
+.active-project-required-message {
+  display: none;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) translateY(-8px);
+  z-index: 2100;
+  align-items: center;
+  gap: 12px;
+  max-width: 420px;
+  padding: 18px 26px;
+  background: #fff8e6;
+  border: 1px solid #f5c451;
+  border-left: 5px solid #e6a817;
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28);
+  color: #6b4e00;
+  font-size: 0.95rem;
+  font-weight: 600;
+  text-align: left;
+  line-height: 1.35;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.active-project-required-message.show {
+  display: flex;
+  opacity: 1;
+  transform: translate(-50%, -50%) translateY(0);
+}
+
+.active-project-required-message i {
+  font-size: 1.5rem;
+  color: #e6a817;
+  flex-shrink: 0;
+}
+
+.modal-container {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  /* CORRIGÉ : Taille augmentée à 90% */
+  width: 90vw;
+  height: calc(90vw * 0.8);
+  /* Maintient le ratio de 0.8 */
+  max-width: 1700px;
+  /* Augmenté (anciennement 1200px) */
+  min-width: 600px;
+  min-height: 480px;
+  max-height: 90vh;
+
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* Changed from absolute for centering */
+  overflow: hidden;
+  /* Important for resize handle */
+}
+
+.modal-header {
+  background: linear-gradient(135deg, var(--dark-gray) 0%, #2a2a2a 100%);
+  color: white;
+  height: 60px;
+  border-radius: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 0 15px;
+  cursor: move;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+/* CORRECTION : Aligner les boutons du header (Tâche 1.2) */
+.modal-header>div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* Espace entre les boutons */
+}
+
+.modal-header h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-header h4 i {
+  color: var(--secondary-color);
+  font-size: 20px;
+}
+
+
+.modal-header-btn,
+.modal-close {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.modal-header-btn:hover,
+.modal-close:hover {
+  background-color: rgba(222, 0, 0, 0.2);
+  color: var(--secondary-color);
+  transform: scale(1.1);
+}
+
+.modal-body {
+  padding: 0;
+  /* Padding is now within the tab content containers */
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex-grow: 1;
+  /* Takes remaining height */
+}
+
+/* CORRECTION : Rendre le menu des onglets collant (Tâche 4) */
+.modal-body>.mt-2>.nav-tabs {
+  position: sticky;
+  top: 0;
+  background-color: #ffffff;
+  /* Fond blanc pour masquer le contenu qui défile en dessous */
+  z-index: 10;
+  /* S'assurer qu'il est au-dessus du contenu */
+  /* border-bottom: 1px solid #dee2e6;  (Déjà géré par Bootstrap) */
+}
+
+
+/* "Mes projets" : chaîne flex jusqu'à #mes_projets pour que la barre de pagination
+   (#projects-list-controls, dernier enfant) reste en bas de la fenêtre et que le tableau
+   dispose de toute la hauteur. Sticky : reste visible quand la liste défile (25+ par page). */
+#modal-body {
+  display: flex;
+  flex-direction: column;
+}
+
+#modal-body>.mt-2,
+#modal-body>.mt-2>.px-2 {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#mes_projets {
+  flex: 1 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+#projects-list-controls {
+  margin-top: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  gap: 12px;
+  padding: 14px 0;
+  min-height: 68px;
+  background: #fff;
+  border-top: 1px solid #dee2e6;
+  /* 3 colonnes : compteur/filtres | « Suivant » centré dans la page | pagination. Les deux colonnes
+     latérales de même largeur gardent le bouton au centre quel que soit leur contenu. */
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+}
+
+#projects-list-controls > :first-child {
+  justify-self: start;
+}
+
+#projects-list-controls > :last-child {
+  justify-self: end;
+}
+
+/* Pied de page de « Mes projets » plus haut (demande explicite) : boutons, listes et numéros de page
+   plus hauts. Les boutons portent leur padding en ligne (cf. renderProjectListControls,
+   parametreProjetFormManager.js), d'où !important. */
+#projects-list-controls .btn {
+  padding-top: 9px !important;
+  padding-bottom: 9px !important;
+  font-size: 0.95rem;
+}
+
+#projects-list-controls .form-select {
+  min-height: 40px;
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
+#projects-list-controls .page-link {
+  padding: 8px 12px;
+}
+
+.modal-body .px-2 {
+  /* Add padding inside */
+  padding-left: 1.5rem !important;
+  /* Bootstrap equivalent px-4 or more */
+  padding-right: 1.5rem !important;
+}
+
+
+.modal-resize-handle {
+  position: absolute;
+  bottom: 5px;
+  right: 5px;
+  width: 15px;
+  height: 15px;
+  cursor: se-resize;
+  background: transparent;
+  border-bottom: 3px solid #6c757d;
+  /* Thicker for better grab */
+  border-right: 3px solid #6c757d;
+  opacity: 0.7;
+  z-index: 10;
+}
+
+.modal-resize-handle:hover {
+  opacity: 1;
+}
+
+
+/* Styles Sous-Modals (Indice, Reglement...) */
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: none;
+  justify-content: center;
+  align-items: center;
+  z-index: 2000;
+  backdrop-filter: blur(5px);
+  text-align: left;
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background-color: white;
+  padding: 25px 30px;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  width: 90%;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  animation: slide-down 0.4s ease-out;
+}
+
+.modal-headerr {
+  background: linear-gradient(135deg, var(--dark-gray) 0%, #2a2a2a 100%);
+  color: white;
+  height: 60px;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  padding: 0 15px;
+  margin: 0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.modal-headerr h4 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.modal-headerr h4 i {
+  color: var(--secondary-color);
+  font-size: 20px;
+}
+
+.modal-footerr {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #ecf0f1;
+}
+
+.modal-footer-information {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #ecf0f1;
+}
+
+.close-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  width: 35px;
+  height: 35px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-button:hover {
+  background-color: rgba(222, 0, 0, 0.2);
+  color: var(--secondary-color);
+  transform: scale(1.1);
+}
+
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+}
+
+th,
+td {
+  border: 1px solid #bdc3c7;
+  padding: 12px;
+  text-align: left;
+  /* Défaut à gauche */
+}
+
+th {
+  background-color: #ecf0f1;
+  font-weight: 600;
+}
+
+tr:nth-child(even) {
+  background-color: #f8f9f9;
+}
+
+.text_counter {
+  font-size: 14px;
+}
+
+/* Styles Modal "Indice Projet" (Bouton Supprimer) */
+.btn-delete-indice {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1em;
+  padding: 5px;
+  transition: transform 0.2s, color 0.2s;
+  /* Added color transition */
+  color: #dc3545;
+  /* Initial danger color */
+}
+
+.btn-delete-indice:hover {
+  transform: scale(1.1);
+  color: #a71d2a;
+  /* Darker red on hover */
+}
+
+#indice-table th:last-child,
+#indice-table td:last-child {
+  text-align: center;
+  width: 80px;
+}
+
+
+/* Styles pour la carte et les outils */
+#map2 {
+  position: relative;
+  min-height: 320px;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  border-radius: 8px;
+}
+
+.leaflet-container {
+  z-index: 1 !important;
+}
+
+.map-toolbar-vertical {
+  position: absolute;
+  bottom: 10px;
+  left: 10px;
+  z-index: 1000;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  opacity: 0;
+  visibility: hidden;
+  transition: all 0.3s ease;
+}
+
+.map-toolbar-vertical.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.mapping-status {
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+}
+
+.mapping-status.active {
+  background: #d4edda;
+  color: #155724;
+}
+
+.mapping-status.inactive {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+
+.toolbar-buttons-vertical {
+  display: flex;
+  flex-direction: column;
+  padding: 5px;
+}
+
+.toolbar-buttons-vertical .tool-btn {
+  margin: 3px 0;
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: #f8f9fa;
+  border-radius: 4px;
+  color: #495057;
+  cursor: pointer;
+}
+
+.toolbar-buttons-vertical .tool-btn:hover {
+  background: #e9ecef;
+  color: #de0000;
+}
+
+.toolbar-buttons-vertical .tool-btn.active {
+  background: #de0000;
+  color: white;
+}
+
+.toolbar-divider {
+  height: 1px;
+  background: #dee2e6;
+  margin: 5px 0;
+}
+
+/* Suggestions d'adresse */
+.suggestions-dropdown {
+  position: absolute;
+  width: calc(100% - 40px);
+  /* Ajusté pour mieux s'aligner */
+  max-height: 200px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid #ced4da;
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+  z-index: 1055;
+  display: none;
+  left: 20px;
+  /* Alignement avec padding */
+}
+
+
+.suggestions-dropdown .address-suggestion {
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.suggestions-dropdown .address-suggestion:hover {
+  background-color: #f8f9fa;
+}
+
+.suggestions-dropdown .suggestion-main {
+  font-weight: 500;
+}
+
+.suggestions-dropdown .suggestion-secondary {
+  font-size: 0.8em;
+  color: #6c757d;
+}
+
+/* Affichage des coordonnées */
+.coordinates-display {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+/* Responsive */
+@media (max-width: 992px) {
+  .map-toolbar-vertical {
+    top: auto;
+    bottom: 50px;
+    left: 10px;
+    flex-direction: row;
+  }
+
+  .toolbar-buttons-vertical {
+    flex-direction: row;
+  }
+
+  .toolbar-divider {
+    width: 1px;
+    height: auto;
+    margin: 0 5px;
+  }
+}
+
+.modal .map-container {
+  min-height: 300px;
+  transition: height 0.3s ease;
+}
+
+/* Style pour la sélection des cards */
+.project-type-card.selected,
+.option-card.selected,
+.etude-option.selected,
+.mode-de-tension.selected {
+  border-color: #de0000;
+  box-shadow: 0 0 0 1px rgba(222, 0, 0, 0.25);
+  background-color: #fdeaea;
+}
+
+/* Style général pour les cards */
+.project-type-card,
+.option-card {
+  border: 1px solid #ccc;
+  padding: 20px 15px; /* Augmentation du padding vertical pour plus d'espace */
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  height: 100%;
+  /* Ensure cards in the same row have same height */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  /* Center content vertically */
+}
+
+.project-type-card:hover,
+.option-card:hover {
+  border-color: #adb5bd;
+  background-color: #f8f9fa;
+}
+
+.project-type-card h5,
+.option-card h5 {
+  margin-bottom: 5px;
+  font-size: 1rem;
+}
+
+.project-type-card p,
+.option-card p {
+  font-size: 0.85rem;
+  color: #6c757d;
+  margin-bottom: 0;
+}
+
+.icon-container {
+  font-size: 1.5rem;
+  margin-bottom: 10px;
+  color: #de0000;
+}
+
+/* ============================================
+   STYLES POUR LE PROJET SÉLECTIONNÉ
+   ============================================ */
+
+/* Ligne du projet sélectionné */
+.projet-selected {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.08) 0%, rgba(40, 167, 69, 0.12) 100%) !important;
+  border-left: 4px solid #28a745 !important;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.15) !important;
+  font-weight: 500 !important;
+}
+
+/* Animation au survol de la ligne sélectionnée */
+.projet-selected:hover {
+  background: linear-gradient(135deg, rgba(40, 167, 69, 0.12) 0%, rgba(40, 167, 69, 0.16) 100%) !important;
+  transform: translateX(2px);
+  transition: all 0.3s ease;
+}
+
+/* Cellules du projet sélectionné */
+.projet-selected td {
+  color: #155724 !important;
+}
+
+/* Case « Actif » (bug rapporté : case cochée sur un projet, coche verte sur un autre) : la case du
+   projet OUVERT est verte ; une case cochée sur un autre projet est une simple sélection en attente
+   d'« Ouvrir mon projet », signalée en orange pour ne jamais être confondue avec le projet ouvert. */
+.projet-selected .project-active-checkbox {
+  accent-color: #28a745;
+}
+
+.projet-a-ouvrir {
+  background: rgba(245, 158, 11, 0.10) !important;
+  border-left: 4px solid #f59e0b !important;
+}
+
+.projet-a-ouvrir .project-active-checkbox {
+  accent-color: #f59e0b;
+}
+
+.projet-a-ouvrir-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Message d'information pour guider l'utilisateur */
+#projet-info-message {
+  animation: slideDown 0.4s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Add jjD pour bouton Options connexions réseaux sociaux */
+
+.d-none {
+  display: none !important;
+}
+
+/* Add jjD pour bouton Options connexions réseaux sociaux */
+
+/* --- Harmonisation finale Options Réseau --- */
+#options_reseau .icon-container {
+  font-size: 1.8rem !important;
+  /* Taille augmentée pour être bien visible */
+  margin-bottom: 10px !important;
+}
+
+/* 2. Alignement de la taille de police sur "Valorisation" (1rem) + Gras */
+#options_reseau .project-type-card h5 {
+  font-size: 1rem !important;
+  /* Même taille que Valorisation */
+  font-weight: bold !important;
+  /* En gras comme demandé */
+  line-height: 1.2 !important;
+  margin: 0 !important;
+  padding: 0 5px !important;
+}
+
+/* 3. Ajustement de la hauteur de la carte pour accueillir le texte plus grand */
+#options_reseau .project-type-card {
+  height: 160px !important;
+  /* Augmenté à 160px pour éviter que le texte gras ne dépasse */
+  min-height: 160px !important;
+  padding: 15px !important;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  max-width: 450px !important;
+  /* Ajustez cette valeur (ex: 220px, 280px) */
+  margin: 0 auto !important;
+  /* INDISPENSABLE : pour que la carte reste centrée dans sa colonne */
+}
+
+/* 4. Maintien de la disposition 3x3 */
+#options_reseau .col-md-4 {
+  flex: 0 0 33.33% !important;
+  max-width: 33.33% !important;
+  padding: 10px !important;
+  /* cette ligne de code gère l'espacement horizontale entre les cartes*/
+}
+
+/* Ajoutez ceci pour regrouper les cartes au centre */
+#options_reseau .row.justify-content-center {
+  max-width: 1400px !important;
+  /* Gestion de la largeur des cartes */
+  margin: 0 auto !important;
+}
+
+/* ==========================================================================
+   SECTION PERSONNALISATION DE L'ENTREPRISE (Corrections)
+   ========================================================================== */
+
+/* 1 & 4. Augmenter la marge latérale et mettre une grille/cadre */
+#company-settings-module {
+  background-color: #ffffff;
+  padding: 3rem 6rem !important;
+  /* Marge gauche et droite considérablement augmentées */
+  border-radius: 12px !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05) !important;
+  border: 2px solid #dee2e6 !important;
+  /* Grille/Bordure autour du contenu */
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+/* ==========================================================================
+   STYLES POUR LA CASE A COCHER DE COUPLAGE IRVE
+   ========================================================================== */
+
+.couplage-irve-group {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background-color: #f8f9fa;
+}
+
+.couplage-irve-group .form-check-input {
+  width: 1.5em;
+  height: 1.5em;
+  margin-top: 0;
+  cursor: pointer;
+}
+
+.couplage-irve-group .form-check-input:checked {
+  background-color: #de0000;
+  border-color: #de0000;
+}
+
+.couplage-irve-group .form-check-label {
+  font-weight: 500;
+  cursor: pointer;
+}
+
+
+
+/* Sécurité responsive pour ne pas casser l'affichage sur mobile */
+@media (max-width: 768px) {
+  #company-settings-module {
+    padding: 2rem 1.5rem !important;
+  }
+}
+
+/* 2. Arrondir les angles des champs de saisie de tous les côtés (pilule) */
+#company-settings-module .modern-input {
+  border-radius: 50px !important;
+  /* Arrondi complet gauche et droite */
+  padding: 0.6rem 1.2rem !important;
+  border: 1px solid #ced4da !important;
+  background-color: #fcfcfc !important;
+  width: 100%;
+}
+
+/* 3. Réduire la taille de l'affichage du logo */
+#company-settings-module #logo-preview-container {
+  margin-top: 15px;
+  text-align: center;
+  width: 100%;
+}
+
+#company-settings-module #logo-preview {
+  max-width: 80px !important;
+  /* Taille de l'aperçu du logo ajustée (très petite) */
+  max-height: 80px !important;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+/* ==========================================================================
+   6. CORRECTION Z-INDEX MODALES (Normes & Indice)
+   ========================================================================== */
+/* --- Correction Z-index pour superposition --- */
+
+/* 1. Le fond noir (backdrop) des modales secondaires doit être au-dessus de tout */
+.modal-backdrop {
+  z-index: 10000 !important;
+  /* Augmenté pour dépasser les 1999 de la modale principale */
+  backdrop-filter: blur(5px);
+}
+
+/* 2. Le contenu des modales secondaires (Indice, Reglement, etc.) */
+#indice-modal,
+#reglement-modal,
+#information-modal,
+.swal2-container {
+  z-index: 10001 !important;
+}
+
+/* S'assure que si la norme utilise une liste déroulante (type Select2), elle s'affiche par-dessus */
+.select2-container--open {
+  z-index: 106000 !important;
+}
+
+/* 3. S'assurer que la modale principale reste en dessous lors de l'ouverture d'une autre */
+#parametres-modal {
+  z-index: 1999 !important;
+  /* NOUVEAU (demande explicite) : supprime le voile sombre de CE modal spécifiquement (pas de
+     .modal-overlay globalement, classe réutilisée par d'autres modales sans rapport, ex.
+     index_autoconso.html), pour laisser voir le menu horizontal derrière — notamment son étape
+     mise en évidence en jaune doré (cf. window.setActiveMainNavStep, menu_list.html). */
+  background-color: transparent !important;
+  /* CORRECTIF (demande explicite : "la couleur jaune est floutée") : une SECONDE règle .modal-
+     overlay, distincte de celle-ci, existe dans menu_list.css (chargé sur cette même page) et
+     applique `backdrop-filter: blur(2px)` — background-color ci-dessus ne neutralisait pas ce
+     flou. Même scope (#parametres-modal uniquement) pour la même raison que ci-dessus. */
+  backdrop-filter: none !important;
+}
+
+/* ==========================================================================
+   OUTIL PV / TMY (onglet "Mode et normes") - Onglets, grille & titres
+   ========================================================================== */
+
+#mode_et_normes .tabs {
+  display: flex;
+  gap: 6px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 6px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+#mode_et_normes .tab-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #6c757d;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+#mode_et_normes .tab-btn:hover:not(.active) {
+  background: #eef0f2;
+  color: #232323;
+}
+
+#mode_et_normes .tab-btn.active {
+  background: #de0000;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(222, 0, 0, 0.3);
+}
+
+#mode_et_normes .panel {
+  display: none;
+}
+
+#mode_et_normes .panel.active {
+  display: block;
+}
+
+/* ==========================================================================
+   Choix de la base de données d'irradiation (PVGIS / Meteonorm / Solargis)
+   ========================================================================== */
+
+#irradiation-db-tabs {
+  display: flex;
+  gap: 6px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  padding: 6px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+#irradiation-db-tabs .tab-btn {
+  flex: 1;
+  padding: 10px 14px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: #6c757d;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: default;
+}
+
+#irradiation-db-tabs .tab-btn.active {
+  background: #de0000;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(222, 0, 0, 0.3);
+}
+
+.irradiation-db-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.irradiation-db-option {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background-color: #f8f9fa;
+  margin: 0;
+}
+
+.irradiation-db-option .form-check-input {
+  width: 1.3em;
+  height: 1.3em;
+  margin-top: 0;
+  cursor: pointer;
+}
+
+.irradiation-db-option .form-check-input:checked {
+  background-color: #de0000;
+  border-color: #de0000;
+}
+
+.irradiation-db-option:has(.form-check-input:checked) {
+  border-color: #de0000;
+  background-color: #fdeaea;
+}
+
+.irradiation-db-option .form-check-label {
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.irradiation-db-option.disabled {
+  opacity: 0.6;
+}
+
+.irradiation-db-option.disabled .form-check-input,
+.irradiation-db-option.disabled .form-check-label {
+  cursor: not-allowed;
+}
+
+.irradiation-db-option.disabled small {
+  display: block;
+  font-weight: 400;
+  color: #6c757d;
+}
+
+/* Cartes */
+#mode_et_normes .card {
+  background: #ffffff;
+  border: 1px solid #e9ecef;
+  border-radius: 10px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  padding: 22px 24px;
+  margin-bottom: 18px;
+}
+
+/* Titres de section : accent latéral rouge + majuscules + espacement */
+#mode_et_normes .card-title {
+  position: relative;
+  display: flex;
+  align-items: center;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #232323;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 0 12px 16px;
+  margin-bottom: 18px;
+  border-bottom: 2px solid #f1f1f1;
+}
+
+#mode_et_normes .card-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 2px;
+  bottom: 14px;
+  width: 4px;
+  border-radius: 4px;
+  background: #de0000;
+}
+
+/* Grille 12 colonnes : les champs sont groupés 2 par 2 (voir .col-6 dans le HTML) */
+#mode_et_normes .grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 16px 24px;
+}
+
+#mode_et_normes .col-2 {
+  grid-column: span 2;
+}
+
+#mode_et_normes .col-3 {
+  grid-column: span 3;
+}
+
+#mode_et_normes .col-4 {
+  grid-column: span 4;
+}
+
+#mode_et_normes .col-6 {
+  grid-column: span 6;
+}
+
+#mode_et_normes .col-8 {
+  grid-column: span 8;
+}
+
+#mode_et_normes .col-9 {
+  grid-column: span 9;
+}
+
+#mode_et_normes .col-12 {
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 768px) {
+
+  #mode_et_normes .col-2,
+  #mode_et_normes .col-3,
+  #mode_et_normes .col-4,
+  #mode_et_normes .col-6,
+  #mode_et_normes .col-8,
+  #mode_et_normes .col-9 {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Groupes label + champ */
+#mode_et_normes .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#mode_et_normes .form-group label {
+  font-size: 0.85em;
+  font-weight: 600;
+  color: #495057;
+}
+
+#mode_et_normes .grid input,
+#mode_et_normes .grid select {
+  width: 100%;
+  padding: 9px 12px;
+  border-radius: 7px;
+  border: 1.5px solid #ced4da;
+  background: #fff;
+  color: #232323;
+  font-size: 0.94em;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+#mode_et_normes .grid input:focus,
+#mode_et_normes .grid select:focus {
+  outline: none;
+  border-color: #de0000;
+  box-shadow: 0 0 0 3px rgba(222, 0, 0, 0.12);
+}
+
+/* Actions, statut, note, boîte URL, barre de progression */
+#mode_et_normes .actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+#mode_et_normes .status {
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+#mode_et_normes .note {
+  color: #6c757d;
+  font-size: 0.86em;
+  line-height: 1.6;
+}
+
+#mode_et_normes .urlbox {
+  margin-top: 12px;
+  background: #f8f9fa;
+  border: 1.5px solid #ced4da;
+  border-radius: 7px;
+  padding: 10px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.83em;
+  color: #334155;
+  word-break: break-all;
+  min-height: 36px;
+}
+
+#mode_et_normes .progress-wrap {
+  display: none;
+  margin-top: 12px;
+}
+
+#mode_et_normes .progress-bar {
+  height: 7px;
+  background: #e9ecef;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+#mode_et_normes .progress-bar-inner {
+  height: 100%;
+  background: #de0000;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+  width: 0%;
+}
+
+#mode_et_normes .progress-label {
+  font-size: 0.82em;
+  color: #6c757d;
+  margin-top: 4px;
+}
+
+/* Correction alignement : titre "Base de données d'irradiation" au-dessus,
+   puis les 3 options (PVGIS / Meteonorm / Solargis) alignées à l'horizontale */
+#mode_et_normes .tabs-header {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+#mode_et_normes .irradiation-db-group {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+/* ajout script css pour section Personalisation entreprise
+
+/* Champ visé depuis la liste « Il reste N points à corriger » (cf. parametreProjetFormManager.js) :
+   mise en évidence brève, le temps de le retrouver à l'écran. */
+#parametre_projet .champ-a-completer,
+#parametre_projet .champ-a-completer .project-type-card {
+  box-shadow: 0 0 0 3px rgba(222, 0, 0, 0.45);
+  border-radius: 6px;
+  transition: box-shadow 0.3s ease;
+}
+
+/* Titre de section suivi de son bouton de repli, sur la même ligne (« Base de données d'irradiation »
+   + « Modifier la base d'irradiation »). Le soulignement rouge du titre (h4::after) est conservé. */
+#parametre_projet .section-entete-avec-bouton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 1.5rem;
+}
+
+#parametre_projet .section-entete-avec-bouton h4 {
+  margin-bottom: 0;
+}

@@ -1,0 +1,404 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Calculateur de Surface Solarisable - Stable Pro</title>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+
+    <!-- CSS Commun pour l'en-tête -->
+    <link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/modalHeaderCommon.css">
+
+    <style>
+        :root {
+            --primary-color: #3f51b5;
+            --success-color: #4CAF50;
+            --danger-color: #f44336;
+            --warning-color: #fbbc05;
+            --overlap-color: #ffeb3b;
+            --outside-color: #2196F3;
+            --bg-modal: #ffffff;
+            --text-main: #333;
+            --shadow: 0 8px 30px rgba(0,0,0,0.15);
+            --main-color: #DC2626;
+            --main-color-hover: #B91C1C;
+        }
+
+        html, body { height: 100%; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, sans-serif; }
+        #map { overflow: hidden; }
+        #map { height: 100%; width: 100%; }
+
+        .modal {
+            display: flex; flex-direction: column; position: absolute; top: 20px; left: 20px; z-index: 1000;
+            width: 450px; max-height: 90vh; background: var(--bg-modal); border-radius: 12px;
+            box-shadow: var(--shadow); resize: both; overflow: hidden; min-width: 380px;
+        }
+
+        .modal-content { padding: 20px; overflow-y: auto; flex-grow: 1; }
+
+        h3 { margin: 20px 0 12px 0; font-size: 1.1rem; color: var(--primary-color); border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; text-transform: none; }
+        h3:first-of-type { margin-top: 0; }
+
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600; color: #666; }
+        .input-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+        button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        
+        .btn-primary { background: var(--primary-color); color: white; }
+        .btn-success { background: var(--success-color); color: white; }
+        .btn-danger { background: var(--danger-color); color: white; }
+        .btn-warning { background: var(--warning-color); color: #000; }
+        
+        .btn-delete { background: #333; color: white; grid-column: span 2; margin-top: 5px; }
+        .btn-calc { background: #673ab7; color: white; grid-column: span 2; margin-top: 5px; }
+        .btn-fix { background: var(--overlap-color); color: #000; grid-column: span 2; display: none; border: 2px dashed #fbc02d; margin-top: 5px; }
+
+        .results-container { background: #fcfcfc; border: 1px solid #f0f0f0; border-radius: 8px; padding: 15px; margin-top: 15px; }
+        .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        .result-row.total { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-weight: bold; font-size: 1rem; }
+        .val { color: var(--primary-color); font-weight: bold; }
+        .close-btn { cursor: pointer; font-size: 1.5rem; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<div id="solar-modal" class="modal">
+    {% set modal_title = "Calculateur de surface solarisable" %}
+    {% set show_toggle = false %}
+    {% include 'concevoir_mon_projet/components/modal_header_unified.html' %}
+    <div class="modal-content">
+        
+        <h3>Informations du projet</h3>
+        <div class="input-group">
+            <label>Adresse ou coordonnées (Lat, Lng)</label>
+            <input type="text" id="project-address" placeholder="Ex: 48.85, 2.35 ou adresse...">
+        </div>
+        <div class="result-row"><small id="coords-display">Coordonnées : N/A</small></div>
+        <button id="zoom-max-button" class="btn-warning" style="width:100%; margin-top:10px;">Mode précision (Zoom max)</button>
+
+        <h3>Outils de dessin</h3>
+        <div class="btn-grid">
+            <button id="draw-plus" class="btn-success">+ Surface</button>
+            <button id="draw-minus" class="btn-danger">- Obstacle</button>
+            <button id="toggle-plus" class="btn-primary">Masquer surface (+)</button>
+            <button id="toggle-minus" class="btn-primary">Masquer obstacles (-)</button>
+            <button id="delete-selected" class="btn-delete">Supprimer une surface</button>
+            <button id="calculate-btn" class="btn-calc">Calculer</button>
+            <button id="fix-overlaps" class="btn-fix">Fusionner les obstacles</button>
+        </div>
+
+        <h3>Données du projet</h3>
+        <div class="input-group">
+            <label>% Surface solarisable (Loi APER)</label>
+            <input type="number" id="percent-aper" value="100" min="0" max="100" step="0.1">
+        </div>
+        <div class="input-group">
+            <label>Surface totale parcelle (m²)</label>
+            <input type="number" id="surface-parcelle" value="1000">
+        </div>
+
+        <h3>Résultats des calculs</h3>
+        <div class="results-container">
+            <div class="result-row"><span>Surface artificialisée (+) :</span> <span id="surface-artif" class="val">0.00 m²</span></div>
+            <div class="result-row"><span>Surface obstacles (-) :</span> <span id="surface-obs" class="val">0.00 m²</span></div>
+            <div class="result-row total"><span>Surface potentielle :</span> <span id="surface-pot-solar" class="val">0.00 m²</span></div>
+            <div class="result-row"><span>Surface réglementaire :</span> <span id="surface-reglementaire" class="val">0.00 m²</span></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsts@2.7.1/dist/jsts.min.js"></script>
+
+<script>
+    let map, drawingManager, addressMarker;
+    let plusPolygons = [], minusPolygons = [], helperPolygons = [];
+    let selectedShape = null;
+    let isPrecisionMode = false;
+
+    function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+            zoom: 18, center: { lat: 48.8566, lng: 2.3522 },
+            mapTypeId: 'satellite', tilt: 0, draggable: true, scrollwheel: true
+        });
+
+        addressMarker = new google.maps.Marker({
+            map: map, draggable: true, position: map.getCenter(),
+            icon: { path: google.maps.SymbolPath.CIRCLE, scale: 7, fillColor: '#3f51b5', fillOpacity: 1, strokeColor: '#fff', strokeWeight: 2 }
+        });
+
+        setupAutocomplete();
+        setupDrawing();
+        setupVisibilityToggles();
+        setupKeyboardDeletion();
+        loadFromLocalStorage();
+        
+        document.getElementById('delete-selected').onclick = deleteSelectedShape;
+        document.getElementById('calculate-btn').onclick = () => { detectOverlaps(); updateResults(); saveToLocalStorage(); };
+        document.getElementById('percent-aper').oninput = () => { updateResults(); saveToLocalStorage(); };
+        document.getElementById('surface-parcelle').oninput = () => { updateResults(); saveToLocalStorage(); };
+        document.getElementById('zoom-max-button').onclick = togglePrecisionMode;
+        document.getElementById('fix-overlaps').onclick = mergeObstacles;
+
+        map.addListener('click', clearSelection);
+    }
+
+    function setupAutocomplete() {
+        const input = document.getElementById('project-address');
+        const auto = new google.maps.places.Autocomplete(input);
+        auto.addListener('place_changed', () => {
+            const p = auto.getPlace();
+            if (p && p.geometry) {
+                map.setCenter(p.geometry.location);
+                addressMarker.setPosition(p.geometry.location);
+                updateCoords(p.geometry.location);
+                saveToLocalStorage();
+            }
+        });
+    }
+
+    function setupDrawing() {
+        drawingManager = new google.maps.drawing.DrawingManager({
+            drawingControl: false,
+            polygonOptions: { editable: true, draggable: true, zIndex: 1 }
+        });
+        drawingManager.setMap(map);
+
+        document.getElementById('draw-plus').onclick = () => startDraw('#4CAF50', 0.4, 'plus');
+        document.getElementById('draw-minus').onclick = () => startDraw('#f44336', 0.6, 'minus');
+
+        google.maps.event.addListener(drawingManager, 'polygoncomplete', (poly) => {
+            const type = drawingManager.get('type_custom');
+            initPolygon(poly, type);
+            drawingManager.setDrawingMode(null);
+            detectOverlaps(); 
+            updateResults();
+            saveToLocalStorage();
+        });
+    }
+
+    function initPolygon(poly, type) {
+        poly.set('type', type);
+        if (type === 'plus') plusPolygons.push(poly);
+        else minusPolygons.push(poly);
+        
+        google.maps.event.addListener(poly, 'click', (e) => {
+            if (e) e.stop();
+            setSelection(poly);
+        });
+
+        const path = poly.getPath();
+        const updateActions = () => { detectOverlaps(); updateResults(); saveToLocalStorage(); };
+        
+        google.maps.event.addListener(path, 'set_at', updateActions);
+        google.maps.event.addListener(path, 'insert_at', updateActions);
+        google.maps.event.addListener(path, 'remove_at', updateActions);
+        google.maps.event.addListener(poly, 'dragend', updateActions);
+        
+        setSelection(poly);
+    }
+
+    function startDraw(col, op, type) {
+        drawingManager.setDrawingMode(google.maps.drawing.OverlayType.POLYGON);
+        drawingManager.setOptions({ 
+            polygonOptions: { fillColor: col, strokeColor: col, fillOpacity: op, editable: true, draggable: true, visible: true } 
+        });
+        drawingManager.set('type_custom', type);
+    }
+
+    function setSelection(shape) {
+        clearSelection();
+        selectedShape = shape;
+        shape.setOptions({ strokeWeight: 4, strokeColor: '#000' });
+    }
+
+    function clearSelection() {
+        if (selectedShape) {
+            const color = selectedShape.get('type') === 'plus' ? '#4CAF50' : '#f44336';
+            selectedShape.setOptions({ strokeWeight: 2, strokeColor: color });
+            selectedShape = null;
+        }
+    }
+
+    function deleteSelectedShape() {
+        if (selectedShape) {
+            selectedShape.setMap(null);
+            plusPolygons = plusPolygons.filter(p => p !== selectedShape);
+            minusPolygons = minusPolygons.filter(p => p !== selectedShape);
+            selectedShape = null;
+            detectOverlaps();
+            updateResults();
+            saveToLocalStorage();
+        }
+    }
+
+    function setupKeyboardDeletion() {
+        window.addEventListener('keydown', (e) => {
+            if (e.key === "Delete" || e.key === "Suppr") deleteSelectedShape();
+        });
+    }
+
+    function setupVisibilityToggles() {
+        document.getElementById('toggle-plus').onclick = function() {
+            const isVisible = plusPolygons.length > 0 ? !plusPolygons[0].getVisible() : true;
+            plusPolygons.forEach(p => p.setVisible(isVisible));
+            this.innerText = isVisible ? "Masquer surface (+)" : "Afficher surface (+)";
+            this.style.opacity = isVisible ? "1" : "0.6";
+        };
+        document.getElementById('toggle-minus').onclick = function() {
+            const isVisible = minusPolygons.length > 0 ? !minusPolygons[0].getVisible() : true;
+            minusPolygons.forEach(p => p.setVisible(isVisible));
+            helperPolygons.forEach(p => p.setVisible(isVisible));
+            this.innerText = isVisible ? "Masquer obstacles (-)" : "Afficher obstacles (-)";
+            this.style.opacity = isVisible ? "1" : "0.6";
+        };
+    }
+
+    function detectOverlaps() {
+        helperPolygons.forEach(p => p.setMap(null));
+        helperPolygons = [];
+        let hasOverlap = false;
+
+        const reader = new jsts.io.GeoJSONReader();
+        const writer = new jsts.io.GeoJSONWriter();
+
+        try {
+            // 1. Chevauchements d'obstacles (Jaune)
+            if (minusPolygons.length >= 2) {
+                const jstsMinuses = minusPolygons.map(p => reader.read(polyToGeoJSON(p)));
+                for (let i = 0; i < jstsMinuses.length; i++) {
+                    for (let j = i + 1; j < jstsMinuses.length; j++) {
+                        if (jstsMinuses[i].intersects(jstsMinuses[j])) {
+                            const inter = jstsMinuses[i].intersection(jstsMinuses[j]);
+                            if (!inter.isEmpty() && inter.getArea() > 0) {
+                                createHelper(writer.write(inter), '#ffeb3b', '#fbc02d');
+                                hasOverlap = true;
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 2. Hors Zone (Bleu)
+            if (plusPolygons.length > 0 && minusPolygons.length > 0) {
+                let totalPlusJsts = reader.read(polyToGeoJSON(plusPolygons[0]));
+                for(let k=1; k<plusPolygons.length; k++) {
+                    totalPlusJsts = totalPlusJsts.union(reader.read(polyToGeoJSON(plusPolygons[k])));
+                }
+
+                minusPolygons.forEach(p => {
+                    const obstacleJsts = reader.read(polyToGeoJSON(p));
+                    if (!totalPlusJsts.contains(obstacleJsts)) {
+                        const outside = obstacleJsts.difference(totalPlusJsts);
+                        if (!outside.isEmpty() && outside.getArea() > 0) {
+                            createHelper(writer.write(outside), '#2196F3', '#1976D2');
+                        }
+                    }
+                });
+            }
+        } catch (e) { console.warn("Erreur de calcul géométrique JSTS"); }
+
+        document.getElementById('fix-overlaps').style.display = hasOverlap ? 'block' : 'none';
+    }
+
+    function createHelper(geojson, fill, stroke) {
+        const h = new google.maps.Polygon({
+            paths: geojsonToPath(geojson),
+            fillColor: fill, fillOpacity: 0.8, strokeColor: stroke, strokeWeight: 2,
+            zIndex: 10, map: map, clickable: false
+        });
+        helperPolygons.push(h);
+    }
+
+    function mergeObstacles() {
+        if (minusPolygons.length < 2) return;
+        const reader = new jsts.io.GeoJSONReader();
+        const writer = new jsts.io.GeoJSONWriter();
+        try {
+            let union = reader.read(polyToGeoJSON(minusPolygons[0]));
+            for (let i = 1; i < minusPolygons.length; i++) {
+                union = union.union(reader.read(polyToGeoJSON(minusPolygons[i])));
+            }
+            minusPolygons.forEach(p => p.setMap(null));
+            minusPolygons = [];
+            const paths = geojsonToPath(writer.write(union));
+            const newPoly = new google.maps.Polygon({
+                paths: paths, fillColor: '#f44336', strokeColor: '#f44336', fillOpacity: 0.6,
+                editable: true, draggable: true, map: map, zIndex: 1
+            });
+            initPolygon(newPoly, 'minus');
+            detectOverlaps();
+            updateResults();
+            saveToLocalStorage();
+        } catch(e) { alert("Impossible de fusionner ces formes."); }
+    }
+
+    function polyToGeoJSON(poly) {
+        const coords = poly.getPath().getArray().map(p => [p.lng(), p.lat()]);
+        coords.push(coords[0]);
+        return { type: "Polygon", coordinates: [coords] };
+    }
+
+    function geojsonToPath(geojson) {
+        if (geojson.type === "Polygon") return geojson.coordinates[0].map(c => ({ lat: c[1], lng: c[0] }));
+        if (geojson.type === "MultiPolygon") return geojson.coordinates.flatMap(p => p[0].map(c => ({ lat: c[1], lng: c[0] })));
+        return [];
+    }
+
+    function updateResults() {
+        let areaPlus = 0;
+        plusPolygons.forEach(p => areaPlus += google.maps.geometry.spherical.computeArea(p.getPath()));
+        
+        let areaMinus = 0;
+        minusPolygons.forEach(p => areaMinus += google.maps.geometry.spherical.computeArea(p.getPath()));
+
+        const potSolar = Math.max(0, areaPlus - areaMinus);
+        const aper = parseFloat(document.getElementById('percent-aper').value) || 0;
+        
+        document.getElementById('surface-artif').innerText = areaPlus.toFixed(2) + " m²";
+        document.getElementById('surface-obs').innerText = areaMinus.toFixed(2) + " m²";
+        document.getElementById('surface-pot-solar').innerText = potSolar.toFixed(2) + " m²";
+        document.getElementById('surface-reglementaire').innerText = (potSolar * (aper/100)).toFixed(2) + " m²";
+    }
+
+    function saveToLocalStorage() {
+        const data = {
+            address: document.getElementById('project-address').value,
+            aper: document.getElementById('percent-aper').value,
+            surfaceParcelle: document.getElementById('surface-parcelle').value,
+            plusShapes: plusPolygons.map(p => p.getPath().getArray().map(l => ({lat: l.lat(), lng: l.lng()}))),
+            minusShapes: minusPolygons.map(p => p.getPath().getArray().map(l => ({lat: l.lat(), lng: l.lng()})))
+        };
+        localStorage.setItem('solarProjectStable', JSON.stringify(data));
+    }
+
+    function loadFromLocalStorage() {
+        const saved = localStorage.getItem('solarProjectStable');
+        if (!saved) return;
+        const d = JSON.parse(saved);
+        document.getElementById('project-address').value = d.address || '';
+        document.getElementById('percent-aper').value = d.aper || 100;
+        document.getElementById('surface-parcelle').value = d.surfaceParcelle || 1000;
+        if(d.plusShapes) d.plusShapes.forEach(path => initPolygon(new google.maps.Polygon({ paths: path, map: map, fillColor: '#4CAF50', strokeColor: '#4CAF50', fillOpacity: 0.4, editable: true, draggable: true }), 'plus'));
+        if(d.minusShapes) d.minusShapes.forEach(path => initPolygon(new google.maps.Polygon({ paths: path, map: map, fillColor: '#f44336', strokeColor: '#f44336', fillOpacity: 0.6, editable: true, draggable: true }), 'minus'));
+        detectOverlaps();
+        updateResults();
+    }
+
+    function togglePrecisionMode() {
+        isPrecisionMode = !isPrecisionMode;
+        map.setOptions({ zoom: isPrecisionMode ? 21 : 18, draggable: !isPrecisionMode });
+        this.innerText = isPrecisionMode ? "Mode normal" : "Mode précision (Zoom max)";
+        this.className = isPrecisionMode ? "btn-success" : "btn-warning";
+    }
+
+    function updateCoords(loc) {
+        document.getElementById('coords-display').innerText = `Coordonnées : ${loc.lat().toFixed(5)}, ${loc.lng().toFixed(5)}`;
+    }
+</script>
+</body>
+</html>

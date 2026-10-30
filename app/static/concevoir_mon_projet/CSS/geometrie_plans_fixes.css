@@ -1,0 +1,127 @@
+/*
+ * PLANS FIXES — modales de géométrie (petit champ solaire, ombrières métal / bois / Solumbra,
+ * bâtiment métal).
+ *
+ * Demande explicite : "figer l'écran et voir les plans de coupe et de façade pendant qu'on se déplace
+ * dans le formulaire" (technique mise au point sur la modale petit champ solaire, puis déployée).
+ *
+ * Avant : le formulaire avait une hauteur « au contenu » et c'était TOUT #modal-body qui défilait —
+ * descendre dans le formulaire faisait sortir les plans de l'écran. En plus, plusieurs scripts
+ * calaient la hauteur des plans sur la POSITION de titres du formulaire, recalculée à chaque
+ * défilement : les plans suivaient le formulaire.
+ *
+ * Désormais, sur écran large, la grille occupe exactement la hauteur visible : la colonne des plans
+ * reste en place (coupe et façade à parts égales) et SEUL le formulaire défile, avec sa propre barre.
+ * Les `!important` l'emportent aussi sur les hauteurs que ces scripts posent en ligne.
+ *
+ * Non concernés :
+ *  - écran étroit (une seule colonne) : défilement d'ensemble inchangé ;
+ *  - mode `calepinage-full` (vue de calepinage plein écran, formulaire masqué) : inchangé ;
+ *  - impression : les règles sont limitées à l'écran.
+ *
+ * Structure attendue (commune aux 5 modales) :
+ *   #modal-body > .container > .grid > (#canvas-column + #controls-container)
+ *   #canvas-column > (#coupe-container + #facade-block-container)
+ */
+@media screen and (min-width: 1024px) {
+    #app-modal:not(.calepinage-full) #modal-body {
+        overflow: hidden;
+    }
+
+    #app-modal:not(.calepinage-full) #modal-body > .container {
+        min-height: 0;
+    }
+
+    #app-modal:not(.calepinage-full) #modal-body > .container > .grid {
+        grid-template-rows: minmax(0, 1fr);
+        min-height: 0;
+        flex: 1 1 0%;
+    }
+
+    #app-modal:not(.calepinage-full) #controls-container {
+        height: auto !important;
+        max-height: 100%;
+        min-height: 0;
+        overflow-y: auto;
+    }
+
+    #app-modal:not(.calepinage-full) #canvas-column {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    #app-modal:not(.calepinage-full) #canvas-column > #coupe-container,
+    #app-modal:not(.calepinage-full) #canvas-column > #facade-block-container {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 0 !important;
+        height: auto !important;
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+
+    /* Les zones de dessin prennent la place disponible, sans hauteur minimale imposée (certaines
+       modales fixaient 600 px en ligne, ce qui repoussait la façade hors de l'écran). */
+    #app-modal:not(.calepinage-full) #canvas-column #viewCoupe,
+    #app-modal:not(.calepinage-full) #canvas-column #viewFacade,
+    #app-modal:not(.calepinage-full) #canvas-column #viewImplantation {
+        min-height: 0 !important;
+        max-height: none !important;
+    }
+
+    /* Un seul plan affiché (boutons Masquer/Afficher) : il prend toute la hauteur. */
+    #app-modal.facade-hidden:not(.calepinage-full) #canvas-column > #coupe-container,
+    #app-modal.coupe-hidden:not(.calepinage-full) #canvas-column > #facade-block-container {
+        flex: 1 1 100% !important;
+    }
+}
+
+
+/* ==============================================================================================
+ * UN SEUL PLAN DANS LE CANEVAS — icônes 👁️ (façade) / ✂️ (coupe).
+ *
+ * Demande explicite : "appliquer dans les modales des ombrières et bâtiment métal l'option qui
+ * permet d'afficher le plan de coupe ou le plan de façade tout seul dans le canva, en se basant
+ * sur les codes du petit champ solaire".
+ *
+ * Les classes .facade-hidden / .coupe-hidden sur #app-modal sont posées par les boutons : ceux du
+ * gabarit pour la modale "Petit champ solaire", ceux injectés par
+ * javascript/geometrie_structure/geometrie_plans_toggle.js pour les 4 autres.
+ *
+ * Hors media query, contrairement aux règles ci-dessus : la bascule doit aussi fonctionner sur
+ * écran étroit. Les `!important` l'emportent sur les hauteurs posées EN LIGNE par les fonctions
+ * adjustCanvasHeights() de chaque modale.
+ * ============================================================================================ */
+#app-modal.facade-hidden #facade-block-container,
+#app-modal.coupe-hidden #coupe-container {
+    display: none !important;
+}
+
+#app-modal.facade-hidden #coupe-container,
+#app-modal.coupe-hidden #facade-block-container {
+    flex: 1 1 100% !important;
+    height: 100% !important;
+    max-height: none !important;
+}
+
+/* Ancre des icônes : elles sont posées en haut à droite de la colonne des plans — et non dans
+   l'un des deux conteneurs, sinon masquer ce conteneur masquerait aussi le bouton permettant de
+   revenir en arrière (même raison que dans petit_champ_solaire.html). */
+#canvas-column {
+    position: relative;
+}
+
+#plansViewToggle {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 20;
+    display: flex;
+    gap: 0.125rem;
+    padding: 0.25rem;
+    background-color: #ffffff;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+}

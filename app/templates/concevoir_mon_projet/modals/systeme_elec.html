@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Système photovoltaïque </title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/modalHeaderCommon.css">
+
+    <style>
+        :root {
+            --primary-color: #005A9C;
+            /* Bleu profond */
+            --secondary-color: #343A40;
+            /* Gris texte foncé */
+            --accent-color: #FFC107;
+            /* Jaune solaire */
+            --bg-color: #F8F9FA;
+            /* Fond très clair */
+            --border-color: #DEE2E6;
+            /* Couleur de bordure standard */
+            --text-color: #212529;
+            --text-muted: #6C757D;
+            --selected-bg: #FFF3CD;
+            /* Fond pour éléments sélectionnés */
+            --title-red-color: #C00000;
+            /* Couleur rouge pour les titres */
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-size: 15px;
+            line-height: 1.6;
+            height: 100vh;
+        }
+
+        /* --- STRUCTURE AVEC MENU --- */
+        .app-container {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
+            background-color: var(--bg-color);
+        }
+
+        /* Mode embedded (dans iframe du modal universel) */
+        body.embedded-mode .app-container {
+            border: none;
+        }
+
+        body.embedded-mode #modal-header {
+            display: none !important;
+        }
+
+
+        #main-content {
+            flex-grow: 1;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Ajustement pour que le contenu prenne toute la hauteur disponible */
+        .page-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .page-content {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h3 {
+            font-size: 1.75em;
+            color: var(--title-red-color);
+            margin: 0 0 20px 0;
+            padding-bottom: 10px;
+            border-bottom: 3px solid var(--title-red-color);
+            margin-left: 10px;
+            font-weight: 700;
+        }
+
+        h4 {
+            font-size: 1.25em;
+            color: var(--secondary-color);
+            margin: 0;
+        }
+
+        .form-group-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--title-red-color);
+            border-left: 3px solid var(--title-red-color);
+            padding-left: 10px;
+            margin-bottom: 20px;
+        }
+
+        .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+
+        .grid-item {
+            background-color: white;
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-muted);
+            font-size: 0.9em;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            box-sizing: border-box;
+            background-color: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            font-size: 1em;
+        }
+
+        .choice-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .choice-btn {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            padding: 10px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9em;
+            transition: all 0.2s ease-in-out;
+            text-align: left;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .choice-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+            font-weight: 500;
+        }
+
+        .btn {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+
+        .btn-small {
+            padding: 5px 10px;
+            font-size: 0.85em;
+        }
+
+        .btn-secondary {
+            background-color: var(--secondary-color);
+        }
+
+        .toolbar {
+            display: flex;
+            align-items: center;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        #calepinageError {
+            color: var(--title-red-color);
+            font-weight: 500;
+            font-size: 0.9em;
+            display: none;
+            margin-top: 10px;
+        }
+
+        .action-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.3em;
+            padding: 2px 6px;
+            transition: color 0.2s;
+            color: var(--text-muted);
+        }
+
+        .card-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .data-card,
+        #inverterTotalsCard {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        .card-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: var(--primary-color);
+            text-align: center;
+        }
+
+        .card-title .ref {
+            font-size: 0.8em;
+            color: var(--text-muted);
+            font-weight: 400;
+            margin-left: 8px;
+        }
+
+        .card-actions {
+            display: flex;
+            align-items: center;
+        }
+
+        .card-content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .card-field {
+            font-size: 0.9em;
+        }
+
+        .card-field label {
+            display: block;
+            color: var(--text-muted);
+            font-size: 0.9em;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .card-field input,
+        .card-field .value,
+        .card-field select {
+            padding: 6px;
+            font-size: 0.95em;
+            text-align: center;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            width: 100%;
+        }
+
+        .card-field .value {
+            font-weight: 500;
+            background-color: #f8f9fa;
+            min-height: 31px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .card-field .calculated-cell {
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .card-field .config-auto-cell {
+            background-color: #e9ecef;
+            font-weight: 500;
+            color: var(--secondary-color);
+            padding: 6px;
+            font-size: 0.9em;
+        }
+
+        #inverterTotalsCard {
+            background-color: var(--bg-color);
+            border-style: dashed;
+        }
+
+        #inverterTotalsCard .card-title {
+            color: var(--secondary-color);
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1050;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(33, 37, 41, 0.6);
+            animation: fadeIn 0.3s;
+        }
+
+        #detailsModal {
+            z-index: 1060;
+        }
+
+        #addModal {
+            z-index: 1070;
+        }
+
+
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 900px;
+            position: relative;
+            animation: slideIn 0.4s;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-content .close-btn {
+            color: #6c757d;
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .modal-body {
+            padding: 24px;
+            max-height: 70vh;
+            overflow-y: auto;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+        }
+
+        #inverterModal .modal-header {
+            gap: 15px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-left: auto;
+            align-items: center;
+        }
+
+        .filter-buttons-title {
+            font-size: 0.9em;
+            font-weight: 500;
+            color: var(--text-muted);
+            margin-right: 5px;
+        }
+
+        .filter-btn {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 0.8em;
+        }
+
+        .filter-btn.active {
+            background-color: var(--primary-color);
+            color: white;
+            border-color: var(--primary-color);
+        }
+
+        #voltageInfoModal .modal-content {
+            max-width: 700px;
+        }
+
+        .voltage-graph-container {
+            position: relative;
+            background-color: #fdfdfd;
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 20px;
+            font-size: 0.9em;
+        }
+
+        .voltage-info-table {
+            margin-top: 20px;
+            width: 100%;
+        }
+
+        .panel-table-container {
+            max-height: 220px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        #panelSelectionTable tbody tr.panel-row {
+            cursor: pointer;
+        }
+
+        #panelSelectionTable tbody tr.selected {
+            background-color: var(--selected-bg);
+            font-weight: 600;
+            color: var(--primary-color);
+        }
+
+        #panelSelectionTable .manufacturer-header td {
+            font-weight: 700;
+            color: var(--primary-color);
+            background-color: var(--bg-color);
+            padding-top: 12px;
+            padding-bottom: 12px;
+            text-align: center;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        table th,
+        table td {
+            padding: 10px 12px;
+            text-align: center;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        table th {
+            background-color: var(--bg-color);
+            font-size: 0.85em;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="app-container">
+        {% set modal_title = "Dimensionnement électrique" %}
+        {% include 'concevoir_mon_projet/components/modal_header_unified.html' %}
+        <main id="main-content">
+            <div class="page-content" style="padding: 0;">
+                <!--<h3>Projet Photovoltaïque</h3>-->
+
+                <div class="content-grid">
+                    <div class="grid-item">
+                        <div class="form-group-title">Mode de connexion</div>
+                        <div class="choice-buttons" data-save-group="connectionMode">
+                            <button class="choice-btn active" data-value="BT">Production raccordée sur le réseau
+                                BT</button>
+                            <button class="choice-btn" data-value="HTA">Production raccordée sur le réseau HTA</button>
+                            <button class="choice-btn" data-value="BT_CONSO_BT">Production en BT et consommation avec
+                                soutirage en BT</button>
+                            <button class="choice-btn" data-value="BT_CONSO_HTA">Production en BT et consommation avec
+                                soutirage en HTA</button>
+                            <button class="choice-btn" data-value="HTA_CONSO_HTA">Production en HTA et consommation avec
+                                soutirage en HTA</button>
+                        </div>
+                    </div>
+                    <div class="grid-item" id="soutirageInfoSection">
+                        <div class="form-group-title">Informations de soutirage</div>
+                        <div class="form-group"><label for="prm">N° de PRM</label><input type="text" id="prm"
+                                maxlength="14" placeholder="14 chiffres"></div>
+                        <div class="form-group"><label for="puissanceSouscrite">Puissance souscrite (kVA)</label><input
+                                type="number" id="puissanceSouscrite"></div>
+                        <div class="form-group"><label for="puissanceRaccordement">Puissance de raccordement
+                                (kVA)</label><input type="number" id="puissanceRaccordement"></div>
+                    </div>
+                </div>
+
+                <div class="content-grid">
+                    <div class="grid-item">
+                        <div class="form-group-title">Paramètres globaux</div>
+                        <div class="form-group"><label for="cosPhi">Cos phi (0.8 - 1)</label><input type="number"
+                                id="cosPhi" name="cosPhi" min="0.8" max="1" step="0.001" value="0.944"></div>
+                        <div class="form-group"><label for="minTemp">Temp. min ambiante (°C)</label><input type="number"
+                                id="minTemp" name="temp_min_absolue" value="45"></div>
+                        <div class="form-group"><label for="temp_de_fonctionnement">Temp. de fonctionnement
+                                (°C)</label><input type="number" id="temp_de_fonctionnement" name="foncTemp" value="20">
+                        </div>
+                        <div class="form-group"><label for="temp_max_absolue">Temp. max ambiante (°C)</label><input
+                                type="number" id="temp_max_absolue" name="maxTemp" value="45"></div>
+                    </div>
+                    <div class="grid-item">
+                        <div class="form-group-title">Informations du calepinage</div>
+                        <div class="form-group"><label for="installedPower">Puissance installée (kWc)</label><input
+                                type="number" id="installedPower"></div>
+                        <div class="form-group"><label for="nbre_pv_calepinage">Nombre de panneaux (Qté)</label><input
+                                type="number" id="nbre_pv_calepinage"></div>
+                        <div class="form-group"><label for="productible">Productible (kWh)</label><input type="number"
+                                id="productible"></div>
+                        <div class="form-group"><label for="nbStructure">Nombre de structure</label><input type="number"
+                                id="nbStructure"></div>
+                        <div id="calepinageError">⚠️ Les totaux ne correspondent pas au calepinage.</div>
+                    </div>
+                </div>
+
+                <div class="grid-item" style="margin-top:25px;">
+                    <div class="form-group-title">Panneaux photovoltaïques</div>
+                    <div style="display: flex; gap: 15px; align-items: flex-end;">
+                        <div class="form-group" style="flex-grow: 1; margin-bottom: 0;">
+                            <label for="panelManufacturer">Filtrer par fabricant</label>
+                            <select id="panelManufacturer"></select>
+                        </div>
+                        <button id="addPanelBtn" class="btn btn-secondary btn-small"
+                            title="Ajouter un nouveau panneau">+ Ajouter</button>
+                        <button id="showPanelInfo" class="btn btn-secondary btn-small"
+                            title="Voir les détails du panneau" disabled>ℹ️</button>
+                    </div>
+                    <div class="panel-table-container" style="margin-top: 15px;">
+                        <table id="panelSelectionTable">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>Référence</th>
+                                    <th>Puissance</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="toolbar">
+                    <button id="addInverterBtn" class="btn">+ Ajouter un onduleur</button>
+                    <button id="resetCalcBtn" class="btn btn-secondary">Réinitialiser les calculs</button>
+                </div>
+                <div id="inverterCardContainer" class="card-container"></div>
+                <div id="inverterTotalsCard" style="margin-top: 15px;"></div>
+
+                <div id="transformerProdSection">
+                    <div class="toolbar"><button class="btn add-transformer-btn" data-section="production">+ Ajouter un
+                            transformateur (Production)</button></div>
+                    <div id="transformerCardContainerProduction" class="card-container"></div>
+                </div>
+
+                <div id="transformerSoutirageSection">
+                    <div class="toolbar"><button class="btn add-transformer-btn" data-section="soutirage">+ Ajouter un
+                            transformateur (Soutirage)</button></div>
+                    <div id="transformerCardContainerSoutirage" class="card-container"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="detailsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 id="detailsModalTitle">Détails</h4><span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body table-container">
+                <table id="detailsModalTable"></table>
+            </div>
+        </div>
+    </div>
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 id="addModalTitle">Ajouter</h4><span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="addPanelContainer" style="display:none;">
+                    <form id="addPanelForm">
+                        <div class="form-row">
+                            <div class="form-group"><label>Fabricant</label><input type="text" name="fabricant"
+                                    required></div>
+                            <div class="form-group"><label>Référence</label><input type="text" name="reference"
+                                    required></div>
+                            <div class="form-group"><label>Puissance Nominale (Wc)</label><input type="text"
+                                    name="puissance_wc" required></div>
+                            <div class="form-group"><label>Type de module</label><input type="text" name="type_module"
+                                    placeholder="Monofacial / Bifacial"></div>
+                            <div class="form-group"><label>V_mpp (V)</label><input type="number" step="any"
+                                    name="pv_vmpp"></div>
+                            <div class="form-group"><label>V_oc (V)</label><input type="number" step="any"
+                                    name="pv_voc"></div>
+                            <div class="form-group"><label>I_mpp (A)</label><input type="number" step="any"
+                                    name="i_mpp"></div>
+                            <div class="form-group"><label>I_sc (A)</label><input type="number" step="any"
+                                    name="pv_isc"></div>
+                            <div class="form-group"><label>K_Voc (%/°C)</label><input type="number" step="any"
+                                    name="pv_k_voc"></div>
+                            <div class="form-group"><label>K_P (%/°C)</label><input type="number" step="any"
+                                    name="pv_k_p"></div>
+                            <div class="form-group"><label>Rendement (%)</label><input type="text" name="rendement">
+                            </div>
+                            <div class="form-group"><label>Tension système (V)</label><input type="number"
+                                    name="pv_tension_systeme"></div>
+                            <div class="form-group"><label>Protection sur intensité (A)</label><input type="text"
+                                    name="protection"></div>
+                            <div class="form-group"><label>Dimensions Lxl (mm)</label><input type="text"
+                                    name="dimensions"></div>
+                            <div class="form-group"><label>Poids (kg)</label><input type="number" step="any"
+                                    name="poids"></div>
+                        </div><button type="submit" class="btn" style="margin-top: 20px;">Enregistrer</button>
+                    </form>
+                </div>
+                <div id="addInverterContainer" style="display:none;">
+                    <form id="addInverterForm">
+                        <div class="form-row">
+                            <div class="form-group"><label>Fabricant</label><input type="text" name="fabricant"
+                                    required></div>
+                            <div class="form-group"><label>Référence</label><input type="text" name="reference"
+                                    required></div>
+                            <div class="form-group"><label>P. Nominale (kVA)</label><input type="number" step="any"
+                                    name="p_nominale_kva" required></div>
+                            <div class="form-group"><label>P. Apparente Max (kVA)</label><input type="number" step="any"
+                                    name="p_apparente_kva" required></div>
+                            <div class="form-group"><label>Nb MPPT / Entrées</label><input type="text"
+                                    name="mppt_inputs" placeholder="ex: 2 / 2"></div>
+                            <div class="form-group"><label>Tension Max DC (V)</label><input type="number" step="any"
+                                    name="ond_tension_max_dc"></div>
+                            <div class="form-group"><label>Tension Min DC (V)</label><input type="number" step="any"
+                                    name="ond_tension_min_dc"></div>
+                            <div class="form-group"><label>Plage MPPT (V)</label><input type="text" name="plage_mppt"
+                                    placeholder="ex: 200-1000"></div>
+                            <div class="form-group"><label>Plage MPPT_MIN (V)</label><input type="text"
+                                    name="ond_plage_mppt_min"></div>
+                            <div class="form-group"><label>Plage MPPT_MAX (V)</label><input type="text"
+                                    name="ond_plage_mppt_max"></div>
+                            <div class="form-group"><label>Imax_MPPT (A)</label><input type="number" step="any"
+                                    name="ond_imax_mppt"></div>
+                            <div class="form-group"><label>Rendement Max (%)</label><input type="number" step="any"
+                                    name="rendement_max"></div>
+                            <div class="form-group"><label>Courant max AC (A)</label><input type="number" step="any"
+                                    name="courant_max_ac"></div>
+                            <div class="form-group"><label>Type de tension</label><select name="type_tension">
+                                    <option>Monophasé</option>
+                                    <option>Biphasé</option>
+                                    <option selected>Triphasé</option>
+                                </select></div>
+                            <div class="form-group"><label>Tension nominale AC</label><input type="text"
+                                    name="tension_nominale_ac" placeholder="ex: 400V, 480V"></div>
+                            <div class="form-group"><label>Compatible Optimiseur</label><select
+                                    name="compat_optimiseur">
+                                    <option>Non</option>
+                                    <option>Oui</option>
+                                </select></div>
+                            <div class="form-group"><label>Onduleur Hybride</label><select name="hybride">
+                                    <option>Non</option>
+                                    <option>Oui</option>
+                                </select></div>
+                            <div class="form-group"><label>Poids (kg)</label><input type="number" step="any"
+                                    name="poids"></div>
+                        </div><button type="submit" class="btn" style="margin-top: 20px;">Enregistrer</button>
+                    </form>
+                </div>
+                <div id="addTransformerContainer" style="display:none;">
+                    <form id="addTransformerForm">
+                        <div class="form-row">
+                            <div class="form-group"><label>Fabricant</label><select name="fabricant" required>
+                                    <option>Schneider Electric</option>
+                                    <option>Ormazabal</option>
+                                    <option>Legrand</option>
+                                    <option>Groupe Cahors</option>
+                                    <option>Autres</option>
+                                </select></div>
+                            <div class="form-group"><label>Référence transformateur</label><input type="text"
+                                    name="reference" required></div>
+                            <div class="form-group"><label>Intégrateur de poste HTA/BT</label><select
+                                    name="integrateur">
+                                    <option>Ormazabal</option>
+                                    <option>Groupe Cahors</option>
+                                    <option>Autres</option>
+                                </select></div>
+                            <div class="form-group" id="integrateurAutreContainer" style="display:none;">
+                                <label>Préciser
+                                    l'intégrateur</label><input type="text" name="integrateur_autre">
+                            </div>
+                            <div class="form-group"><label>Puissance apparente (Sn, kVA)</label><select name="sn_kva"
+                                    required>
+                                    <option>250</option>
+                                    <option>400</option>
+                                    <option>500</option>
+                                    <option>630</option>
+                                    <option>800</option>
+                                    <option>1000</option>
+                                    <option>1250</option>
+                                    <option>1600</option>
+                                    <option>2000</option>
+                                    <option>2500</option>
+                                    <option>3150</option>
+                                    <option>3800</option>
+                                    <option>4000</option>
+                                </select></div>
+                            <div class="form-group"><label>Tension primaire et secondaire</label><select
+                                    name="tension_primaire_secondaire">
+                                    <option>17 kV/410V</option>
+                                    <option>17 kV/810V</option>
+                                    <option>21 kV/410V</option>
+                                    <option>21 kV/810V</option>
+                                </select></div>
+                            <div class="form-group"><label>Type de couplage</label><select name="type_couplage">
+                                    <option>Triangle-Étoile /Dyn11</option>
+                                    <option>Triangle-Triangle</option>
+                                    <option>Autres</option>
+                                </select></div>
+                            <div class="form-group"><label>Di-électrique</label><select name="dielectrique">
+                                    <option>Huile minérale (ONAN)</option>
+                                    <option>Huile végétale (ONAN)</option>
+                                    <option>Sec (AN)</option>
+                                </select></div>
+                            <div class="form-group"><label>Perte à vide (Po, W)</label><input type="number" step="any"
+                                    name="perte_a_vide_po"></div>
+                            <div class="form-group"><label>Perte en charge (Pk, W)</label><input type="number"
+                                    step="any" name="perte_en_charge_pk"></div>
+                            <div class="form-group"><label>Tension de court-circuit (Ucc, %)</label><input type="number"
+                                    step="any" name="ucc_percent"></div>
+                            <div class="form-group"><label>Courant à vide (I0, %)</label><input type="number" step="any"
+                                    name="courant_a_vide_i0_percent"></div>
+                            <div class="form-group"><label>Courant d’enclenchement</label><input type="text"
+                                    name="courant_enclenchement"></div>
+                            <div class="form-group"><label>Niveau d’isolement HTA</label><input type="text"
+                                    name="niveau_isolement_hta"></div>
+                            <div class="form-group"><label>Niveau d’isolement BT</label><input type="text"
+                                    name="niveau_isolement_bt"></div>
+                            <div class="form-group"><label>Taux de charge (Ku, %)</label><input type="number" step="any"
+                                    name="ku_percent"></div>
+                        </div><button type="submit" class="btn" style="margin-top: 20px;">Enregistrer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="inverterModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>Choisir un onduleur</h4>
+                <div class="filter-buttons" id="inverterFilters">
+                    <span class="filter-buttons-title">Filtres:</span>
+                    <button class="filter-btn" data-filter="triphase">Triphasé</button>
+                    <button class="filter-btn" data-filter="monophase">Monophasé</button>
+                    <button class="filter-btn" data-filter="hybride">Hybride</button>
+                    <button class="filter-btn" data-filter="optimiseur">Compatible Optimiseur</button>
+                </div>
+                <button id="addNewInverterFromPopupBtn" class="btn btn-secondary">+ Ajouter</button>
+                <span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table id="inverterSelectionTable">
+                        <thead>
+                            <tr>
+                                <th>Fabricant</th>
+                                <th>Référence</th>
+                                <th>P. Nom.</th>
+                                <th>Type</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="transformerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>Choisir un transformateur</h4><button id="addNewTransformerFromPopupBtn" class="btn btn-secondary">+
+                    Ajouter</button><span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+                    <table id="transformerSelectionTable">
+                        <thead>
+                            <tr>
+                                <th>Fabricant</th>
+                                <th>Référence</th>
+                                <th>Sn (kVA)</th>
+                                <th>Tensions</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="voltageInfoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 id="voltageInfoModalTitle">Analyse des tensions</h4><span class="close-btn">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="voltageGraph" class="voltage-graph-container"></div>
+                <table id="voltageInfoTable" class="voltage-info-table"></table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formules de dimensionnement de chaînes (calculateStringSizing, calculateOptimalStrings,
+         parseUserStringConfig*), extraites vers un fichier partagé pour être réutilisées par la
+         modale "Chaînes / Onduleur / Batterie" du calepinage : chargé avant systeme_elec.js, qui y
+         fait désormais référence via window.StringSizingUtils au lieu de sa propre copie. -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/systeme/string_sizing_utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/systeme/systeme_elec.js') }}?v=2"></script>
+
+
+</body>
+
+</html>

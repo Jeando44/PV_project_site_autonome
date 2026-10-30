@@ -1,0 +1,104 @@
+<style>
+    :root {
+        --primary-color: #dc2626;
+        --success-color: #4CAF50;
+        --danger-color: #f44336;
+        --warning-color: #fbbc05;
+        --overlap-color: #ffeb3b;
+        --outside-color: #2196F3;
+        --bg-modal: #ffffff;
+        --text-main: #333;
+        --shadow: 0 8px 30px rgba(0,0,0,0.15);
+    }
+
+    #loi-aper-map { height: 100%; width: 100%; position: relative; }
+
+    #solar-modal-aper {
+        display: flex; flex-direction: column; position: absolute; top: 20px; left: 20px; z-index: 1000;
+        width: 450px; max-height: 90vh; background: var(--bg-modal); border-radius: 12px;
+        box-shadow: var(--shadow); resize: both; overflow: hidden; min-width: 380px;
+    }
+
+    #solar-modal-aper .modal-header-aper {
+        padding: 15px 20px; background: #f8f9fa; border-bottom: 1px solid #eee; cursor: move;
+        display: flex; justify-content: space-between; align-items: center; font-weight: 600;
+    }
+
+    #solar-modal-aper .modal-content-aper { padding: 20px; overflow-y: auto; flex-grow: 1; }
+
+    #solar-modal-aper h3 { margin: 20px 0 12px 0; font-size: 1.1rem; color: var(--primary-color); border-bottom: 2px solid #f0f0f0; padding-bottom: 5px; text-transform: none; }
+    #solar-modal-aper h3:first-of-type { margin-top: 0; }
+
+    #solar-modal-aper .input-group { margin-bottom: 15px; }
+    #solar-modal-aper .input-group label { display: block; margin-bottom: 6px; font-size: 0.85rem; font-weight: 600; color: #666; }
+    #solar-modal-aper .input-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; box-sizing: border-box; }
+
+    #solar-modal-aper .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+    #solar-modal-aper button { padding: 10px 15px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: all 0.2s; }
+    #solar-modal-aper button:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    #solar-modal-aper .btn-primary { background: var(--primary-color); color: white; }
+    #solar-modal-aper .btn-success { background: var(--success-color); color: white; }
+    #solar-modal-aper .btn-danger { background: var(--danger-color); color: white; }
+    #solar-modal-aper .btn-warning { background: var(--warning-color); color: #000; }
+
+    #solar-modal-aper .btn-delete { background: #333; color: white; grid-column: span 2; margin-top: 5px; }
+    #solar-modal-aper .btn-calc { background: #673ab7; color: white; grid-column: span 2; margin-top: 5px; }
+    #solar-modal-aper .btn-fix { background: var(--overlap-color); color: #000; grid-column: span 2; display: none; border: 2px dashed #fbc02d; margin-top: 5px; }
+
+    #solar-modal-aper .results-container { background: #fcfcfc; border: 1px solid #f0f0f0; border-radius: 8px; padding: 15px; margin-top: 15px; }
+    #solar-modal-aper .result-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+    #solar-modal-aper .result-row.total { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eee; font-weight: bold; font-size: 1rem; }
+    #solar-modal-aper .val { color: var(--primary-color); font-weight: bold; }
+    #solar-modal-aper .close-btn { cursor: pointer; font-size: 1.5rem; }
+</style>
+
+<div id="loi-aper-map"></div>
+
+<div id="solar-modal-aper">
+    <div class="modal-header-aper" id="modal-drag-aper">
+        <span>Calculateur de surface solarisable</span>
+        <span class="close-btn" onclick="document.getElementById('solar-modal-aper').style.display='none'">&times;</span>
+    </div>
+    <div class="modal-content-aper">
+
+        <h3>Informations du projet</h3>
+        <div class="input-group">
+            <label>Adresse ou coordonnées (Lat, Lng)</label>
+            <input type="text" id="project-address-aper" placeholder="Ex: 48.85, 2.35 ou adresse...">
+        </div>
+        <div class="result-row"><small id="coords-display-aper">Coordonnées : N/A</small></div>
+        <button id="zoom-max-button-aper" class="btn-warning" style="width:100%; margin-top:10px;">Mode précision (Zoom max)</button>
+
+        <h3>Outils de dessin</h3>
+        <div class="btn-grid">
+            <button id="draw-plus-aper" class="btn-success">+ Surface</button>
+            <button id="draw-minus-aper" class="btn-danger">- Obstacle</button>
+            <button id="toggle-plus-aper" class="btn-primary">Masquer surface (+)</button>
+            <button id="toggle-minus-aper" class="btn-primary">Masquer obstacles (-)</button>
+            <button id="delete-selected-aper" class="btn-delete">Supprimer une surface</button>
+            <button id="calculate-btn-aper" class="btn-calc">Calculer</button>
+            <button id="fix-overlaps-aper" class="btn-fix">Fusionner les obstacles</button>
+        </div>
+
+        <h3>Données du projet</h3>
+        <div class="input-group">
+            <label>% Surface solarisable (Loi APER)</label>
+            <input type="number" id="percent-aper-aper" value="100" min="0" max="100" step="0.1">
+        </div>
+        <div class="input-group">
+            <label>Surface totale parcelle (m²)</label>
+            <input type="number" id="surface-parcelle-aper" value="1000"> 
+        </div>
+
+        <h3>Résultats des calculs</h3>
+        <div class="results-container">
+            <div class="result-row"><span>Surface artificialisée (+) :</span> <span id="surface-artif-aper" class="val">0.00 m²</span></div>
+            <div class="result-row"><span>Surface obstacles (-) :</span> <span id="surface-obs-aper" class="val">0.00 m²</span></div>
+            <div class="result-row total"><span>Surface potentielle :</span> <span id="surface-pot-solar-aper" class="val">0.00 m²</span></div>
+            <div class="result-row"><span>Surface réglementaire :</span> <span id="surface-reglementaire-aper" class="val">0.00 m²</span></div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsts@2.7.1/dist/jsts.min.js"></script>

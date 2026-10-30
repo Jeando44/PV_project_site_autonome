@@ -1,0 +1,158 @@
+/* Variables de couleurs */
+:root {
+    --primary: rgb(238, 239, 240);
+    --secondary: #de0000;
+    --accent: #1a1a1a;
+    --text: #333333;
+    --light: #ffffff;
+    --gray: #e0e0e0;
+    --shadow: rgba(0, 0, 0, 0.1);
+}
+
+/* Reset et styles de base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+body {
+    background-color: var(--primary);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Menu */
+.menu-container {
+    background-color: var(--light);
+    box-shadow: 0 2px 4px var(--shadow);
+    padding: 1rem;
+}
+
+/* Zone principale - Formulaire de connexion */
+.login-container {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+h1{
+    margin: auto;
+    color: var(--secondary);
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 1.8rem;
+    font-weight: 600;
+}
+
+.login-card {
+    background-color: var(--light);
+    border-radius: 8px;
+    box-shadow: 0 4px 10px var(--shadow);
+    padding: 2rem;
+    width: 100%;
+    max-width: 400px;
+}
+
+h2 {
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 300;
+}
+
+.login-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+label {
+    color: var(--accent);
+    font-weight: 500;
+    font-size: 0.95rem;
+}
+
+input {
+    padding: 0.8rem;
+    border: 1px solid var(--gray);
+    border-radius: 4px;
+    font-size: 1rem;
+    transition: border 0.3s ease;
+}
+
+input:focus {
+    border-color: var(--secondary);
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(222, 0, 0, 0.1);
+}
+
+.btn-login {
+    background-color: var(--secondary);
+    color: var(--light);
+    border: none;
+    border-radius: 4px;
+    padding: 0.8rem;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+    margin-top: 0.5rem;
+}
+
+.btn-login:hover {
+    background-color: #c50000;
+}
+
+.btn-login:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(222, 0, 0, 0.5);
+}
+
+/* Footer */
+.footer {
+    background-color: var(--accent);
+    color: var(--light);
+    padding: 1.5rem;
+    margin-top: auto;
+}
+
+/* Accessibilité et Responsive */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-card {
+        padding: 1.5rem;
+    }
+    
+    .login-container {
+        padding: 1rem;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+    }
+}
+
+/* Focus visible pour l'accessibilité */
+:focus-visible {
+    outline: 3px solid var(--secondary);
+    outline-offset: 2px;
+}

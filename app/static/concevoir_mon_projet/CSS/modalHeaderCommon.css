@@ -1,0 +1,103 @@
+/**
+ * Styles communs pour les en-têtes de modals de géométrie
+ * Basé sur le design de ""
+ */
+
+:root {
+    --main-color: #DC2626;
+    --main-color-hover: #B91C1C;
+    --modal-default-width: 90vw;
+    --modal-default-height: 90vh;
+}
+
+/* Styles de l'en-tête du modal */
+#modal-header {
+    background-color: var(--main-color);
+    color: white;
+    padding: 0.75rem 1rem;
+    border-radius: 0.75rem 0.75rem 0 0;
+    cursor: move;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+#modal-header h2 {
+    font-weight: 600;
+    margin: 0;
+    font-size: 1.25rem;
+}
+
+/* Boutons de l'en-tête */
+.modal-header-btn {
+    background: none;
+    border: none;
+    color: white;
+    padding: 0.25rem;
+    border-radius: 9999px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.modal-header-btn:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+}
+
+.modal-header-btn:active {
+    background-color: rgba(255, 255, 255, 0.3);
+}
+
+.modal-header-btn svg {
+    width: 1.25rem;
+    height: 1.25rem;
+}
+
+/* Conteneur des boutons */
+.modal-header-buttons {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Support Tailwind pour flex items-center space-x-2 */
+.flex {
+    display: flex;
+}
+
+.items-center {
+    align-items: center;
+}
+
+.space-x-2 > * + * {
+    margin-left: 0.5rem;
+}
+
+
+/* Add JJD 04.02.2026, pour forcer l'alignement à gauche des texte du modal règlémentations*/
+
+.modal-content {
+  background: white;
+  padding: 20px;
+  border-radius: 8px;
+  width: 80%;
+  max-width: 800px;
+  /* FORCE L'ALIGNEMENT À GAUCHE ICI */
+  text-align: left; 
+}
+
+/* Force les champs du formulaire à gauche */
+.modal-content .form-control, 
+.modal-content .form-label {
+  text-align: left;
+  display: block;
+  width: 100%;
+}
+
+/* On garde les compteurs à droite s'ils sont à l'intérieur */
+.text-end {
+  text-align: right !important;
+}

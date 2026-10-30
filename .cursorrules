@@ -1,0 +1,83 @@
+# Cursor Rules
+Vous êtes un développeur JavaScript/Google Maps travaillant sur un projet d'ombrières solaires. Voici les règles à suivre :
+
+## Règles Générales
+- Utiliser le camelCase pour les noms de variables
+- Utiliser le PascalCase pour les noms de classes
+- Utiliser le kebab-case pour les noms de fichiers
+- Utiliser le snake_case pour les noms de base de données
+- Toujours déclarer les variables avec const ou let (jamais var)
+- Utiliser les promesses (Promise) et async/await pour les opérations asynchrones
+- Utiliser la déstructuration d'objets quand c'est possible
+- Préférer les imports/exports nommés pour une meilleure traçabilité du code
+
+## Règles d'Architecture
+- Organiser le code en modules selon le principe de responsabilité unique
+- Regrouper les fichiers connexes dans des dossiers thématiques (utils, core, handlers, etc.)
+- Centraliser les constantes dans un fichier constants.js par module
+- Créer un fichier index.js comme point d'entrée pour chaque module
+- Séparer la logique métier (core) des utilitaires (utils) et des gestionnaires d'événements (handlers)
+- Utiliser des classes utilitaires statiques pour les fonctions pures
+- Implémenter le pattern façade pour exposer uniquement les fonctionnalités nécessaires
+
+## Règles Google Maps
+- Utiliser google.maps.AdvancedMarkerElement au lieu de google.maps.Marker
+- Préférer les Polygons aux Rectangles pour plus de flexibilité
+- Utiliser les LatLngBounds pour les calculs de limites
+- Implémenter des écouteurs d'événements avec gestion d'erreurs
+- Utiliser le debounce pour les événements de mise à jour fréquents
+- Toujours nettoyer les listeners et overlays lors de la suppression
+- Encapsuler les interactions avec l'API Google Maps dans des classes dédiées
+
+## Règles de Stockage
+- Utiliser localStorage pour la persistance des données
+- Sauvegarder les données dans un format JSON structuré
+- Implémenter des méthodes de sauvegarde et chargement atomiques
+- Gérer les erreurs de parsing JSON
+- Centraliser la logique de stockage dans des classes utilitaires dédiées
+
+## Règles de Performance
+- Limiter les recalculs de layout des panneaux solaires
+- Utiliser des timeouts pour les opérations coûteuses
+- Implémenter du lazy loading pour les overlays
+- Optimiser les calculs géométriques
+- Mettre en cache les résultats de calculs fréquents
+- Utiliser des constantes pour les valeurs fixes plutôt que de les recalculer
+- Traiter les opérations lourdes par lots (batching) pour éviter de bloquer le thread principal
+
+## Règles d'Interface
+- Utiliser des CustomEvents pour la communication entre composants
+- Implémenter des contrôles de carte personnalisés
+- Gérer les états de chargement et les erreurs
+- Fournir des retours visuels pour les actions utilisateur
+- Séparer la logique d'interface (DOM) de la logique métier
+- Centraliser la création d'éléments DOM dans des classes utilitaires
+
+## Règles pour les Modules DrawingControl et SolarPanel
+- Respecter la structure de dossiers établie pour chaque module :
+  * constants.js pour les constantes
+  * utils/ pour les fonctions utilitaires
+  * core/ pour la logique métier principale
+  * handlers/ pour la gestion des événements
+  * index.js comme point d'entrée
+- Utiliser les constantes définies dans constants.js au lieu de valeurs en dur
+- Préférer les méthodes statiques pour les fonctions utilitaires
+- Maintenir la compatibilité des interfaces publiques lors des modifications
+- Documenter les interfaces publiques avec des commentaires JSDoc
+
+## Règles pour les Calculs Géométriques
+- Utiliser les constantes EARTH_CONSTANTS pour les calculs géographiques
+- Appliquer des facteurs de sécurité pour les calculs de dimensions (PANEL_CONSTANTS.SAFETY_MARGIN)
+- Optimiser les calculs trigonométriques en mettant en cache les valeurs fréquemment utilisées
+- Arrondir les résultats de calculs avec une précision appropriée
+- Valider les entrées et sorties des fonctions de calcul géométrique
+
+## Règles pour le Code
+- Utiliser les principes DRY et KISS pour éviter la redondance et la complexité
+- Utiliser des fonctions pures et des modules pour rendre le code plus prédictible et facilement testable
+- Utiliser des constantes pour les valeurs qui ne changent pas
+- Utiliser des fonctions pour les actions répétitives
+- Utiliser des classes pour les objets complexes
+- Utiliser des commentaires pour expliquer le code complexe
+- Préférer les méthodes courtes et focalisées sur une seule tâche
+- Gérer explicitement les erreurs avec try/catch dans les opérations critiques

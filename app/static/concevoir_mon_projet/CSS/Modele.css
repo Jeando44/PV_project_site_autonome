@@ -1,0 +1,353 @@
+/* Zone carte + formulaire : exactement l'espace laissé par les deux menus fixes. Avant, une
+   hauteur de 100 % décalée de 50px faisait sortir le bas de la carte de l'écran (palette d'outils
+   et sa poignée invisibles sur les écrans de faible hauteur). */
+.Modele {
+  top: var(--skv-topbar-h, 50px);
+  left: 0;
+  height: calc(100% - var(--skv-topbar-h, 50px));
+  width: 100%;
+  background-color: rgb(255, 255, 255);
+  float: left;
+  line-height: 50px;
+  padding-left: var(--skv-sidebar-w, 70px);
+  overflow: auto;
+  position: fixed;
+  margin-top: 0;
+}
+.Section {
+  width: 100%;
+  height: 100%;
+}
+.container-inner-section {
+  display: flex;
+  flex-direction: column;
+  align-items: start;
+  justify-content: start;
+  flex-wrap: wrap;
+}
+.menu1 {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  height: fit-content;
+  width: 100%;
+  background-color: lightgray;
+  color: blue lightblue;
+  float: left;
+  line-height: 50px;
+  padding-left: 15px;
+  overflow: auto;
+  overflow-x: hidden;
+  border: 1px solid rgb(182, 210, 215);
+}
+
+.menu11 {
+  min-height: 25px;
+  margin-top: 2px;
+}
+
+h4 {
+  margin-top: 0.1em;
+  margin-bottom: 0.1em;
+
+  color: rgb(3, 3, 50);
+  text-align: center;
+}
+/* Table calepinage */
+th,
+td {
+  font-weight: 100;
+}
+
+table.table-striped td,
+table.table-striped th {
+  border: 0px solid rgb(179, 175, 175);
+  padding: 4px 8px; /* Réduit l'espace dans les cellules */
+  line-height: 1.2; /* Réduit l'espacement vertical */
+}
+
+h6,
+.h6 {
+  color: #de0000;
+  font-weight: 500;
+}
+/* ==================================== */
+h6 {
+  margin-top: 10px;
+  margin-bottom: 0px;
+  color: black;
+  text-align: center;
+}
+
+.N1 {
+  margin-bottom: 0px;
+  margin-right: auto;
+  margin-left: auto;
+  width: 100%;
+}
+
+.N2 {
+  margin-top: 0px;
+  margin-bottom: 0px;
+  width: 100%;
+  margin-right: 0px;
+  margin-left: 0px;
+}
+
+.Bt {
+  height: 35px;
+  width: 140px;
+  background-color: gray;
+  color: lightblue;
+  float: left;
+  border-color: black;
+  border-width: 2px;
+  font-size: 16px;
+  display: flex;
+  text-align: center;
+  margin-left: 25px;
+}
+
+.col-sm-6 {
+  font-size: 10px;
+  margin-bottom: 0px;
+  margin-top: 0px;
+  margin-left: 0px;
+  margin-right: 0px;
+}
+
+.select2 {
+  height: 30px;
+  width: 175px;
+  background-color: blue white;
+  color: black;
+  float: left;
+  border-color: black;
+  line-height: 30px;
+  font-size: 15px;
+  align-self: flex-end;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+.select3 {
+  height: 30px;
+  width: 210px;
+  background-color: blue white;
+  color: black;
+  float: left;
+  border-color: black;
+  line-height: 30px;
+  font-size: 15px;
+  align-self: flex-end;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+.continuer2 {
+  height: 30px;
+  width: 175px;
+  background-color: blue white;
+  color: black;
+  float: left;
+  border-color: black;
+  line-height: 30px;
+  font-size: 16px;
+  align-self: flex-end;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+input, textarea {
+  text-align: right;
+}
+
+
+textarea {
+  padding: 0.8rem;
+  border: 1px solid gray;
+  border-radius: 4px;
+  font-size: 1rem;
+  transition: border 0.3s ease;
+  box-shadow: none;
+}
+
+textarea:focus,
+textarea:hover,
+textarea:active {
+  border-color: #de0000;
+  outline: none;
+}
+
+.input1 {
+  height: 30px;
+  width: 90px;
+  background-color: #de0000 white;
+  color: black;
+  border-color: black;
+  border-radius: 7px;
+  line-height: 30px;
+  font-size: 15px;
+}
+
+.input2 {
+  height: 30px;
+  width: 220px;
+  background-color: #de0000 white;
+  color: black;
+  float: left;
+  border-color: black;
+  line-height: 30px;
+  font-size: 15px;
+  align-self: flex-end;
+  margin-top: 5px;
+  margin-bottom: 0px;
+}
+
+.Cacher {
+  display: none;
+}
+
+.select1 {
+  height: 30px;
+  width: 100%;
+  background-color: #de0000 white;
+  color: black;
+  float: right;
+  border-color: black;
+  line-height: 30px;
+  font-size: 16px;
+  align-self: flex-end;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+.select2 {
+  height: 30px;
+  width: 100%;
+  color: rgb(0, 0, 0);
+  float: right;
+  border-color: black;
+  line-height: 30px;
+  font-size: 16px;
+  align-self: flex-end;
+  margin-top: 0px;
+  margin-bottom: 0px;
+  border-radius: 5px;
+}
+
+.form-control {
+  height: 30px;
+  width: 100%;
+  background-color: #de0000 white;
+  color: black;
+  float: right;
+  border-color: black;
+  line-height: 30px;
+  font-size: 16px;
+  align-self: flex-end;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+label {
+  height: 30px;
+  width: 100%;
+  float: left;
+  line-height: 30px;
+  font-size: 15px;
+  font-weight: 500;
+  margin-top: 0px;
+  margin-bottom: 0px;
+}
+
+.label {
+  line-height: 45px;
+}
+
+.graph {
+  width: 80%;
+  margin-left: auto;
+  margin-right: auto;
+  border: 0px solid rgb(46, 69, 70);
+  float: right;
+  align-items: center;
+}
+
+.graph1 {
+  width: 80%;
+
+  margin-left: auto;
+  margin-right: auto;
+  border: 0px solid rgb(46, 69, 70);
+  float: right;
+  align-items: center;
+}
+
+table {
+  width: 77.5%;
+  border-collapse: collapse;
+  height: 5%;
+  border: 0.5px solid gray;
+  align-content: center;
+  margin-left: auto;
+  margin-right: auto;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+td {
+  width: 25%;
+  border: 0.5px solid gray;
+  height: 33.33%;
+  text-align: center;
+}
+
+legend {
+  height: 30px;
+  width: 250px;
+  background-color: lightgrey;
+  color: black;
+  float: right;
+  border-color: black;
+  line-height: 30px;
+  font-size: 16px;
+  padding-left: 70%;
+}
+
+.h6 {
+  margin-top: 10px;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.Attention {
+  color: red;
+  font-weight: bold;
+}
+.btn-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  height: auto;
+  padding: 10px 0px;
+}
+.btn-appliquer {
+  border-radius: 5px;
+  color: white;
+  background-color: rgb(4, 55, 79);
+  border: none;
+  /* padding-left: 10%;
+    padding-right: 10%; */
+  margin: 0 !important;
+  width: 100px;
+}
+
+.btn-appliquer:hover {
+  background: linear-gradient(270deg, #a50606, rgb(248, 8, 40), #a50606);
+}
+.map-container {
+  flex: 1;
+  min-width: 200px;
+}

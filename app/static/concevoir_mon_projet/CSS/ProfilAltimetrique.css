@@ -1,0 +1,221 @@
+/**
+ * Styles pour le module Profil Altimétrique
+ * Structure similaire à resuméParcelles
+ */
+
+/* Container principal */
+.profil-altimetrique-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border-top: 1px solid #c0c0c0;
+  border-bottom: 1px solid #eee;
+  background-color: rgba(255, 255, 255, 0.9);
+  min-height: fit-content;
+  border-radius: 2px 0 2px 0;
+  z-index: 100;
+  cursor: default;
+  transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out;
+  transform-origin: left center;
+  box-sizing: border-box;
+  overflow: hidden;
+  /* La largeur est maintenant calculée dynamiquement par AltimetricResizeHandler.js */
+}
+
+/* État masqué */
+.profil-altimetrique-container.collapsed {
+  transform: translateX(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Masquer tous les enfants quand le parent est collapsed */
+.profil-altimetrique-container.collapsed > * {
+  display: none !important;
+}
+
+/* Onglets */
+.profil-tabs-container {
+  display: flex;
+  gap: 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid #ddd;
+  scroll-behavior: smooth;
+  flex-wrap: nowrap;
+}
+
+.profil-tabs-container::-webkit-scrollbar {
+  height: 6px;
+}
+
+.profil-tabs-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.profil-tabs-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 3px;
+}
+
+.profil-tabs-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+.profil-tab {
+  padding: 0px 16px;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+  font-size: 12px;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  background-color: rgba(255, 255, 255, 0.9);
+  color: #333;
+  flex-shrink: 0;
+  min-width: fit-content;
+}
+
+.profil-tab.active {
+  background-color: #2196F3;
+  color: white;
+}
+
+.profil-tab:hover:not(.active) {
+  background-color: #d0d0d0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.tabs-empty-message {
+  font-size: 11px;
+  color: #999;
+  font-style: italic;
+  align-self: center;
+}
+
+/* Zone du graphique */
+.profil-chart-container {
+  min-height: 280px;
+  height: 280px;
+  background-color: white;
+  border: 1px solid #e0e0e0;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+  display: block;
+}
+
+/* Conteneur interne du graphique Google Charts */
+.profil-chart-container > div {
+  width: 100% !important;
+  height: 280px !important;
+  display: block;
+}
+
+/* Résumé des statistiques */
+.profil-summary-container {
+  width: 100%;
+  background-color:rgba(255, 255, 255, 0.9);
+  border-top: 1px solid #ddd;
+  font-size: 12px;
+  gap: 0;
+}
+
+/* Boutons */
+.profil-altimetrique-container button {
+  transition: all 0.2s ease;
+}
+
+.profil-altimetrique-container button:hover:not(:disabled) {
+  opacity: 0.8;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.profil-altimetrique-container button:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.profil-altimetrique-container button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Input de nom */
+.profil-altimetrique-container input[type="text"] {
+  width: 100%;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 11px;
+  transition: border-color 0.2s ease;
+}
+
+.profil-altimetrique-container input[type="text"]:focus {
+  outline: none;
+  border-color: #2196F3;
+  box-shadow: 0 0 0 2px rgba(33, 150, 243, 0.1);
+}
+
+.profil-altimetrique-container input[type="text"]:disabled {
+  background-color: #f5f5f5;
+  color: #999;
+  cursor: not-allowed;
+}
+
+/* Responsive */
+@media (max-width: 1200px) {
+  .profil-altimetrique-container {
+    width: 30vw;
+    min-width: 350px;
+    max-width: 500px;
+  }
+}
+
+@media (max-width: 768px) {
+  .profil-altimetrique-container {
+    width: 90vw;
+    min-width: 300px;
+    max-width: 90vw;
+  }
+
+  .profil-chart-container {
+    min-height: 250px;
+    height: 250px;
+    padding: 8px;
+  }
+}
+
+/* Animation d'apparition */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.profil-altimetrique-container {
+  animation: fadeIn 0.3s ease;
+}
+
+/* Styles pour les tooltips personnalisés */
+.profil-tooltip {
+  background-color: rgba(255, 255, 255, 0.9);
+  color: white;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  pointer-events: none;
+  z-index: 10000;
+}
+

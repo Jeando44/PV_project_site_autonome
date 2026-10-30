@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    {% include 'concevoir_mon_projet/components/mention_essai.html' %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- CSS Modulaires -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/modalHeaderCommon.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/geometrieModal.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/batiment_metal.css') }}">
+
+    <!-- Logger (doit être chargé en premier pour geometrieModalCore) -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/logger.js') }}"></script>
+
+    <style>
+        /* Styles pour masquer le formulaire en mode calepinage */
+        #app-modal.form-hidden #controls-container {
+            display: none !important;
+        }
+
+        
+        #app-modal.form-hidden #toggle-form-btn svg {
+            transform: rotate(180deg);
+        }
+
+        /* Force la disparition totale du bloc bas et du formulaire */
+        #app-modal.calepinage-full #facade-block-container {
+            display: none !important;
+            height: 0 !important;
+        }
+
+        #app-modal.calepinage-full #coupe-container {
+            height: 100% !important;
+            flex: 1 1 100% !important;
+            min-height: 75vh !important;
+        }
+    </style>
+
+    <!-- Plans de coupe / façade fixes pendant le défilement du formulaire (cf. ce fichier). -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/geometrie_plans_fixes.css') }}?v=2">
+</head>
+
+<body>
+
+    <div id="modal-overlay"></div>
+    <div id="app-modal" class="form-hidden calepinage-full">
+        <div id="modal-header">
+            <h2>Configurateur Bâtiment</h2>
+            <div class="flex items-center space-x-2">
+                <button id="toggle-form-btn" class="modal-header-btn" title="Afficher/Masquer le formulaire">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5l-7.5-7.5 7.5-7.5" />
+                    </svg>
+                </button>
+                <button id="reset-modal-btn" class="modal-header-btn" title="Réinitialiser la position et la taille">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m4.5 11.25h-4.5m4.5 0v-4.5m0 .001L15 15" />
+                    </svg>
+                </button>
+                <button id="close-modal-btn" class="modal-header-btn" title="Fermer">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="modal-body">
+            <div class="container mx-auto flex-1 flex flex-col" style="min-width: 100%;">
+                <header class="text-center mb-6 flex-shrink-0">
+                </header>
+
+                <div class="grid lg:grid-cols-3 gap-6 flex-1">
+
+                    <div id="canvas-column" class="lg:col-span-2 " >
+
+                        <div id="coupe-container" class="flex flex-col ">
+                            <div class="flex border-b border-gray-200 mb-2 flex-shrink-0" style="margin-top:-20px">
+                                <button id="tabCoupe" class="tab-button tab-group-1 active">Plan de coupe</button>
+                                <button id="tabCalepinage" class="tab-button tab-group-1">Plan de calepinage</button>
+                                <!-- NOTE (pré-existant, non lié au réordonnancement des onglets) : id="tabCoupe"
+                                     dupliqué ci-dessous — document.getElementById() ne renvoie jamais que le
+                                     premier, cette 2e instance était déjà inerte avant ce correctif. Conservée
+                                     telle quelle, hors périmètre de la demande. -->
+                                <button id="tabCoupe" class="tab-button tab-group-1 active hidden">Plan de coupe</button>
+                            </div>
+
+                            <div id="viewCoupe" class="tab-content-1 canvas-container flex-1">
+                                <div class="absolute top-2 left-2 z-10 flex flex-wrap gap-2">
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="zoomInCoupe" class="tool-button icon-only"
+                                            title="Zoom avant">+</button>
+                                        <button id="zoomOutCoupe" class="tool-button icon-only"
+                                            title="Zoom arrière">-</button>
+                                        <button id="panCoupe" class="tool-button icon-only"
+                                            title="Déplacer (Panoramique)">🖐</button>
+                                        <button id="resetCoupe" class="tool-button icon-only"
+                                            title="Tout voir">⛶</button>
+                                    </div>
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="toolInvertSlope" class="tool-button icon-only"
+                                            title="Inverser la pente">⇅</button>
+                                        <div class="border-l border-gray-300 h-6 mx-1 self-center"></div>
+                                    </div>
+                                    <div id="intermediateBraceControls"
+                                        class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="toggleBraceInterBracons" class="tool-button active"
+                                            title="Renforts Int. Bracons">Bracons Int.</button>
+                                        <button id="toggleBraceInterJarrets" class="tool-button"
+                                            title="Renforts Int. Jarrets">Jarrets Int.</button>
+                                    </div>
+                                    <div id="toolDimColors" class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button class="tool-button dim-color-btn active" data-color="#0000FF"
+                                            style="background-color: #0000FF;" title="Bleu"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#FF0000"
+                                            style="background-color: #FF0000;" title="Rouge"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#000000"
+                                            style="background-color: #000000;" title="Noir"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#FF00FF"
+                                            style="background-color: #FF00FF;" title="Magenta"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#4169E1"
+                                            style="background-color: #4169E1;" title="Bleu Foncé"></button>
+                                    </div>
+                                </div>
+                                <h3 class="view-title">Plan de coupe</h3>
+                                <canvas id="coupeCanvas"></canvas>
+                            </div>
+
+                            <div id="viewCalepinage" class="tab-content-1 hidden canvas-container p-2 flex-1">
+                                <iframe id="iframeCalepinage"
+                                    src="{{ url_for('concevoir_mon_projet.geometrie_calepinage_batiment_metal') }}"
+                                    style="width:100%; height:100%; border:none;"
+                                    title="Configurateur Calepinage"></iframe>
+                            </div>
+                        </div>
+
+                        <div id="facade-block-container" class="flex flex-col">
+                            <div class="flex border-b border-gray-200 mb-2 flex-shrink-0">
+                                <button id="tabFacade" class="tab-button tab-group-2 active">Plan de façade</button>
+                                <button id="tabImplantation" class="tab-button tab-group-2">Plan d'implantation</button>
+                            </div>
+
+                            <div id="viewFacade" class="tab-content-2 canvas-container flex-1">
+                                <div class="absolute top-2 left-2 z-10 flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                    <button id="zoomInFacade" class="tool-button icon-only"
+                                        title="Zoom avant">+</button>
+                                    <button id="zoomOutFacade" class="tool-button icon-only"
+                                        title="Zoom arrière">-</button>
+                                    <button id="panFacade" class="tool-button icon-only"
+                                        title="Déplacer (Panoramique)">🖐</button>
+                                    <button id="resetFacade" class="tool-button icon-only" title="Tout voir">⛶</button>
+                                </div>
+                                <h3 class="view-title">Plan de façade</h3>
+                                <canvas id="facadeCanvas"></canvas>
+                            </div>
+
+                            <div id="viewImplantation" class="tab-content-2 hidden canvas-container flex-1" style="min-height: 80vh;">
+                                <div class="absolute top-2 left-2 z-10 flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                    <button id="zoomInImplantation" class="tool-button icon-only"
+                                        title="Zoom avant">+</button>
+                                    <button id="zoomOutImplantation" class="tool-button icon-only"
+                                        title="Zoom arrière">-</button>
+                                    <button id="panImplantation" class="tool-button icon-only"
+                                        title="Déplacer (Panoramique)">🖐</button>
+                                    <button id="resetImplantation" class="tool-button icon-only"
+                                        title="Tout voir">⛶</button>
+                                </div>
+                                <h3 class="view-title">Plan d’implantation des axes de poteaux</h3>
+                                <canvas id="implantationCanvas"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div id="controls-container" class="lg:col-span-1 controls-container p-4 rounded-lg shadow-md">
+                        <div class="input-grid">
+                            <h2 class="input-group-title">Données des coupes</h2>
+
+                            <div class="span-2"><label class="block text-sm font-medium text-gray-700 mb-1">Modèle de
+                                    Bâtiment de coupe</label>
+                                <div class="flex items-center mb-2">
+                                    <input type="checkbox" id="bypass-filters"
+                                        class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                                    <label for="bypass-filters"
+                                        class="ml-2 block text-sm font-medium text-gray-900">Voir tous les modèles de
+                                        structure</label>
+                                </div>
+                                <div id="model-filter-error" class="text-red-600 text-sm font-semibold hidden mb-2">
+                                </div>
+                                <div id="model-btn-group" class="mt-1 flex flex-wrap gap-1 rounded-md shadow-sm">
+                                    <button id="modelBipente"
+                                        class="flex-1 relative inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Bipente</button>
+                                    <button id="modelMonopente"
+                                        class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Monopente</button>
+                                    <button id="modelAsymetrique"
+                                        class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Asymétrique</button>
+                                    <button id="modelMultipente"
+                                        class="flex-1 relative inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Multipente</button>
+                                </div>
+                            </div>
+
+                            <div class="span-2 flex items-center"><label
+                                    class="block text-sm font-medium text-gray-700 mr-4">Type de renfort (rives)</label>
+                                <div class="flex rounded-md shadow-sm toggle-btn-group equal-width flex-grow">
+                                    <button id="reinforceBracons"
+                                        class="relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Bracons</button>
+                                    <button id="reinforceJarrets"
+                                        class="relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Jarrets</button>
+                                </div>
+                            </div>
+
+                            <div hidden>
+                                <label for="widthRoof" class="block text-sm font-medium text-gray-700">Largeur toiture
+                                    bâtiment (m)</label><input type="number" id="widthRoof" value="15.00" step="0.1"
+                                    min="0.1" max="50"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="postCount" class="block text-sm font-medium text-gray-700">Nombre de
+                                    poteaux</label><input type="number" id="postCount" value="3" step="1" min="1"
+                                    max="10"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+                            <!-- <div><label for="passageHeight" class="block text-sm font-medium text-gray-700">Hauteur
+                                    libre de passage (m) (Sous renfort)</label><input type="number" id="passageHeight"
+                                    value="2.8" step="0.1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>-->
+                            <div><label for="bracePosPct" class="block text-sm font-medium text-gray-700">Position
+                                    bracon_Pot_rives (%)</label><input type="number" id="bracePosPct" value="85"
+                                    step="5" min="0.1" max="100"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+                            <div><label for="bracePosTraversePotRive"
+                                    class="block text-sm font-medium text-gray-700">Position bracon_Traverse_Pot_rive
+                                    (%)</label><input type="number" id="bracePosTraversePotRive" value="30" step="5"
+                                    min="0.1" max="100"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="bracePosIntermPct" class="block text-sm font-medium text-gray-700">Position
+                                    bracon_Pot_Interm (%)</label><input type="number" id="bracePosIntermPct" value="70"
+                                    step="5" min="0.1" max="100"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="bracePosTraverseIntPct"
+                                    class="block text-sm font-medium text-gray-700">Position bracon_Traverse_Int
+                                    (%)</label><input type="number" id="bracePosTraverseIntPct" value="30" step="5"
+                                    min="0.1" max="100"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+                            <div><label for="hauteur_batiment_egout"
+                                    class="block text-sm font-medium text-gray-700">Hauteur Bâtiment_Égout(m)
+                                </label><input type="number" id="hauteur_batiment_egout" value="5.0" step="0.1"
+                                    min="0.1" max="15"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+                            <div class="hidden"><label for="lowPointHeight" class="block text-sm font-medium text-gray-700">Hauteur bas
+                                    structure (calc.)</label><input type="number" id="lowPointHeight" value="3.38"
+                                    step="0.01"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100"
+                                    readonly></div>
+                            <p id="heightError" class="text-red-600 text-sm span-2"></p>
+
+                            <div class="hidden"><label for="postHeight" class="block text-sm font-medium text-gray-700">Hauteur Poteau
+                                    (calc.)</label><input type="number" id="postHeight" value="3.50" step="0.01"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100"
+                                    readonly></div>
+                            <div><label for="heightUnderBrace" class="block text-sm font-medium text-gray-700">Hauteur
+                                    sous renfort (m)</label><input type="number" id="heightUnderBrace" value="0"
+                                    step="0.1" min="0" max="15"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+                            <!--<div><label for="anchorDepth" class="block text-sm font-medium text-gray-700">Profondeur d'ancrage (m)</label><input type="number" id="anchorDepth" value="0.3" step="0.05" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>-->
+                            <div class="hidden"><label for="panelWidth" class="block text-sm font-medium text-gray-700">Largeur champ
+                                    PV (m)</label><input type="number" id="panelWidth" value="12.40" step="0.1"
+                                    min="0.1" max="50"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+                            <div hidden id="symSlopeControl" class="hidden">
+                                <label for="roofSlope" class="block text-sm font-medium text-gray-700">Pente de la
+                                    toiture (°)</label>
+                                <input type="number" id="roofSlope" value="8" step="1" min="0.1" max="50"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+                            <div class="span-2 hidden"><label for="overhangValue"
+                                    class="block text-sm font-medium text-gray-700">Porte-à-faux (Symétrique)
+                                    (m)</label>
+                                <input type="number" id="overhangValue" value="0.25" step="0.05" min="0.01" max="0.30"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                <input type="hidden" id="overhangSymValue" value="0.25" class="all-inputs">
+                            </div>
+
+                            <div id="asymmetryFields" class="span-2 input-grid hidden">
+                                <div><label for="asymmetryPct" class="block text-sm font-medium text-gray-700">%
+                                        d'asymétrie</label><input type="number" id="asymmetryPct" value="30" step="5"
+                                        min="0.1" max="100"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div class="hidden"></div>
+                                <div><label for="inclination1"
+                                        class="block text-sm font-medium text-gray-700">Inclinaison P1 (°)</label><input
+                                        type="number" id="inclination1" value="15" min="0.1" max="50"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="inclination2"
+                                        class="block text-sm font-medium text-gray-700">Inclinaison P2 (°)</label><input
+                                        type="number" id="inclination2" value="10" min="0.1" max="50"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                            </div>
+
+                            <div class="span-2 p-3 bg-red-50 rounded-md border border-red-300">
+                                <label for="crossCoupe" class="block text-sm font-medium text-red-700">Croix de
+                                    Saint-André (Coupe - Travées ex: 1,3)</label>
+                                <input type="text" id="crossCoupe" value="1" placeholder="ex: 1,3"
+                                    class="all-inputs mt-1 block w-full rounded-md border-red-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                <div class="flex items-center mt-2">
+                                    <input type="checkbox" id="toggleCrossCoupe"
+                                        class="all-inputs h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500">
+                                    <label for="toggleCrossCoupe" class="ml-2 block text-sm text-red-700">Afficher les
+                                        Croix en Coupe</label>
+                                </div>
+                            </div>
+                        
+
+
+
+                        
+                            <h2 id="facade-data-title" class="input-group-title">Données de Façade</h2>
+                            <div class="span-2 p-3 bg-red-50 rounded-md border border-red-300">
+                                <label for="crossFacade" class="block text-sm font-medium text-red-700">Croix de
+                                    Saint-André (Façade - Travées ex: 1,3)</label>
+                                <input type="text" id="crossFacade" value="1,3" placeholder="ex: 1,3"
+                                    class="all-inputs mt-1 block w-full rounded-md border-red-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                <div class="flex items-center mt-2">
+                                    <input type="checkbox" id="toggleCrossFacade"
+                                        class="all-inputs h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500">
+
+                                    <label for="toggleCrossFacade" class="ml-2 block text-sm text-red-700">Afficher les
+                                        Croix en Façade</label>
+                                </div>
+                            </div>
+
+                            <div class="hidden"><label for="facadeLength" class="block text-sm font-medium text-gray-700">Longueur
+                                    totale (m)</label><input type="number" id="facadeLength" value="38" step="1"
+                                    min="0.1" max="100"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="leftOverhang" class="block text-sm font-medium text-gray-700">Porte-à-faux
+                                    Gauche (m)</label><input type="number" id="leftOverhang" value="1" step="0.1"
+                                    min="0.1" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="rightOverhang" class="block text-sm font-medium text-gray-700">Porte-à-faux
+                                    Droit (m)</label><input type="number" id="rightOverhang" value="1" step="0.1"
+                                    min="0.1" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="groundSlopeFacade" class="block text-sm font-medium text-gray-700">Dénivelé
+                                    du terrain (m)</label><input type="number" id="groundSlopeFacade" value="0.00"
+                                    step="0.01" min="-3" max="2.99"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="baseAltimetry" class="block text-sm font-medium text-gray-700">Altimétrie
+                                    au point +0.00m (m)</label><input type="number" id="baseAltimetry" value="0.00"
+                                    step="0.01" min="-3" max="2.99"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+                            <div class="span-2"><label for="pvLayout"
+                                    class="block text-sm font-medium text-gray-700">Nbre de PV Calepinage
+                                    (LxC)</label><input type="text" id="pvLayout" value="10L x 30C" readonly
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    placeholder="ex: 10L x 30C"></div>
+                            <div class="flex items-center span-2"><input type="checkbox" id="alignRoof"
+                                    class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"><label
+                                    for="alignRoof" class="ml-2 block text-sm text-gray-900">Alignement toiture</label>
+                            </div>
+                            <div class="span-2"><label for="postDistances"
+                                    class="block text-sm font-medium text-gray-700">Entraxes poteaux (ex: 4*10.5 +
+                                    2*8)</label><input type="text" id="postDistances" value="3*10 + 6"
+                                    pattern="^[0-9.+\* ]+$"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                <div id="postDistancesError" class="text-red-600 text-sm mt-1"></div>
+                            </div>
+                            
+
+
+
+                         
+                            <h2 id="geometry-title" class="input-group-title cursor-pointer flex justify-between items-center collapsed">
+                                <span>Géométrie matériels</span>
+                                <svg id="geometry-chevron" class="w-5 h-5 transition-transform"
+                                    xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </h2>
+                            <div id="geometry-inputs" class="span-2 input-grid collapsed">
+                                <div><label for="postWidth" class="block text-sm font-medium text-gray-700">Épaisseur
+                                        Poteau (m)</label><input type="number" id="postWidth" value="0.30" step="0.01"
+                                        min="0.01" max="0.99"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="purlinHeight" class="block text-sm font-medium text-gray-700">Hauteur
+                                        pannes (m)</label><input type="number" id="purlinHeight" value="0.30"
+                                        step="0.01" min="0.01" max="0.99"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="purlinThickness"
+                                        class="block text-sm font-medium text-gray-700">Epaisseur pannes
+                                        (m)</label><input type="number" id="purlinThickness" value="0.10" step="0.01"
+                                        min="0.01" max="0.99"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="panelThickness"
+                                        class="block text-sm font-medium text-gray-700">Épaisseur panneaux
+                                        (m)</label><input type="number" id="panelThickness" value="0.03" step="0.01"
+                                        min="0.01" max="0.99"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="integrationSystemHeight"
+                                        class="block text-sm font-medium text-gray-700">Hauteur système d’intégration
+                                        (m)</label><input type="number" id="integrationSystemHeight" value="0.1"
+                                        step="0.01" min="0.01" max="0.99"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="beamHeight" class="block text-sm font-medium text-gray-700">Épaisseur
+                                        Traverse (m)</label><input type="number" id="beamHeight" value="0.15"
+                                        step="0.01" min="0.01" max="0.99"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="beamWidth" class="block text-sm font-medium text-gray-700">Largeur
+                                        Traverse (m)</label><input type="number" id="beamWidth" value="0.15" step="0.01"
+                                        min="0.01" max="0.99"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="braceWidth" class="block text-sm font-medium text-gray-700">Épaisseur
+                                        des bracons (m)</label><input type="number" id="braceWidth" value="0.10"
+                                        step="0.01" min="0.01" max="0.99"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="crossThickness"
+                                        class="block text-sm font-medium text-gray-700">Épaisseur Croix St-André
+                                        (m)</label><input type="number" id="crossThickness" value="0.05" step="0.01"
+                                        min="0.01" max="0.99"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+
+                                <div class="span-2"><label for="purlinCount"
+                                        class="block text-sm font-medium text-gray-700">Nombre de pannes</label><input
+                                        type="number" id="purlinCount" value="6" step="1" min="3" max="14"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div id="braceFixControl"><label for="braceFixPercentage"
+                                        class="block text-sm font-medium text-gray-700">Fixation renfort
+                                        (%)</label><input type="number" id="braceFixPercentage" value="10" step="1"
+                                        min="0.1" max="100"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                            </div>
+
+                
+
+                            <h2 id="actions-title" class="input-group-title">Actions</h2>
+                            <div class="span-2 space-y-2">
+                                <button id="exportCoupeBtn"
+                                    class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700 hidden">Exporter
+                                    Plan de Coupe en PNG</button>
+                                <button id="exportFacadeBtn"
+                                    class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700 hidden">Exporter
+                                    Plan de Façade en PNG</button>
+                                <div class="border-t pt-2">
+                                    <button id="exportPdfBtn"
+                                        class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Exporter
+                                        tous les plans en PDF</button>
+                                    <button id="printBtn"
+                                        class="w-full mt-2 bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Imprimer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Core (doit être chargé après le logger) -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrieModalCore.js') }}"></script>
+
+    <!-- le script ci-dessous gère l'intégration du style du modal existant dans le modal principal -->
+
+    <script>
+        // Initialiser le modal core pour gérer l'affichage sans double modal (mode iframe)
+        const modalCore = new GeometrieModalCore();
+    </script>
+
+
+    <!-- Logique spécifique au configurateur bâtiment métal -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/batiment_metal.js') }}"></script>
+    <!-- Icônes 👁️/✂️ « un seul plan dans le canevas » (reprises du petit champ solaire, qui garde
+         les siennes dans son gabarit) : boutons + bascule posés à l'exécution. -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/geometrie_plans_toggle.js') }}?v=1"></script>
+    <script>window.GEOMETRIE_STRUCTURE_TYPE = 'batiment_metal';</script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/storage_manager_geometrie_structure.js') }}?v=4"></script>
+
+    <!-- Script pour la sauvegarde des plans pour l'export PDF -->
+
+    <script type="module">
+        import GeometryPlansSaver from "{{ url_for('static', filename='concevoir_mon_projet/javascript/services/GeometryPlansSaver.js') }}";
+
+        // Attendre que le DOM soit chargé
+        document.addEventListener('DOMContentLoaded', () => {
+            const saver = new GeometryPlansSaver();
+
+            // Attacher l'événement au bouton de sauvegarde
+            const savePlansBtn = document.getElementById('savePlansBtn');
+            if (savePlansBtn) {
+                savePlansBtn.addEventListener('click', async () => {
+                    savePlansBtn.disabled = true;
+                    savePlansBtn.textContent = '💾 Sauvegarde en cours...';
+                    await saver.savePlans();
+                    savePlansBtn.disabled = false;
+                    savePlansBtn.innerHTML = '💾 Sauvegarder les plans pour export PDF';
+                });
+            }
+        });
+
+
+
+    </script>
+
+    <!-- script pour la synchronisation des dimensions -->
+    <script>
+        // Résoudre le pvId ciblé depuis l'URL (?pvId=PV1) ou le premier PV disponible
+        function _getTargetPvId(data) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pvId = urlParams.get('pvId');
+            if (pvId && data.shapes?.[pvId]) return pvId;
+            return Object.keys(data.shapes ?? {})[0] ?? null;
+        }
+
+        // Appliquer les règles d'affichage des boutons selon toiture_pente_type
+        function applyModelFilters() {
+            const bypassCheckbox = document.getElementById('bypass-filters');
+            const errorDiv = document.getElementById('model-filter-error');
+            const btnGroup = document.getElementById('model-btn-group');
+
+            const btnBipente = document.getElementById('modelBipente');
+            const btnMonopente = document.getElementById('modelMonopente');
+            const btnAsymetrique = document.getElementById('modelAsymetrique');
+            const btnMultipente = document.getElementById('modelMultipente');
+
+            const allBtns = [btnBipente, btnMonopente, btnAsymetrique, btnMultipente];
+
+            allBtns.forEach(btn => { if (btn) btn.style.display = 'inline-flex'; });
+            if (errorDiv) errorDiv.classList.add('hidden');
+            if (btnGroup) btnGroup.style.display = 'flex';
+
+            if (bypassCheckbox && bypassCheckbox.checked) return;
+
+            let toiture_pente_type = null;
+
+            // Essayer de lire toiture_pente_type depuis l'iframe
+            try {
+                const iframe = document.getElementById('iframeCalepinage');
+                if (iframe && iframe.contentWindow && iframe.contentWindow.document) {
+                    const penteTypeSelect = iframe.contentWindow.document.getElementById('toiture_pente_type');
+                    if (penteTypeSelect && penteTypeSelect.value) {
+                        toiture_pente_type = penteTypeSelect.value;
+                    }
+                }
+            } catch (e) { }
+
+            // Fallback via le localStorage
+            if (!toiture_pente_type) {
+                try {
+                    const savedData = localStorage.getItem('solarProjectData');
+                    if (savedData) {
+                        const data = JSON.parse(savedData);
+                        const targetPvId = _getTargetPvId(data);
+                        if (targetPvId && data.formData && data.formData[targetPvId]) {
+                            if (data.formData[targetPvId].toiture_pente_type) {
+                                toiture_pente_type = data.formData[targetPvId].toiture_pente_type;
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('Erreur lecture toiture_pente_type:', e); }
+            }
+
+            if (!toiture_pente_type) return;
+
+            allBtns.forEach(btn => { if (btn) btn.style.display = 'none'; });
+            let hasVisible = false;
+
+            if (toiture_pente_type === 'Monopente') {
+                if (btnMonopente) { btnMonopente.style.display = 'inline-flex'; hasVisible = true; }
+            } else if (toiture_pente_type === 'Bipente_symetrique') {
+                if (btnBipente) { btnBipente.style.display = 'inline-flex'; hasVisible = true; }
+            } else if (toiture_pente_type === 'Bipente_asymetrique') {
+                if (btnAsymetrique) { btnAsymetrique.style.display = 'inline-flex'; hasVisible = true; }
+            } else if (toiture_pente_type === 'Multipente') {
+                if (btnMultipente) { btnMultipente.style.display = 'inline-flex'; hasVisible = true; }
+            }
+
+            if (!hasVisible) {
+                if (btnGroup) btnGroup.style.display = 'none';
+                if (errorDiv) {
+                    errorDiv.textContent = "Géométrie de toiture non prise en charge par les modèles de bâtiments actuels.";
+                    errorDiv.classList.remove('hidden');
+                }
+            } else {
+                if (btnGroup) btnGroup.style.display = 'flex';
+                if (errorDiv) errorDiv.classList.add('hidden');
+
+                const activeBtn = document.querySelector('#model-btn-group button.active');
+                if (!activeBtn || activeBtn.style.display === 'none') {
+                    const firstVisible = allBtns.find(btn => btn && btn.style.display !== 'none');
+                    if (firstVisible) firstVisible.click();
+                }
+            }
+        }
+
+
+        // logique filtrage bâtiment métal
+
+        function updateDimensionsFromStorage() {
+            try {
+                const savedData = localStorage.getItem('solarProjectData');
+                if (!savedData) return;
+
+                const data = JSON.parse(savedData);
+                const targetPvId = _getTargetPvId(data);
+                if (!targetPvId) return;
+
+                const gridInfo = data.shapes[targetPvId]?.gridInfo;
+                if (!gridInfo) return;
+
+                const totalLength = gridInfo.totalPanelLength;
+                const totalWidth = gridInfo.totalPanelWidth;
+                // Normalisation identique à SummaryModal.js
+                const longueur = Math.max(totalLength, totalWidth);
+                const largeur = Math.min(totalLength, totalWidth);
+
+                // Synchronise "Nbre de PV Calepinage (LxC)" avec la disposition réelle du calepinage
+                // (même source que le tableau de synthèse de SummaryModal.js : gridInfo.numRows/numCols).
+                const pvLayoutInput = document.getElementById('pvLayout');
+                if (pvLayoutInput && gridInfo.numRows && gridInfo.numCols) {
+                    pvLayoutInput.value = `${gridInfo.numRows}L x ${gridInfo.numCols}C`;
+                }
+
+                const facadeInput = document.getElementById('facadeLength');
+                const panelWidthInput = document.getElementById('panelWidth');
+
+                // facadeLength = longueur (grande dim), comme SummaryModal
+                if (facadeInput && longueur) {
+                    facadeInput.value = longueur.toFixed(2);
+                    facadeInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                // panelWidth = largeur (petite dim), comme SummaryModal
+                if (panelWidthInput && largeur) {
+                    panelWidthInput.value = largeur.toFixed(2);
+                    panelWidthInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+
+                // Synchroniser l'inclinaison depuis formData du pvId ciblé
+                const inclinaison = data.formData?.[targetPvId]?.inclinaison;
+                if (inclinaison !== undefined && inclinaison !== '' && inclinaison !== null) {
+                    const roofSlopeInput = document.getElementById('roofSlope');
+                    if (roofSlopeInput) {
+                        roofSlopeInput.value = inclinaison;
+                        roofSlopeInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    // Envoyer l'inclinaison et les dimensions au calepinage iframe
+                    const iframe = document.getElementById('iframeCalepinage');
+                    if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.postMessage({ type: 'SET_INCLINAISON', value: Number(inclinaison) }, '*');
+                    } else {
+                        // Fallback de sécurité si calepinage.html est inclus directement
+                        const incInput = document.getElementById('inclinaison');
+                        if (incInput && !isNaN(inclinaison)) {
+                            incInput.value = Number(inclinaison);
+                            incInput.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+
+                        // Synchronisation du champ de pente originel
+                        const penteInput = document.getElementById('pente');
+                        if (penteInput && !isNaN(inclinaison)) {
+                            penteInput.value = Number(inclinaison);
+                            penteInput.dispatchEvent(new Event('change', { bubbles: true }));
+
+                        }
+                    }
+
+                    // Envoyer les dimensions toiture au calepinage iframe
+                    // Priorité : formData.longueur/largeur (dimensions surface dessinée), sinon gridInfo
+                    const formLongueur = parseFloat(data.formData?.[targetPvId]?.longueur) || null;
+                    const formLargeur = parseFloat(data.formData?.[targetPvId]?.largeur) || null;
+                    const dimLongueur = formLongueur || (totalLength ? Number(totalLength.toFixed(2)) : null);
+                    const dimLargeur = formLargeur || (totalWidth ? Number(totalWidth.toFixed(2)) : null);
+                    if (dimLongueur && dimLargeur) {
+                        const iframe = document.getElementById('iframeCalepinage');
+                        if (iframe && iframe.contentWindow) {
+                            iframe.contentWindow.postMessage({
+                                type: 'SET_TOITURE_DIMS',
+                                longueur: dimLongueur,
+                                largeur: dimLargeur
+                            }, '*');
+
+                        } else {
+                            // Fallback de sécurité si calepinage.html est inclus directement
+                            const longInput = document.getElementById('longueur');
+                            if (longInput && dimLongueur) {
+                                longInput.value = dimLongueur;
+                                longInput.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                            const largInput = document.getElementById('largeur');
+                            if (largInput && dimLargeur) {
+                                largInput.value = dimLargeur;
+                                largInput.dispatchEvent(new Event('input', { bubbles: true }));
+
+                            }
+                        }
+
+                    }
+                }
+
+                // Optionnel : actualiser le filtrage après synchro
+                applyModelFilters();
+            } catch (e) {
+                console.warn('Erreur lors de la lecture des dimensions:', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDimensionsFromStorage();
+
+            const bypassCheckbox = document.getElementById('bypass-filters');
+            if (bypassCheckbox) {
+                bypassCheckbox.addEventListener('change', applyModelFilters);
+            }
+
+            setTimeout(() => {
+                applyModelFilters();
+            }, 500);
+
+            // Envoyer l'inclinaison au calepinage une fois l'iframe chargé
+            const iframe = document.getElementById('iframeCalepinage');
+            if (iframe) {
+                iframe.addEventListener('load', () => {
+                    updateDimensionsFromStorage();
+                    try {
+                        const penteTypeSelect = iframe.contentWindow.document.getElementById('toiture_pente_type');
+                        if (penteTypeSelect) {
+                            penteTypeSelect.addEventListener('change', applyModelFilters);
+                        }
+                        // Écoute de l'input "Largeur toiture" directement depuis l'iframe sans modifier le fichier source
+                        const toitureW = iframe.contentWindow.document.getElementById('toiture_dim_w');
+                        if (toitureW) {
+                            const widthRoof = document.getElementById('widthRoof');
+                            // Synchro initiale au chargement
+                            if (widthRoof && widthRoof.value !== toitureW.value) {
+                                widthRoof.value = toitureW.value;
+                                widthRoof.dispatchEvent(new Event('input', { bubbles: true }));
+                            }
+                            // Synchro sur chaque modification
+                            toitureW.addEventListener('change', (e) => {
+                                if (widthRoof && widthRoof.value !== e.target.value) {
+                                    widthRoof.value = e.target.value;
+                                    widthRoof.dispatchEvent(new Event('input', { bubbles: true }));
+                                }
+                            });
+                        }
+                    } catch (e) { }
+                    applyModelFilters();
+                });
+            }
+        });
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'solarProjectData') {
+                updateDimensionsFromStorage();
+                applyModelFilters();
+            }
+        });
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'CALEPINAGE_UPDATE') {
+                applyModelFilters();
+            }
+        if (event.data && event.data.type === 'SYNC_ROOF_WIDTH') {
+            const widthRoof = document.getElementById('widthRoof');
+            if (widthRoof && widthRoof.value !== event.data.value) {
+                widthRoof.value = event.data.value;
+                widthRoof.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+        }
+        });
+
+        // Gestion robuste de l'affichage plein écran pour l'onglet Calepinage
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabCalepinage = document.getElementById('tabCalepinage');
+            const tabCoupe = document.getElementById('tabCoupe');
+            const appModal = document.getElementById('app-modal');
+
+            if (tabCalepinage) {
+                tabCalepinage.addEventListener('click', () => {
+                    appModal.classList.add('form-hidden', 'calepinage-full');
+                    document.getElementById('viewCoupe')?.classList.add('hidden');
+                    document.getElementById('viewCalepinage')?.classList.remove('hidden');
+
+                    // 1. Ajouter le trait rouge (classe active)
+                    tabCalepinage.classList.add('active');
+                    tabCoupe.classList.remove('active');
+
+                    // 2. Forcer le rendu du calepinage maintenant qu'il est visible (affichage des panneaux)
+                    const iframe = document.getElementById('iframeCalepinage');
+                    if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.dispatchEvent(new Event('resize'));
+                        if (typeof iframe.contentWindow.calculateAndDraw === 'function') {
+                            iframe.contentWindow.calculateAndDraw();
+                        }
+                    }
+                });
+            }
+            if (tabCoupe) {
+                tabCoupe.addEventListener('click', () => {
+                    appModal.classList.remove('form-hidden', 'calepinage-full');
+                    document.getElementById('viewCalepinage')?.classList.add('hidden');
+                    document.getElementById('viewCoupe')?.classList.remove('hidden');
+
+                    // Rétablir le trait rouge pour l'onglet Coupe
+                    tabCoupe.classList.add('active');
+                    tabCalepinage.classList.remove('active');
+                });
+            }
+        });
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,198 @@
+#map {
+  height: 100%;
+  width: 100%;
+  border-radius: 0;
+}
+
+
+.custom-map-control-button:hover {
+  background-color: #f1f1f1;
+}
+
+.custom-map-control-button img {
+  width: 24px;
+  height: 24px;
+  vertical-align: middle;
+}
+
+.drawing-control-inner-container :nth-child(2) {
+  border-right: 1px solid #f50000;
+}
+
+.drawing-control-inner-container :nth-child(6) {
+  border-right: 1px solid #f50000;
+}
+
+.drawing-control-inner-container.collapsed {
+  transform: translateY(100%);
+  opacity: 0;
+}
+
+/* Masquer tous les enfants du drawing-control quand il est collapsed */
+.drawing-control-inner-container.collapsed>* {
+  display: none !important;
+}
+
+
+.buttons-and-search-container,
+.résumé-container,
+.parcelles-container {
+  background-color: var(--light-gray);
+  border-radius: 0 8px 8px 0;
+  transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+}
+
+.buttons-and-search-container.collapsed,
+.résumé-container.collapsed,
+.parcelles-container.collapsed {
+  transform: translateX(-150%);
+  opacity: 0;
+}
+
+/* Masquer tous les enfants quand le parent est collapsed */
+.buttons-and-search-container.collapsed>*,
+.résumé-container.collapsed>*,
+.parcelles-container.collapsed>* {
+  display: none !important;
+}
+
+.drawing-control-inner-container {
+  transition: transform 0.2s ease-in-out, opacity 0.2s ease-in-out;
+}
+
+/* Palette masquée : la poignée devient un petit point rouge, toujours visible et cliquable pour
+   réafficher la palette (ButtonControl.createControlContainer). !important : la poignée porte des
+   styles en ligne. La zone cliquable (::before) déborde du point pour rester facile à viser. */
+.drawing-control .hide-control-button.palette-point {
+  width: 16px !important;
+  min-width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  padding: 0 !important;
+  right: -8px !important;
+  top: -8px !important;
+  border-radius: 50% !important;
+  background-color: #de0000 !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  animation: palette-point-pulse 2.4s ease-in-out infinite;
+}
+
+.drawing-control .hide-control-button.palette-point::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+}
+
+.drawing-control .hide-control-button.palette-point i {
+  display: none;
+}
+
+.drawing-control .hide-control-button.palette-point:hover,
+.drawing-control .hide-control-button.palette-point:focus-visible {
+  transform: scale(1.3);
+  animation: none;
+}
+
+@keyframes palette-point-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 0 0 rgba(222, 0, 0, 0.55); }
+  50% { box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 0 0 7px rgba(222, 0, 0, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawing-control .hide-control-button.palette-point {
+    animation: none;
+  }
+}
+
+/* Masquer tous les enfants des containers style-switcher quand ils sont collapsed */
+[class^="style-switcher-control-inner-container-"].collapsed>* {
+  display: none !important;
+}
+
+
+.style-switcher-control-inner-container-2 {
+  /*margin-top: 1rem;*/
+}
+
+/* Ajout JJD le 22.10.2025*/
+
+/* Scale Control */
+.scale-control {
+  font-family: Roboto, Arial, sans-serif;
+  user-select: none;
+}
+
+.scale-control:hover {
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.scale-control input {
+  font-family: Roboto, Arial, sans-serif;
+}
+
+.scale-control input:hover {
+  border-color: #999;
+}
+
+.scale-control input:focus {
+  border-color: #4285f4 !important;
+  box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.1) !important;
+}
+
+.scale-control input::selection {
+  background-color: #4285f4;
+  color: white;
+}
+
+
+/* Ajout JJD le 22.10.2025 ( au-dessus)*/
+
+
+#toggle-radius-button.selected {
+  background-color: #e3f2fd !important;
+  border: 2px solid #2196f3 !important;
+}
+
+#sync-radius-button.synced {
+  background-color: #e8f5e8 !important;
+  border: 2px solid #4caf50 !important;
+}
+
+/* Icônes personnalisées */
+.radius-icon,
+.sync-icon {
+  filter: invert(0.5);
+}
+
+#toggle-radius-button.selected .radius-icon {
+  filter: invert(0.3) sepia(1) saturate(5) hue-rotate(175deg);
+}
+
+.gm-style .gm-style-iw-c {
+  padding: 12px;
+}
+
+.gm-style .gm-style-iw-d {
+  overflow: auto !important;
+}
+
+/* Curseur pour le marker déplaçable */
+.gmnoprint [src*="maps.gstatic.com/mapfiles"] {
+  cursor: grab !important;
+}
+
+.gmnoprint [src*="maps.gstatic.com/mapfiles"]:active {
+  cursor: grabbing !important;
+}
+
+/* Style pour le bouton toggle */
+#toggle-radius-button.selected {
+  background-color: #e3f2fd !important;
+  border: 2px solid #2196f3 !important;
+}
+
+#toggle-radius-button.selected .radius-icon {
+  filter: invert(0.3) sepia(1) saturate(5) hue-rotate(175deg);
+}

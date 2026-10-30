@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calepinage Statique PV - Final V13 (Calcul Corrigé & Noues)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    {% include 'concevoir_mon_projet/components/mention_essai.html' %}
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Poppins', 'Inter', sans-serif;
+            background-color: #f7fafc;
+        }
+
+        .main-container-98 {
+            width: 98vw;
+            max-width: 98vw;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .main-layout {
+            display: flex;
+            gap: 0.75rem;
+        }
+
+        .form-container {
+            width: 20%;
+            overflow-y: visible;
+            position: sticky;
+            top: 0.75rem;
+            max-height: none;
+        }
+
+        .visualization-container {
+            width: 80%;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            min-height: calc(98vh - 4rem);
+        }
+
+        #visualization-area {
+            flex-grow: 1;
+            min-height: 500px;
+            background-color: #fff;
+            border: none;
+            box-shadow: none;
+            overflow: hidden;
+            position: relative;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        @media (max-width: 1024px) {
+            .main-layout {
+                flex-direction: column;
+            }
+
+            .visualization-container,
+            .form-container {
+                width: 100%;
+            }
+
+            .visualization-container {
+                min-height: 50vh;
+                max-height: none;
+            }
+
+            .form-container {
+                position: static;
+            }
+        }
+
+
+        .overlay-box {
+            position: absolute;
+            padding: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            font-size: 0.875rem;
+            z-index: 10;
+        }
+
+        #north-pointer {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            transform-origin: center;
+            transition: transform 0.5s;
+            z-index: 10;
+        }
+
+        #pdf-capture-area {
+            position: relative;
+            width: 100%;
+            height: auto;
+            background: white;
+        }
+
+        .toggle-btn {
+            cursor: pointer;
+            margin-left: 0.5rem;
+            transition: transform 0.2s;
+        }
+
+        .toggle-btn.rotated {
+            transform: rotate(90deg);
+        }
+
+        .texture-btn {
+            cursor: pointer;
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            display: inline-block;
+            justify-content: space-between;
+        }
+
+        #visualization-area,
+        #pv-canvas {
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+
+        .flex-row {
+            width: 90%;
+            display: flex;
+            flex-direction: row;
+        }
+
+        /* Styles pour le mode Plein écran */
+        body.is-fullscreen .form-container {
+            display: none !important;
+        }
+
+        body.is-fullscreen .visualization-container {
+            width: 100% !important;
+        }
+
+        body.is-fullscreen .hide-in-fullscreen {
+            display: none !important;
+        }
+
+        /* Styles pour les boutons d'outils (Zoom, Pan) */
+        .tool-button {
+            height: 2.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.375rem;
+            border: 1px solid #d1d5db;
+            background-color: #ffffff;
+            color: #4b5563;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0 0.5rem;
+        }
+
+        .tool-button.icon-only {
+            width: 2.25rem;
+            padding: 0;
+            font-size: 1.125rem;
+        }
+
+        .tool-button:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .tool-button.active {
+            background-color: #dc2626;
+            color: #ffffff;
+            border-color: #dc2626;
+        }
+
+        .tool-button:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body class="py-1 px-4 bg-gray-50 min-h-screen">
+    <div class="main-container-98">
+
+        <div class="main-layout">
+
+            <div class="visualization-container order-2 lg:order-1 bg-transparent">
+
+                <div class="h-full flex flex-col border-none shadow-none">
+                    <div class="flex flex-col lg:flex-row justify-between items-center pb-1 mb-1 gap-2">
+                        <h2 class="text-xl font-semibold text-gray-800 mr-2">Plan de Calepinage</h2>
+
+                        <div class="flex flex-wrap items-center justify-end gap-3 pr-2 lg:pr-6">
+                            <div
+                                class="flex items-center space-x-2 bg-white px-2 py-1 rounded shadow-sm border border-gray-200 hide-in-fullscreen">
+                                <span class="text-xs font-medium text-gray-700">Couleur PV:</span>
+                                <div class="flex space-x-1">
+                                    <button onclick="setPanelColor('#F3F4F6')"
+                                        class="w-5 h-5 rounded-full shadow border-2 border-gray-400 bg-gray-100 hover:scale-110"
+                                        title="Couleur Actuelle"></button>
+                                    <button onclick="setPanelColor('#111827')"
+                                        class="w-5 h-5 rounded-full shadow bg-gray-900 hover:scale-110"
+                                        title="Noir Clair"></button>
+                                    <button onclick="setPanelColor('#D1D5DB')"
+                                        class="w-5 h-5 rounded-full shadow bg-gray-300 hover:scale-110"
+                                        title="Gris Clair"></button>
+                                    <button onclick="setPanelColor('#3B82F6')"
+                                        class="w-5 h-5 rounded-full shadow bg-blue-500 hover:scale-110"
+                                        title="Bleu Ciel"></button>
+                                    <button onclick="setPanelColor('#1E40AF')"
+                                        class="w-5 h-5 rounded-full shadow bg-blue-800 hover:scale-110"
+                                        title="Bleu Foncé"></button>
+                                </div>
+                            </div>
+
+                            <div
+                                class="flex items-center space-x-2 bg-white px-2 py-1 rounded shadow-sm border border-gray-200 hide-in-fullscreen">
+                                <span class="text-xs font-medium text-gray-700">Texture:</span>
+                                <div id="texture-selectors" class="flex space-x-1">
+                                    <span class="texture-btn bg-gray-600" style="background-color: #6B7280;"
+                                        onclick="setRoofTexture('Bac Acier')"></span>
+                                    <span class="texture-btn bg-gray-300" style="background-color: #A0A0A0;"
+                                        onclick="setRoofTexture('Ardoise')"></span>
+                                    <span class="texture-btn bg-yellow-700" style="background-color: #B45B00;"
+                                        onclick="setRoofTexture('Fibrociment')"></span>
+                                    <span class="texture-btn bg-gray-900" style="background-color: #1F2937;"
+                                        onclick="setRoofTexture('Membrane bitumineuse')"></span>
+                                    <span class="texture-btn bg-gray-400" style="background-color: #9CA3AF;"
+                                        onclick="setRoofTexture('Dalle béton')"></span>
+                                </div>
+                                <span id="current-texture-display" class="text-xs font-semibold text-gray-900 ml-1">Bac
+                                    Acier</span>
+                            </div>
+
+                            <div class="flex space-x-1 hide-in-fullscreen">
+                                <button id="toggle-indicator-btn" onclick="togglePVIndicator()"
+                                    class="py-1 px-2 text-xs rounded text-gray-700 bg-gray-200 hover:bg-gray-300 border border-gray-300">Masquer
+                                    Indic.</button>
+                                <button id="toggle-pv-display-btn" onclick="togglePVDisplay()"
+                                    class="py-1 px-2 text-xs rounded text-white bg-red-500 hover:bg-red-600">Masquer
+                                    PV</button>
+                                <button id="toggle-toiture-display-btn" onclick="toggleToitureDisplay()"
+                                    class="py-1 px-2 text-xs rounded text-white bg-red-500 hover:bg-red-600">Masquer
+                                    Toiture</button>
+                                <button id="toggle-pv-toiture-btn" onclick="togglePVToiturePosition()"
+                                    class="py-1 px-2 text-xs rounded text-white bg-indigo-500 hover:bg-indigo-600 hidden">Afficher
+                                    Zones</button>
+                            </div>
+
+                            <div class="flex space-x-2 ml-2 items-center">
+                                <button onclick="window.customDownloadPNG()"
+                                    class="hidden py-1 px-3 text-xs rounded-lg text-white bg-green-600 hover:bg-green-700 transition duration-150">Télécharger
+                                    PNG</button>
+                                <button onclick="window.customExportPDF()"
+                                    class="py-1.5 px-4 text-xs font-bold rounded-lg text-white bg-red-600 hover:bg-red-700 transition duration-150 shadow">Exporter
+                                    PDF</button>
+                                <button id="toggle-fullscreen-btn" onclick="window.toggleFullscreen()"
+                                    class="py-1.5 px-4 text-xs font-bold rounded-lg text-white bg-blue-600 hover:bg-blue-700 transition duration-150 shadow">Mode
+                                    plein écran</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="visualization-area" class="flex-grow flex flex-col">
+                        <div id="pdf-capture-area"
+                            class="relative w-full flex-grow min-h-[500px] border-2 border-gray-600 rounded-md bg-white flex flex-row items-stretch">
+
+                            <!-- Panneau latéral pour les cartes de résumé -->
+                            <div id="overlays-sidebar"
+                                class="w-[280px] p-4 flex flex-col gap-4 bg-gray-50 border-r border-gray-200 z-10 shrink-0 overflow-y-auto">
+                                <div id="dim-results-overlay"
+                                    class="text-gray-700 text-sm bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+                                    <p class="font-bold text-indigo-800 mb-2 border-b pb-1">Dimensions Champ PV</p>
+                                    <div class="space-y-1">
+                                        <p>Total PV : <span id="npv-detail" class="font-bold">0x0 = 0</span></p>
+                                        <p>Dim PV : <span id="dim-pv-detail" class="font-bold">1762 mm X 1134 mm</span>
+                                        </p>
+                                        <p>Long. (X) : <span id="total-length-overlay" class="font-bold">0.00 m</span>
+                                        </p>
+                                        <p>Larg. (Y) : <span id="total-width-overlay" class="font-bold">0.00 m</span>
+                                        </p>
+                                        <p>Puissance : <span id="current-power-overlay"
+                                                class="font-extrabold text-green-600">0.00 kWc</span></p>
+                                    </div>
+                                </div>
+
+                                <div id="ref-pv-si-overlay"
+                                    class="text-gray-700 text-sm bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+                                    <p class="font-bold text-indigo-800 mb-2 border-b pb-1">Réf. PV et SI</p>
+                                    <div class="space-y-1">
+                                        <p>Réf. Panneau : <span id="ref-panneau-overlay" class="font-bold">-</span>
+                                        </p>
+                                        <p>Réf. Système d'intégration : <span id="ref-si-overlay"
+                                                class="font-bold">-</span></p>
+                                    </div>
+                                </div>
+
+                                <div id="orientation-overlay"
+                                    class="text-gray-700 text-sm bg-white p-3 rounded-lg shadow-sm border border-gray-200">
+                                    <p class="font-bold text-indigo-800 mb-2 border-b pb-1">Orientation</p>
+                                    <div class="space-y-1">
+                                        <p>Azimut : <span id="azimut-value" class="font-bold">0°</span></p>
+                                        <p>Pente : <span id="pente-value" class="font-bold">0°</span></p>
+                                    </div>
+                                </div>
+
+                                <div id="etn-message-overlay"
+                                    class="text-sm hidden bg-red-50 p-3 rounded-lg shadow-sm border border-red-200 text-red-800">
+                                    <p class="font-bold mb-2 border-b border-red-200 pb-1">Vérification Panneau vs SI
+                                        (ETN/ATEC)</p>
+                                    <p id="etn-message-content" class="text-xs"></p>
+                                </div>
+                            </div>
+
+                            <!-- Zone de dessin avec bordure intérieure -->
+                            <div id="drawing-zone"
+                                class="relative flex-grow h-auto my-0 mx-2 border-2 border-dashed border-gray-300 rounded-lg bg-white overflow-hidden">
+                                <!-- Contrôles de zoom et panoramique -->
+                                <div
+                                    class="absolute top-2 left-2 z-20 flex gap-0.5 bg-white p-1 rounded-lg shadow-md border border-gray-200">
+                                    <button id="zoomInCalepinage" class="tool-button icon-only"
+                                        title="Zoom avant">+</button>
+                                    <button id="zoomOutCalepinage" class="tool-button icon-only"
+                                        title="Zoom arrière">-</button>
+                                    <button id="panCalepinage" class="tool-button icon-only"
+                                        title="Déplacer (Panoramique)">🖐</button>
+                                    <button id="resetCalepinage" class="tool-button icon-only"
+                                        title="Tout voir">⛶</button>
+                                </div>
+
+                                <div id="canvas-pan-zoom-wrapper" class="w-full h-full flex justify-center items-center"
+                                    style="transform-origin: center; transition: transform 0.1s ease-out;">
+                                    <canvas id="pv-canvas" width="1000" height="1000"
+                                        style="max-width: 100%; max-height: 100%; object-fit: contain;"></canvas>
+                                </div>
+
+                                <div id="north-pointer" title="Orientation Azimut (N = rouge)"
+                                    class="absolute bottom-4 right-4 z-10"
+                                    style="width: 50px; height: 50px; transform-origin: center; transition: transform 0.5s;">
+                                    <svg viewBox="0 0 100 100" class="w-full h-full">
+                                        <defs>
+                                            <linearGradient id="gradNorth" x1="0%" y1="0%" x2="0%" y2="100%">
+                                                <stop offset="50%" style="stop-color:red;stop-opacity:1" />
+                                                <stop offset="50%" style="stop-color:white;stop-opacity:1" />
+                                            </linearGradient>
+                                        </defs>
+                                        <circle cx="50" cy="50" r="50" fill="white" stroke="#374151" stroke-width="2" />
+                                        <polygon points="50,15 65,50 50,85 35,50" fill="url(#gradNorth)"
+                                            stroke="#374151" stroke-width="2" />
+                                        <text x="50" y="20" font-family="Arial" font-size="20" fill="red"
+                                            font-weight="bold" text-anchor="middle">N</text>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+            <form id="calepinage-form" onsubmit="event.preventDefault(); calculateAndDraw();"
+                class="form-container flex flex-col gap-6 order-1 lg:order-2">
+
+                <div id="section-1" class="bg-white p-6 rounded-xl shadow-lg space-y-4 h-fit">
+                    <h2
+                        class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4 flex justify-between items-center">
+                        1. Paramètres couverture
+                        <button type="button" onclick="toggleSection('section-1-content', this)"
+                            class="toggle-btn rotated">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </h2>
+                    <div id="section-1-content" class="space-y-2 mb-4 hidden">
+                        <!--<input type="text" name="name" value="Projet Statique" required placeholder="Nom du Projet" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">-->
+                        <!--<input type="text" name="address" value="Adresse de l'installation" placeholder="Adresse du Projet" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">-->
+
+
+                        <div class="mt-4 pt-2 border-t border-gray-200">
+                            <label class="block text-sm font-bold text-gray-800">Dimensions Toiture</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="toiture_dim_l" class="block text-sm font-medium text-gray-700">Longueur
+                                        (m) :</label>
+                                    <input type="number" id="toiture_dim_l" name="toiture_dim_l" value="47.0" step="0.1"
+                                        required
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+                                        onchange="calculateAndDraw()">
+                                </div>
+                                <div>
+                                    <label for="toiture_dim_w" class="block text-sm font-medium text-gray-700">Largeur
+                                        (m) :</label>
+                                    <input type="number" id="toiture_dim_w" name="toiture_dim_w" value="14.0" step="0.1"
+                                        required
+                                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+                                        onchange="calculateAndDraw(); if(window.parent) window.parent.postMessage({type: 'SYNC_ROOF_WIDTH', value: this.value}, '*');">
+                                </div>
+                            </div>
+                        </div>
+
+                        <label for="type" class="block text-sm font-medium text-gray-700">Type de structure supportant
+                            les panneaux PV :</label>
+                        <select id="type" name="type"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-white"
+                            onchange="toggleOtherField('type', 'other_structure_input'); toggleConditionalFields(); calculateAndDraw();">
+                            <option value="Ombriere_metal" selected>Ombrière métal</option>
+                            <option value="Ombriere_bois">Ombrière bois</option>
+                            <option value="Ombriere_beton">Ombrière béton</option>
+                            <option value="Ombriere_beton">Ombrière Solumbra</option>
+                            <!--<option value="Ombriere_beton_VISIONPARK">Ombrière béton VISIONPARK</option>-->
+                            <option value="toiture_inclinee">Bâtiment inclinée (métal/bois) </option>
+                            <!--<option value="Toiture_terrasse_termosoudée">Toiture terrasse thermosoudée</option>-->
+                            <!--<option value="Toiture_terrasse_lestée">Toiture terrasse lestée</option>-->
+                            <!--<option value="Petit_champ">Petit champ solaire</option>-->
+                            <option value="Autres">Autres</option>
+                        </select>
+                        <input type="text" id="other_structure_input" placeholder="Préciser la structure"
+                            class="mt-1 hidden w-full rounded-md border-gray-300 shadow-sm p-2 border">
+
+
+                        <div id="pente-toiture-group" class="mt-2">
+                            <label for="toiture_pente_type" class="block text-sm font-medium text-gray-700">Géométrie de
+                                la toiture :</label>
+                            <select id="toiture_pente_type" name="toiture_pente_type"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-white"
+                                onchange="togglePenteConditionalFields(); setDefaultPanelCounts(); if(typeof handlePente2Visibility === 'function') handlePente2Visibility(); calculateAndDraw();">
+                                <option value="Monopente" selected>Monopente</option>
+                                <option value="Bipente_symetrique">Bipente symétrique</option>
+                                <option value="Bipente_asymetrique">Bipente asymétrique</option>
+                                <option value="Multipente">Multipente</option>
+                            </select>
+                        </div>
+
+                        <div id="asymetrie-group" class="hidden mt-2">
+                            <label for="asymetrie_percent" class="block text-sm font-medium text-gray-700">Pourcentage
+                                d'Asymétrie (%) :</label>
+                            <input type="number" id="asymetrie_percent" name="asymetrie_percent" value="40" min="1"
+                                max="99" required class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                onchange="calculateAndDraw(); if(window.parent !== window) window.parent.postMessage({ type: 'SYNC_ASYMETRIE', value: parseFloat(this.value) }, '*');">
+                        </div>
+
+                        <div id="nb-pentes-group" class="hidden mt-2">
+                            <label for="nb_pentes" class="block text-sm font-medium text-gray-700">Nombre de pans de
+                                toiture :</label>
+                            <input type="number" id="nb_pentes" name="nb_pentes" value="4" min="2" required
+                                class="mt-1 block w-full rounded-md border-gray-300 p-2" onchange="calculateAndDraw()">
+                        </div>
+
+                        <div id="largeur-faitage-group" class="hidden mt-2">
+                            <label for="largeur_faitage_mm" class="block text-sm font-medium text-gray-700">Largeur
+                                Faîtage (mm) :</label>
+                            <input type="number" id="largeur_faitage_mm" name="largeur_faitage_mm" value="400" min="0"
+                                required class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                onchange="calculateAndDraw()">
+                        </div>
+
+
+                        <div id="couverture-group">
+                            <label for="couverture_type" class="block text-sm font-medium text-gray-700">Type de
+                                couverture :</label>
+                            <select id="couverture_type" name="couverture_type"
+                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border bg-white"
+                                onchange="toggleOtherField('couverture_type', 'other_couverture_input'); calculateAndDraw();">
+                                <option value="Ombriere_IAB">Ombrière (IAB)</option>
+                                <option value="Ombriere_ISB">Ombrière (ISB)</option>
+                                <option value="Bac_Sec_ISB">Bac Sec (ISB)</option>
+                                <option value="Bac_Sandwich_ISB">Bac Sandwich (ISB)</option>
+                                <option value="Autres">Autres (à Préciser)</option>
+                                <!--<option value="Membrane_bitumineuse">Membrane d’étanchéité bitumineuse</option>-->
+                                <!--<option value="Membrane_PVC_TPO">Membrane d’étanchéité PVC/TPO</option>-->
+                            </select>
+
+                            <input type="text" id="other_couverture_input" placeholder="Préciser la couverture"
+                                class="mt-1 hidden w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                        </div>
+
+
+                        <!--         <div class="mt-4 pt-2 border-t border-gray-200">
+                            <label for="system" class="block text-sm font-medium text-gray-700">Système d’Intégration
+                                :</label>
+                            <div class="flex items-center space-x-2">
+                                <select id="system" name="system"
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2 bg-white"
+                                    onchange="autoFillSystemData()">
+                                    <option value="">-- Sélectionnez un système --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="compatibilite_mode_pose"
+                                class="block text-sm font-medium text-gray-700">Compatibilité Mode de pose :</label>
+                            <input type="text" id="compatibilite_mode_pose" name="compatibilite_mode_pose"
+                                placeholder="Ex: Portrait/Paysage"
+                                class="mt-1 block w-full rounded-md border-gray-300 p-2">
+                        </div>
+                        <div>
+                            <label for="avis_certification" class="block text-sm font-medium text-gray-700">Avis de
+                                certification :</label>
+                            <input type="text" id="avis_certification" name="avis_certification"
+                                placeholder="Ex: CSTB 12345" class="mt-1 block w-full rounded-md border-gray-300 p-2">
+                        </div>
+                        <div>
+                            <label for="fixation_si" class="block text-sm font-medium text-gray-700"> Point de fixation
+                                du SI
+                                :</label>
+                            <input type="text" id="fixation_si" name="fixation_si"
+                                placeholder="Ex: Lests ou rails traversants"
+                                class="mt-1 block w-full rounded-md border-gray-300 p-2">
+                        </div> -->
+                        <!--<div>
+                            <label for="zone_vent" class="block text-sm font-medium text-gray-700">Hypothèse climatique :</label>
+                            <input type="text" id="zone_vent" name="zone_vent" placeholder="Ex: Zone 3" class="mt-1 block w-full rounded-md border-gray-300 p-2">
+                        </div>-->
+                    </div>
+                </div>
+
+                <div id="section-2" class="bg-white p-6 rounded-xl shadow-lg space-y-4 h-fit">
+                    <h2
+                        class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4 flex justify-between items-center">
+                        2. Panneaux & Système
+                        <button type="button" onclick="toggleSection('section-2-content', this)"
+                            class="toggle-btn rotated">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </h2>
+                    <div id="section-2-content" class="space-y-4 hidden">
+
+                        <div>
+                            <label for="panel_ref" class="block text-sm font-medium text-gray-700">Référence panneau
+                                :</label>
+                            <input type="text" id="panel_ref" name="panel_ref" placeholder="Ex: SKV SOLAR 470W"
+                                class="mt-1 block w-full rounded-md border-gray-300 p-2" onchange="calculateAndDraw()">
+                        </div>
+
+                        <div class="flex space-x-4 mb-4 pt-2 border-t border-gray-200">
+                            <label class="font-medium text-gray-700">Mode de Pose :</label>
+                            <div class="flex items-center space-x-3">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="mode" value="Portrait" checked
+                                        class="form-radio h-4 w-4 text-indigo-600" onchange="updateDimensions()">
+                                    <span class="ml-2 text-sm">Portrait</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="mode" value="Paysage"
+                                        class="form-radio h-4 w-4 text-indigo-600" onchange="updateDimensions()">
+                                    <span class="ml-2 text-sm">Paysage</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="panel_dim_l" class="block text-sm font-medium text-gray-700">Longueur
+                                    Panneau (mm) :</label>
+                                <input type="number" id="panel_dim_l" value="1762" required readonly
+                                    class="mt-1 block w-full rounded-md p-2 border border-gray-300 bg-gray-100 cursor-not-allowed">
+                                <input type="hidden" id="panel_dim_x" name="panel_dim_x" value="1762">
+                                <input type="hidden" id="panel_dim_y" name="panel_dim_y" value="1134">
+                            </div>
+                            <div>
+                                <label for="panel_dim_w" class="block text-sm font-medium text-gray-700">Largeur Panneau
+                                    (mm) :</label>
+                                <input type="number" id="panel_dim_w" value="1134" required readonly
+                                    class="mt-1 block w-full rounded-md p-2 border border-gray-300 bg-gray-100 cursor-not-allowed">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="power_unit" class="block text-sm font-medium text-gray-700">Puissance Unitaire
+                                Panneau (Wc) :</label>
+                            <input type="number" id="power_unit" name="power_unit" value="450.0" required min="1"
+                                class="mt-1 block w-full rounded-md border-gray-300 p-2" onchange="calculateAndDraw()">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="azimut" class="block text-sm font-medium text-gray-700">Azimut champ PV (°)
+                                    :</label>
+                                <input type="number" id="azimut" name="azimut" value="0" min="-180" max="180" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2" onchange="updateAzimut()">
+                            </div>
+
+                            <div>
+                                <label id="label-pente1" for="pente"
+                                    class="block text-sm font-medium text-gray-700">Pente des panneaux
+                                    (°) :</label>
+                                <input type="number" id="pente" name="pente" value="30" min="0" max="90" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2" onchange="updatePente()">
+                            </div>
+
+                            <div id="pente2-group" class="hidden col-start-2">
+                                <label for="pente2" class="block text-sm font-medium text-gray-700">Pente des panneaux 2 (°) :</label>
+                                <input type="number" id="pente2" name="pente2" value="30" min="0" max="90" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                    onchange="if(typeof updatePente === 'function') updatePente(); if(typeof calculateAndDraw === 'function') calculateAndDraw(); if(window.parent !== window) window.parent.postMessage({ type: 'SYNC_PENTE2', value: parseFloat(this.value) }, '*');">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="section-3" class="bg-white p-6 rounded-xl shadow-lg space-y-4 h-fit">
+                    <h2
+                        class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4 flex justify-between items-center">
+                        3. Calepinage & Espacements
+                        <button type="button" onclick="toggleSection('section-3-content', this)"
+                            class="toggle-btn rotated">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </h2>
+                    <div id="section-3-content" class="space-y-4 hidden">
+
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="pv_number" class="block text-sm font-medium text-gray-700">N° champ PV
+                                    :</label>
+                                <input type="text" id="pv_number" name="pv_number" value="PV1" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border"
+                                    onchange="calculateAndDraw()">
+                            </div>
+                            <div>
+                                <label for="nb_identical" class="block text-sm font-medium text-gray-700">Nbre de champ
+                                    PV identique :</label>
+                                <input type="number" id="nb_identical" name="nb_identical" value="1" required min="1"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border">
+                            </div>
+                        </div>
+
+                        <div class="mt-2 pt-2 border-t border-gray-200">
+                            <label class="block text-sm font-bold text-gray-800">Panneaux Zone 1 (Pente
+                                Basse/Grande)</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="count_x" class="block text-sm font-medium text-gray-700">Nb Panneaux
+                                        (Longueur X) :</label>
+                                    <input type="number" id="count_x" name="count_x" value="40" required min="1"
+                                        class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                        onchange="setDefaultPanelCounts(); calculateAndDraw();">
+                                </div>
+                                <div>
+                                    <label for="count_y" class="block text-sm font-medium text-gray-700">Nb Panneaux
+                                        (Largeur Y) :</label>
+                                    <input type="number" id="count_y" name="count_y" value="7" required min="1"
+                                        class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                        onchange="setDefaultPanelCounts(); calculateAndDraw();">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="pv-zone-2-group" class="hidden mt-4 pt-2 border-t border-gray-200">
+                            <label class="block text-sm font-bold text-gray-800">Panneaux Zone 2 (Pente
+                                Haute/Petite)</label>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label for="count_x2" class="block text-sm font-medium text-gray-700">Nb Panneaux
+                                        (Longueur X) :</label>
+                                    <input type="number" id="count_x2" name="count_x2" value="40" required min="1"
+                                        class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                        onchange="calculateAndDraw()">
+                                </div>
+                                <div>
+                                    <label for="count_y2" class="block text-sm font-medium text-gray-700">Nb Panneaux
+                                        (Largeur Y) :</label>
+                                    <input type="number" id="count_y2" name="count_y2" value="5" required min="1"
+                                        class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                        onchange="calculateAndDraw()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="intermodule_x" class="block text-sm font-medium text-gray-700">Dist.
+                                    Intermodule X (mm) :</label>
+                                <input type="number" id="intermodule_x" name="intermodule_x" value="10.0" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                    onchange="calculateAndDraw()">
+                            </div>
+                            <div>
+                                <label for="intermodule_y" class="block text-sm font-medium text-gray-700">Dist.
+                                    Intermodule Y (mm) :</label>
+                                <input type="number" id="intermodule_y" name="intermodule_y" value="15.0" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                    onchange="calculateAndDraw()">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="joint_dilatation" class="block text-sm font-medium text-gray-700">Joint de
+                                    Dilatation (mm) :</label>
+                                <input type="number" id="joint_dilatation" name="joint_dilatation" value="30.0" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                    onchange="calculateAndDraw()">
+                            </div>
+                            <div>
+                                <label for="limit_dilatation" class="block text-sm font-medium text-gray-700">Longueur
+                                    Limite (m) :</label>
+                                <input type="number" id="limit_dilatation" name="limit_dilatation" value="60.0" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                    onchange="calculateAndDraw()">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label for="delta_l" class="block text-sm font-medium text-gray-700">Marge Largeur Y
+                                    (mm) :</label>
+                                <input type="number" id="delta_l" name="delta_l" value="100.0" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                    onchange="calculateAndDraw()">
+                            </div>
+                            <div>
+                                <label for="delta_w" class="block text-sm font-medium text-gray-700">Marge Longueur X
+                                    (mm) :</label>
+                                <input type="number" id="delta_w" name="delta_w" value="140.0" required
+                                    class="mt-1 block w-full rounded-md border-gray-300 p-2"
+                                    onchange="calculateAndDraw()">
+                            </div>
+                        </div>
+
+                        <div id="poteaux-input-group" class="hidden">
+                            <label for="nb_poteaux" class="block text-sm font-medium text-gray-700">Nombre de poteaux
+                                :</label>
+                            <input type="number" id="nb_poteaux" name="nb_poteaux" value="0" min="0"
+                                class="mt-1 block w-full rounded-md border-gray-300 p-2" onchange="calculateAndDraw()">
+                        </div>
+
+                    </div>
+
+                    <!-- <div class="flex flex-col space-y-3 pt-4 border-t border-gray-200">
+                        <button type="button" onclick="calculateAndDraw();"
+                            class="w-full py-2 px-4 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition duration-150 ease-in-out">
+                            Calculer & Afficher
+                        </button>
+                    </div> -->
+                </div>
+
+                <div id="section-4" class="bg-white p-6 rounded-xl shadow-lg space-y-4 h-fit">
+                    <h2
+                        class="text-xl font-semibold text-gray-800 border-b pb-2 mb-4 flex justify-between items-center">
+                        4. Vérification Panneau
+                        <button type="button" onclick="toggleSection('section-4-content', this)"
+                            class="toggle-btn rotated">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clip-rule="evenodd"></path>
+                            </svg>
+                        </button>
+                    </h2>
+                    <div id="section-4-content" class="space-y-4 hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Vérification de panneau dans la liste
+                                ETN/ATec :</label>
+                            <div class="flex items-center space-x-4 mt-1">
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="etn_check" value="oui"
+                                        class="form-radio h-4 w-4 text-green-600" onchange="calculateAndDraw()">
+                                    <span class="ml-2 text-sm">Oui</span>
+                                </label>
+                                <label class="inline-flex items-center">
+                                    <input type="radio" name="etn_check" value="non" checked
+                                        class="form-radio h-4 w-4 text-red-600" onchange="calculateAndDraw()">
+                                    <span class="ml-2 text-sm">Non</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Élément caché pour éviter les erreurs JavaScript s'il cherche à mettre à jour les totaux -->
+                <div id="remaining-totals" class="hidden">
+                    <span id="total-panels-all"></span>
+                    <span id="total-power-all"></span>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const wrapper = document.getElementById('canvas-pan-zoom-wrapper');
+            const captureArea = document.getElementById('pdf-capture-area');
+            const panBtn = document.getElementById('panCalepinage');
+
+            let zoom = 1;
+            let panX = 0;
+            let panY = 0;
+            let isPanning = false;
+            let startX = 0;
+            let startY = 0;
+            let panMode = false;
+
+            const updateTransform = () => {
+                if (wrapper) wrapper.style.transform = `translate(${panX}px, ${panY}px) scale(${zoom})`;
+            };
+
+            document.getElementById('zoomInCalepinage')?.addEventListener('click', () => {
+                zoom *= 1.25;
+                updateTransform();
+            });
+
+            document.getElementById('zoomOutCalepinage')?.addEventListener('click', () => {
+                zoom /= 1.25;
+                updateTransform();
+            });
+
+            document.getElementById('resetCalepinage')?.addEventListener('click', () => {
+                zoom = 1;
+                panX = 0;
+                panY = 0;
+                updateTransform();
+            });
+
+            panBtn?.addEventListener('click', () => {
+                panMode = !panMode;
+                if (panMode) {
+                    panBtn.classList.add('active');
+                    captureArea.style.cursor = 'grab';
+                } else {
+                    panBtn.classList.remove('active');
+                    captureArea.style.cursor = 'default';
+                }
+            });
+
+            captureArea?.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const scaleAmount = 1.1;
+                const zoomFactor = e.deltaY < 0 ? scaleAmount : 1 / scaleAmount;
+                zoom *= zoomFactor;
+                updateTransform();
+            });
+
+            captureArea?.addEventListener('mousedown', (e) => {
+                if (panMode) {
+                    isPanning = true;
+                    startX = e.clientX - panX;
+                    startY = e.clientY - panY;
+                    captureArea.style.cursor = 'grabbing';
+                }
+            });
+
+            captureArea?.addEventListener('mousemove', (e) => {
+                if (isPanning && panMode) {
+                    panX = e.clientX - startX;
+                    panY = e.clientY - startY;
+                    updateTransform();
+                }
+            });
+
+            const stopPan = () => {
+                if (isPanning) {
+                    isPanning = false;
+                    if (panMode) captureArea.style.cursor = 'grab';
+                }
+            };
+
+            captureArea?.addEventListener('mouseup', stopPan);
+            captureArea?.addEventListener('mouseleave', stopPan);
+
+            // Intercepter l'export pour annuler le zoom afin de capturer l'ensemble de la zone
+            window.customDownloadPNG = async function () {
+                const oldTransform = wrapper.style.transform;
+                wrapper.style.transform = 'translate(0px, 0px) scale(1)';
+                await new Promise(r => setTimeout(r, 150));
+
+                if (typeof window.downloadPNG === 'function') window.downloadPNG();
+                setTimeout(() => { wrapper.style.transform = oldTransform; }, 500);
+            };
+
+            window.customExportPDF = async function () {
+                const oldTransform = wrapper.style.transform;
+                wrapper.style.transform = 'translate(0px, 0px) scale(1)';
+                await new Promise(r => setTimeout(r, 150));
+
+                if (typeof window.exportPDF === 'function') window.exportPDF();
+                setTimeout(() => { wrapper.style.transform = oldTransform; }, 500);
+            };
+        });
+    </script>
+
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/calepinage_ombriere.js', v=3) }}"></script>
+
+    <script>
+        // SYNCHRONISATION CLEAN : Réception des données depuis la carte et redessin direct
+        document.addEventListener('DOMContentLoaded', function () {
+            let lastSyncHash = "";
+
+            window.handlePente2Visibility = function () {
+                const penteType = document.getElementById('toiture_pente_type')?.value;
+                const pente2Group = document.getElementById('pente2-group');
+                const labelPente1 = document.getElementById('label-pente1');
+
+                if (penteType === 'Bipente_asymetrique') {
+                    if (pente2Group) pente2Group.classList.remove('hidden');
+                    if (labelPente1) labelPente1.textContent = 'Pente des panneaux 1 (°) :';
+                } else {
+                    if (pente2Group) pente2Group.classList.add('hidden');
+                    if (labelPente1) labelPente1.textContent = 'Pente des panneaux (°) :';
+                }
+            };
+
+            // FIX : Surcharge absolue de updateDimensions pour garantir la rotation visuelle de 90° 
+            // sur le canvas en cas de changement manuel ou de synchronisation
+            window.updateDimensions = function () {
+                const isPaysage = document.querySelector('input[name="mode"][value="Paysage"]')?.checked;
+                const panelL = document.getElementById('panel_dim_l')?.value || 1762;
+                const panelW = document.getElementById('panel_dim_w')?.value || 1134;
+                const dimX = document.getElementById('panel_dim_x');
+                const dimY = document.getElementById('panel_dim_y');
+
+                if (dimX && dimY) {
+                    // Le script natif gère lui-même la rotation visuelle à partir du mode sélectionné.
+                    // Il faut donc toujours envoyer la longueur dans X et la largeur dans Y pour les 2 cas.
+                    if (isPaysage) {
+                        dimX.value = panelL;
+                        dimY.value = panelW;
+                    } else {
+                        dimX.value = panelL;
+                        dimY.value = panelW;
+                    }
+                }
+
+                if (typeof window.calculateAndDraw === 'function') {
+                    window.calculateAndDraw();
+                }
+            };
+
+            function syncFromMainProject() {
+                // Priorité au champ PV du calepinage résidentiel (cf. calepinage_ombriere.js) ;
+                // l'ancien stockage PRO ci-dessous n'est plus qu'un repli.
+                if (typeof synchroniserDepuisModuleResidentiel === 'function' && synchroniserDepuisModuleResidentiel()) return;
+                try {
+                    const savedData = localStorage.getItem('solarProjectData');
+                    if (!savedData) return;
+
+                    const data = JSON.parse(savedData);
+                    const urlParams = new URLSearchParams(window.location.search);
+                    let pvId = urlParams.get('pvId') || (data.formData ? Object.keys(data.formData)[0] : null);
+
+                    if (!pvId || !data.formData || !data.formData[pvId]) return;
+
+                    const formData = data.formData[pvId];
+                    let colonnes = parseInt(formData.colonne);
+                    let lignes = parseInt(formData.ligne);
+                    let modePose = formData.modePose || 'portrait'; // 'portrait' ou 'paysage'
+
+                    if (isNaN(colonnes) || isNaN(lignes) || (colonnes === 0 && lignes === 0)) {
+                        if (data.shapes && data.shapes[pvId] && data.shapes[pvId].gridInfo) {
+                            colonnes = parseInt(data.shapes[pvId].gridInfo.numCols);
+                            lignes = parseInt(data.shapes[pvId].gridInfo.numRows);
+                        }
+                    }
+
+                    if (colonnes > 0 && lignes > 0) {
+                        const penteVal = formData.inclinaison || formData.pente || 0;
+                        const pente2Val = formData.inclinaison2 || formData.pente2 || penteVal;
+                        const penteType = formData.toiture_pente_type || 'Monopente';
+                        const asymVal = formData.asymmetryPct || formData.asymetrie_percent || 40;
+
+                        // Anti-boucle infinie : on vérifie si la configuration a réellement changé
+                        const currentHash = `${colonnes}-${lignes}-${modePose}-${penteVal}-${pente2Val}-${penteType}-${asymVal}`;
+                        if (currentHash === lastSyncHash) return;
+                        lastSyncHash = currentHash;
+
+                        const countXInput = document.getElementById('count_x');
+                        const countYInput = document.getElementById('count_y');
+                        const radioPortrait = document.querySelector('input[name="mode"][value="Portrait"]');
+                        const radioPaysage = document.querySelector('input[name="mode"][value="Paysage"]');
+
+                        // 1. Appliquer le mode de pose UI
+                        const isPaysage = (modePose === 'paysage');
+                        if (isPaysage && radioPaysage) {
+                            radioPaysage.checked = true;
+                        } else if (!isPaysage && radioPortrait) {
+                            radioPortrait.checked = true;
+                        }
+
+                        // Assigner fermement les dimensions visuelles pour pivoter physiquement les panneaux de 90°
+                        const panelL = document.getElementById('panel_dim_l')?.value || 1762;
+                        const panelW = document.getElementById('panel_dim_w')?.value || 1134;
+                        const dimX = document.getElementById('panel_dim_x');
+                        const dimY = document.getElementById('panel_dim_y');
+
+                        if (dimX && dimY) {
+                            if (isPaysage) {
+                                dimX.value = panelL;
+                                dimY.value = panelW;
+                            } else {
+                                dimX.value = panelL;
+                                dimY.value = panelW;
+                            }
+                        }
+
+                        // 2. Assigner X et Y :
+                        // Les variables 'colonnes' (X) et 'lignes' (Y) sont déjà correctement calculées 
+                        // par le parent en fonction du mode de pose. Il ne faut pas les ré-inverser.
+                        const targetX = colonnes;
+                        const targetY = lignes;
+
+                        if (countXInput && countYInput) {
+                            const countX2Input = document.getElementById('count_x2');
+                            const countY2Input = document.getElementById('count_y2');
+
+                            if (penteType === 'Bipente_asymetrique') {
+                                // Lire les valeurs physiques réelles stockées par FormHandler (source de vérité)
+                                let y1 = null;
+                                let y2 = null;
+                                try {
+                                    const _perPanRaw = localStorage.getItem('pvPerPanRows_' + pvId);
+                                    if (_perPanRaw) {
+                                        const _perPanArr = JSON.parse(_perPanRaw);
+                                        if (Array.isArray(_perPanArr) && _perPanArr.length >= 2) {
+                                            y1 = _perPanArr[0]; // Zone 1 (Pente Basse/Grande)
+                                            y2 = _perPanArr[1]; // Zone 2 (Pente Haute/Petite)
+                                        }
+                                    }
+                                } catch (_e) {}
+                                // Fallback : formule en pourcentage si données physiques non disponibles
+                                if (y1 === null || y2 === null) {
+                                    y1 = Math.round(targetY * (asymVal / 100));
+                                    y2 = targetY - y1;
+                                }
+                                countXInput.value = targetX;
+                                countYInput.value = y1;
+                                if (countX2Input) countX2Input.value = targetX;
+                                if (countY2Input) countY2Input.value = y2;
+                            } else if (penteType === 'Bipente_symetrique') {
+                                const yHalf = Math.round(targetY / 2);
+                                countXInput.value = targetX;
+                                countYInput.value = yHalf;
+                                if (countX2Input) countX2Input.value = targetX;
+                                if (countY2Input) countY2Input.value = yHalf;
+                            } else if (penteType === 'Multipente') {
+                                const nbPentes = parseInt(formData.nb_pentes) || 4;
+                                const yPan = Math.round(targetY / nbPentes);
+                                countXInput.value = targetX;
+                                countYInput.value = yPan;
+                                if (countX2Input) countX2Input.value = targetX;
+                                if (countY2Input) countY2Input.value = yPan;
+                            } else {
+                                countXInput.value = targetX;
+                                countYInput.value = targetY;
+                            }
+
+                            // 3. Synchroniser Pente et Géométrie
+                            const toiturePenteTypeInput = document.getElementById('toiture_pente_type');
+                            if (toiturePenteTypeInput) toiturePenteTypeInput.value = penteType;
+
+                            const penteInput = document.getElementById('pente');
+                            if (penteInput) penteInput.value = penteVal;
+
+                            const pente2Input = document.getElementById('pente2');
+                            if (pente2Input) pente2Input.value = pente2Val;
+
+                            const asymInput = document.getElementById('asymetrie_percent');
+                            if (asymInput) asymInput.value = asymVal;
+
+                            if (typeof window.handlePente2Visibility === 'function') {
+                                window.handlePente2Visibility();
+                            }
+
+                            // 3. Redessiner les panneaux
+                            if (typeof window.calculateAndDraw === 'function') {
+                                window.calculateAndDraw();
+                            }
+                        }
+                    }
+                } catch (e) {
+                    console.error("Erreur de synchronisation du calepinage:", e);
+                }
+            }
+
+            // Écouter les modifications du projet global (LocalStorage)
+            window.addEventListener('storage', (e) => {
+                if (e.key === 'solarProjectData') {
+                    syncFromMainProject();
+                }
+            });
+
+            // Écouter les messages du parent
+            window.addEventListener('message', (event) => {
+                if (event.data && (event.data.type === 'CALEPINAGE_UPDATE' || event.data.type === 'SET_TOITURE_DIMS')) {
+                    setTimeout(syncFromMainProject, 100);
+                }
+                if (event.data && event.data.type === 'SET_INCLINAISON_2') {
+                    const value = Number(event.data.value);
+                    if (!isNaN(value)) {
+                        const input = document.getElementById('pente2');
+                        if (input && Number(input.value) !== value) {
+                            input.value = value;
+                            input.dispatchEvent(new Event('input', { bubbles: true }));
+                            input.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                }
+                if (event.data && event.data.type === 'SET_ASYMETRIE') {
+                    const value = Number(event.data.value);
+                    if (!isNaN(value)) {
+                        const input = document.getElementById('asymetrie_percent');
+                        if (input && Number(input.value) !== value) {
+                            input.value = value;
+                            if (typeof window.calculateAndDraw === 'function') window.calculateAndDraw();
+                        }
+                    }
+                }
+            });
+
+            // Fonction de bascule du mode plein écran
+            window.toggleFullscreen = function () {
+                document.body.classList.toggle('is-fullscreen');
+                const btn = document.getElementById('toggle-fullscreen-btn');
+                if (document.body.classList.contains('is-fullscreen')) {
+                    btn.textContent = 'Quitter plein écran';
+                    btn.classList.replace('bg-blue-600', 'bg-gray-600');
+                    btn.classList.replace('hover:bg-blue-700', 'hover:bg-gray-700');
+                } else {
+                    btn.textContent = 'Mode plein écran';
+                    btn.classList.replace('bg-gray-600', 'bg-blue-600');
+                    btn.classList.replace('hover:bg-gray-700', 'hover:bg-blue-700');
+                }
+
+                // Forcer le redessin du canva après le redimensionnement de l'interface
+                setTimeout(() => {
+                    if (typeof window.calculateAndDraw === 'function') {
+                        window.calculateAndDraw();
+                    }
+                }, 100);
+            };
+
+            // Initialisation au chargement
+            setTimeout(() => {
+                syncFromMainProject();
+                if (typeof window.handlePente2Visibility === 'function') window.handlePente2Visibility();
+                // Envoi de la largeur initiale au parent pour la synchronisation
+                const toitureW = document.getElementById('toiture_dim_w');
+                if (toitureW && window.parent) {
+                    window.parent.postMessage({ type: 'SYNC_ROOF_WIDTH', value: toitureW.value }, '*');
+                }
+            }, 300);
+        });
+    </script>
+</body>
+
+</html>

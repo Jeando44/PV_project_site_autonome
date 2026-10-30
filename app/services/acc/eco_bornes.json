@@ -1,0 +1,28 @@
+{
+  "_commentaire": "Source UNIQUE des bornes des modales ACC « Paramètres économiques » et « Analyse financière avancée » : lue par le serveur (eco_validation.py) et injectée dans index_autoconso.html (window.ACC_ECO_BORNES) pour la validation front (prodsolaire/acc_eco_validation.js). Bornes reprises du modal Études économiques Grand projet (EtudesEconomiqueLogic.js, objet rules) et converties dans les unités ACC (€/kWh au lieu de €/MWh, €/Wc au lieu de €/kWc). minIncl/maxIncl : borne incluse. maxChamp : borne max = valeur d'un autre champ. maxParWc : borne max = (nombre, ou valeur d'un champ) × puissance crête en Wc, vérifiée seulement si la puissance est connue. siChamp/siValeur : contrôle seulement si cet autre champ vaut cette valeur. tests/prodsolaire/test_acc_eco_validation.py vérifie la parité JS/Python.",
+  "version": 1,
+  "champs": {
+    "horizon":                      { "min": 1,    "minIncl": true,  "max": 30,   "maxIncl": true,  "entier": true, "libelle": "Horizon d'étude (ans)", "inputId": "eco_horizon" },
+    "discount_rate":                { "min": 0,    "minIncl": true,  "max": 10,   "maxIncl": false, "libelle": "Taux d'actualisation (%)", "inputId": "eco_discount_rate" },
+    "tax_rate":                     { "min": 0,    "minIncl": true,  "max": 50,   "maxIncl": false, "libelle": "Taux d'imposition sur les sociétés (%)", "inputId": "eco_tax_rate" },
+    "pv_degradation_rate":          { "min": 0,    "minIncl": false, "max": 5,    "maxIncl": true,  "libelle": "Dégradation des panneaux (%/an)", "inputId": "eco_pv_degradation" },
+    "capex_wc":                     { "min": 0,    "minIncl": true,  "max": 3,    "maxIncl": false, "libelle": "CAPEX - Coût du projet (€/Wc)", "inputId": "eco_capex_wc" },
+    "investment_subsidy":           { "min": 0,    "minIncl": true,  "maxParWc": "capex_wc", "maxIncl": true, "libelle": "Subvention d'investissement (€)", "inputId": "eco_investment_subsidy" },
+    "opex_projet_wc":               { "min": 0,    "minIncl": true,  "max": 0.2,  "maxIncl": false, "libelle": "OPEX projet (€/Wc/an)", "inputId": "eco_opex_projet_wc" },
+    "opex_gestion_acc_wc":          { "min": 0,    "minIncl": true,  "max": 0.2,  "maxIncl": false, "libelle": "OPEX gestion ACC (€/Wc/an)", "inputId": "eco_opex_gestion_acc_wc" },
+    "loyer":                        { "min": 0,    "minIncl": true,  "maxParWc": 0.1, "maxIncl": false, "libelle": "Loyer annuel (€)", "inputId": "eco_loyer" },
+    "depreciation_period":          { "min": 1,    "minIncl": true,  "max": 30,   "maxIncl": true,  "entier": true, "libelle": "Durée d'amortissement (ans)", "inputId": "eco_depreciation_period" },
+    "declining_coefficient":        { "min": 1.25, "minIncl": true,  "max": 2.25, "maxIncl": true,  "siChamp": "depreciation_method", "siValeur": "declining", "libelle": "Coefficient dégressif", "inputId": "eco_declining_coefficient" },
+    "inverter_replacement_year":    { "min": 2,    "minIncl": true,  "maxChamp": "horizon", "maxIncl": true, "entier": true, "siChamp": "inverter_replacement_enabled", "siValeur": true, "libelle": "Année de remplacement de l'onduleur", "inputId": "eco_inverter_replacement_year" },
+    "inverter_replacement_cost_wc": { "min": 0,    "minIncl": true,  "max": 3,    "maxIncl": false, "siChamp": "inverter_replacement_enabled", "siValeur": true, "libelle": "Coût de remplacement de l'onduleur (€/Wc)", "inputId": "eco_inverter_replacement_cost_wc" },
+    "equity_share":                 { "min": 0,    "minIncl": true,  "max": 50,   "maxIncl": false, "libelle": "Part de fonds propres (%)", "inputId": "eco_equity_share" },
+    "loan_interest":                { "min": 0,    "minIncl": true,  "max": 20,   "maxIncl": false, "libelle": "Taux d'intérêt du prêt (%)", "inputId": "eco_loan_interest" },
+    "loan_maturity":                { "min": 1,    "minIncl": true,  "max": 30,   "maxIncl": true,  "entier": true, "libelle": "Maturité du prêt (ans)", "inputId": "eco_loan_maturity" },
+    "inflation_opex":               { "min": 0,    "minIncl": true,  "max": 10,   "maxIncl": true,  "libelle": "Indexation OPEX (%)", "inputId": "eco_inflation_opex" },
+    "inflation_acc_price":          { "min": 0,    "minIncl": true,  "max": 3,    "maxIncl": true,  "libelle": "Indexation prix vente interne ACC (%)", "inputId": "eco_inflation_acc_price" },
+    "inflation_surplus_price":      { "min": 0,    "minIncl": true,  "max": 3,    "maxIncl": true,  "libelle": "Indexation prix vente surplus (%)", "inputId": "eco_inflation_surplus_price" },
+    "prix_vente_surplus":           { "min": 0,    "minIncl": true,  "max": 0.5,  "maxIncl": true,  "libelle": "Prix de vente global du surplus (€/kWh)", "inputId": "global_prix_vente_surplus" }
+  },
+  "inflation_grid_price": { "min": 0, "minIncl": true, "max": 10,  "maxIncl": true, "libelle": "Indexation prix réseau" },
+  "prix_participant":     { "min": 0, "minIncl": true, "max": 0.5, "maxIncl": true, "libelle": "Prix (€/kWh)" }
+}

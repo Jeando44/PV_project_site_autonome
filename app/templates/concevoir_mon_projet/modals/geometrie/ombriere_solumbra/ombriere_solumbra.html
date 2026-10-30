@@ -1,0 +1,1262 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurateur d'Ombrière Solaire v4.1 (Finalisé)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    {% include 'concevoir_mon_projet/components/mention_essai.html' %}
+
+    <style>
+        :root {
+            --main-color: #DC2626;
+            --main-color-hover: #B91C1C;
+            --modal-default-width: 100vw;
+            --modal-default-height: 100vh;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e5e7eb;
+        }
+
+        /* Styles pour le modal de lancement */
+        #welcome-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #welcome-modal {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        #launch-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            background-color: var(--main-color);
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        #launch-btn:hover {
+            background-color: var(--main-color-hover);
+        }
+
+        #launch-btn svg {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            z-index: 999;
+        }
+
+        #app-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: var(--modal-default-width);
+            height: var(--modal-default-height);
+            min-width: 800px;
+            min-height: 600px;
+            background-color: #f0f2f5;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            resize: both;
+            overflow: hidden;
+            transition: width 0.3s ease-in-out, left 0.3s ease-in-out;
+        }
+
+        #modal-header {
+            background-color: var(--main-color);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem 0.75rem 0 0;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            display: none;
+        }
+        
+        #modal-header h2 {
+            font-weight: 600;
+        }
+
+        .modal-header-btn {
+            background: none;
+            border: none;
+            color: white;
+            padding: 0.25rem;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .modal-header-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-header-btn svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        #modal-body {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .controls-container {
+            background-color: #ffffff;
+            overflow-y: auto;
+            transition: all 0.3s ease-in-out;
+            overflow-x: hidden;
+        }
+
+        .canvas-container {
+            position: relative;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            cursor: default;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas.grabbing {
+            cursor: grabbing;
+        }
+
+        .input-group-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            grid-column: 1 / -1;
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem 1.5rem;
+        }
+
+        .span-2 {
+            grid-column: span 2 / span 2;
+        }
+
+        .tab-button {
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            padding: 0.75rem 1rem;
+        }
+
+        .tab-button.active {
+            border-bottom-color: var(--main-color);
+            color: var(--main-color);
+            font-weight: 600;
+        }
+
+        .view-title {
+            color: var(--main-color);
+            font-weight: 600;
+            text-align: center;
+            padding-top: 0.5rem;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            pointer-events: none;
+        }
+
+        .tool-button {
+            height: 2.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.375rem;
+            border: 1px solid #d1d5db;
+            background-color: #ffffff;
+            color: #4b5563;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0 0.5rem;
+        }
+
+        .tool-button.icon-only {
+            width: 2.25rem;
+            padding: 0;
+        }
+
+        .tool-button:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .tool-button.active {
+            background-color: var(--main-color);
+            color: #ffffff;
+            border-color: var(--main-color);
+        }
+
+        .tool-button:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .dim-color-btn {
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .dim-color-btn.active {
+            border-color: var(--main-color);
+            box-shadow: 0 0 0 2px var(--main-color);
+        }
+
+        .toggle-btn-group button {
+            background-color: #e5e7eb;
+        }
+
+        .toggle-btn-group button.active {
+            background-color: var(--main-color);
+            color: white;
+        }
+
+        .toggle-btn-group button:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+            border-color: #d1d5db;
+        }
+
+        .toggle-btn-group.equal-width {
+            display: flex;
+        }
+
+        .toggle-btn-group.equal-width button {
+            flex: 1;
+        }
+
+        #model-btn-group button {
+            background-color: #e5e7eb;
+        }
+
+        #model-btn-group button.active {
+            background-color: var(--main-color);
+            color: white;
+        }
+
+        #mapContainer {
+            width: 100%;
+            height: 100%;
+            border-radius: 0.5rem;
+        }
+
+        .leaflet-container {
+            z-index: 10;
+        }
+
+        #geometry-inputs {
+            transition: all 0.3s ease-out;
+            max-height: 500px;
+            overflow: hidden;
+        }
+
+        #geometry-inputs.collapsed {
+            max-height: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            margin-top: 0 !important;
+            gap: 0 !important;
+        }
+
+        #geometry-title.collapsed #geometry-chevron {
+            transform: rotate(-90deg);
+        }
+
+        /* MOD 1.5: Styles pour masquer le formulaire */
+        #app-modal.form-hidden #controls-container {
+            width: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+            opacity: 0;
+            border: none;
+        }
+
+        #app-modal.form-hidden #canvas-column {
+            grid-column: span 3 / span 3;
+        }
+
+        #app-modal.form-hidden #toggle-form-btn svg {
+            transform: rotate(180deg);
+        }
+
+        /* MOD 1.0 (Alignement): Ajustement des conteneurs de canvas */
+        #coupe-container {
+            display: flex;
+            flex-direction: column;
+            flex: 2 !important;
+            width: 100% !important;
+            margin-top:35px;
+            transition: height 0.1s ease-out;
+        }
+        #viewCoupe {
+            min-height: 0; 
+            height: 100vh;
+            max-height: 105vh;
+        }
+        #facade-block-container {
+            display: flex;
+            flex: 1!important;
+            width: 100% !important;
+            /* margin-left: -10% !important; */
+            /* margin-top: 3% !important;  */
+            transition: height 0.1s ease-out;
+        }
+        #viewFacade {
+            min-height: 0;
+            height: 40vh;
+        }
+
+        #viewCalepinage{
+            min-height: 1000px;
+        }
+        @media print {
+            body>*:not(#app-modal) {
+                display: none !important;
+            }
+
+            #app-modal,
+            #modal-body {
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                position: static !important;
+                box-shadow: none !important;
+                border: none !important;
+                overflow: visible !important;
+                transform: none !important;
+            }
+
+            #modal-header,
+            .controls-container,
+            header,
+            .z-10,
+            #welcome-modal-overlay {
+                display: none !important;
+            }
+
+            .lg\:col-span-2 {
+                width: 100%;
+                page-break-after: always;
+            }
+
+            .grid {
+                display: block !important;
+            }
+        }
+
+        /* MOD: Force la disparition totale du bloc bas et du formulaire */
+        #app-modal.calepinage-full #facade-block-container {
+            display: none !important;
+            height: 0 !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        #app-modal.calepinage-full #coupe-container {
+            height: 100% !important;
+            flex: 1 1 100% !important;
+            max-width: 100% !important;
+            width: 100%;
+            min-width: 100%;
+            /* margin-left: -7.5% !important; */
+            /* margin-top: 2% !important; */
+            
+        }
+
+        #app-modal.form-hidden #controls-container {
+            display: none !important;
+        }
+
+        #app-modal.form-hidden #canvas-column {
+            grid-column: span 3 / span 3 !important;
+        }
+
+        #canvas-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+
+        @media print {
+    canvas {
+        max-width: 100%;
+        height: auto;
+    }
+    .canvas-container {
+        page-break-after: avoid;
+        break-inside: avoid;
+    }
+    #viewImplantation, #viewFacade, #viewCoupe {
+        page-break-after: always;
+    }
+}
+
+#coupe-container,
+#facade-block-container {
+    max-height: 600px !important;   
+    min-height: 500px !important;
+}
+
+/* Pour le mode calepinage, ne pas limiter */
+#app-modal.calepinage-full #coupe-container {
+    max-height: none !important;
+    min-height: auto !important;
+}
+    </style>
+    <!-- Plans de coupe / façade fixes pendant le défilement du formulaire (cf. ce fichier). -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/geometrie_plans_fixes.css') }}?v=2">
+</head>
+
+<body>
+
+    <div id="modal-overlay"></div>
+    <div id="app-modal">
+        <div id="modal-header">
+            <h2>Ombridesign 2.1</h2>
+            <div class="flex items-center space-x-2">
+                <button id="toggle-form-btn" class="modal-header-btn" title="Afficher/Masquer le formulaire">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5l-7.5-7.5 7.5-7.5" />
+                    </svg>
+                </button>
+                <button id="reset-modal-btn" class="modal-header-btn" title="Réinitialiser la position et la taille">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m4.5 11.25h-4.5m4.5 0v-4.5m0 .001L15 15" />
+                    </svg>
+                </button>
+                <button id="close-modal-btn" class="modal-header-btn" title="Fermer">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="modal-body">
+            <div class="container mx-auto flex-1 flex flex-col" style="min-width: 100%;">
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 min-h-0">
+
+                    <div id="canvas-column" class="lg:col-span-2 flex flex-col gap-6 min-h-0">
+
+                        <div id="coupe-container" class="flex flex-col min-h-0" >
+                            <div class="flex border-b mb-2 flex-shrink-0" style="margin-top:-5vh">
+                                <button id="tabCoupe" class="tab-button tab-group-1 active">Plan de coupe</button>
+                                <button id="tabCalepinage" class="tab-button tab-group-1">Plan de
+                                    calepinage</button>
+                                <button id="tabPlanMasse" class="tab-button tab-group-1" style="display: none !important;">Plan de masse</button>
+                            </div>
+
+                            <div id="viewCoupe" class="tab-content-1 canvas-container flex-2" >
+                                <div class="absolute top-2 left-2 z-10 flex flex-wrap gap-2">
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="zoomInCoupe" class="tool-button icon-only"
+                                            title="Zoom avant">+</button>
+                                        <button id="zoomOutCoupe" class="tool-button icon-only"
+                                            title="Zoom arrière">-</button>
+                                        <button id="panCoupe" class="tool-button icon-only"
+                                            title="Déplacer (Panoramique)">🖐</button>
+                                        <button id="resetCoupe" class="tool-button icon-only"
+                                            title="Tout voir">⛶</button>
+                                    </div>
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="toolInvertSlope" class="tool-button icon-only"
+                                            title="Inverser la pente">⇅</button>
+                                        <div class="border-l border-gray-300 h-6 mx-1 self-center"></div>
+                                        <button id="toolPosTraverseTop" class="tool-button"
+                                            title="Position Traverse: Dessus">Dessus</button>
+                                        <button id="toolPosTraverseSide" class="tool-button"
+                                            title="Position Traverse: Côté">Côté</button>
+                                    </div>
+                                    <div id="offsetBraceControls"
+                                        class="hidden flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="toggleBraceLeft" class="tool-button"
+                                            title="Afficher/Masquer Renfort Gauche">Renfort G.</button>
+                                        <button id="toggleBraceRight" class="tool-button"
+                                            title="Afficher/Masquer Renfort Droit">Renfort D.</button>
+                                    </div>
+                                    <div id="inclinedPostCanvasControls"
+                                        class="hidden flex gap-2 bg-white p-1.5 rounded-lg shadow-md items-center">
+                                        <input type="checkbox" id="hideCentralPostCanvas"
+                                            class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                                        <label for="hideCentralPostCanvas"
+                                            class="text-sm text-gray-700 select-none cursor-pointer">Masquer le poteau central</label>
+                                    </div>
+                                    <div id="toolDimColors" class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button class="tool-button dim-color-btn" data-color="#0000FF"
+                                            style="background-color: #0000FF;" title="Bleu"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#FF0000"
+                                            style="background-color: #FF0000;" title="Rouge"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#000000"
+                                            style="background-color: #000000;" title="Noir"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#FF00FF"
+                                            style="background-color: #FF00FF;" title="Magenta"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#4169E1"
+                                            style="background-color: #4169E1;" title="Bleu Foncé"></button>
+                                    </div>
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md ml-1">
+                                        <button id="toggleFoundationsCanvas" class="tool-button active" title="Masquer/Afficher les fondations">🧱</button>
+                                    </div>
+                                </div>
+                                <h3 class="view-title">Plan de coupe</h3>
+                                <canvas id="coupeCanvas"></canvas>
+                            </div>
+
+                            <div id="viewPlanMasse"
+                                class="tab-content-1 hidden canvas-container flex-1 bg-gray-50 flex items-center justify-center">
+                                <h3 class="view-title">Plan de masse</h3>
+                                <p class="text-gray-400">Contenu du plan de masse à venir...</p>
+                            </div>
+
+                            <div id="viewCalepinage" class="tab-content-1 hidden canvas-container p-2 flex-1">
+                                <iframe id="iframeCalepinage" src="{{ url_for('concevoir_mon_projet.geometrie_calepinage') }}" style="width:100%; height:100%; border:none;" title="Configurateur Calepinage"></iframe>                         
+                            </div>
+
+                        </div>
+
+                        <div id="facade-block-container" class="flex flex-col min-h-0">
+                            <div class="flex border-b border-gray-200 mb-2 flex-shrink-0">
+                                <button id="tabFacade" class="tab-button tab-group-2 active">Plan de façade</button>
+                                <button id="tabImplantation" class="tab-button tab-group-2">Plan d'implantation</button>
+                            </div>
+
+                            <div id="viewFacade" class="tab-content-2 canvas-container flex-1">
+                                <div class="absolute top-2 left-2 z-10 flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                    <button id="zoomInFacade" class="tool-button icon-only"
+                                        title="Zoom avant">+</button>
+                                    <button id="zoomOutFacade" class="tool-button icon-only"
+                                        title="Zoom arrière">-</button>
+                                    <button id="panFacade" class="tool-button icon-only"
+                                        title="Déplacer (Panoramique)">🖐</button>
+                                    <button id="resetFacade" class="tool-button icon-only" title="Tout voir">⛶</button>
+                                </div>
+                                <h3 class="view-title">Plan de façade</h3>
+                                <canvas id="facadeCanvas"></canvas>
+                            </div>
+
+                            <div id="viewImplantation" class="tab-content-2 hidden canvas-container flex-1">
+                                <div class="absolute top-2 left-2 z-10 flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                    <button id="zoomInImplantation" class="tool-button icon-only"
+                                        title="Zoom avant">+</button>
+                                    <button id="zoomOutImplantation" class="tool-button icon-only"
+                                        title="Zoom arrière">-</button>
+                                    <button id="panImplantation" class="tool-button icon-only"
+                                        title="Déplacer (Panoramique)">🖐</button>
+                                    <button id="resetImplantation" class="tool-button icon-only"
+                                        title="Tout voir">⛶</button>
+                                </div>
+                                <h3 class="view-title">Plan d’implantation des axes de poteaux</h3>
+                                <canvas id="implantationCanvas"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div id="controls-container" class="lg:col-span-1 controls-container p-4 rounded-lg shadow-md">
+                        <div class="input-grid">
+                            <!-- <h2 class="input-group-title">Type de structure</h2>
+                            <div class="span-2 mb-4">
+                                <div id="structure-type-group"
+                                    class="mt-1 flex flex-wrap gap-1 rounded-md shadow-sm toggle-btn-group">
+                                    <button id="structMetal"
+                                        class="flex-1 min-w-[120px] relative inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Ombrière
+                                        métal</button>
+                                    <button id="structBois"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Ombrière
+                                        bois</button>
+                                    <button id="structBeton"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Ombrière
+                                        béton</button>
+                                    <button id="structBatIncline"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Bâtiment
+                                        incliné</button>
+                                    <button id="structTable"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Table
+                                        solaire</button>
+                                    <button id="structAutres"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Autres</button>
+                                </div> -->
+                            </div>
+
+                            <h2 class="input-group-title">Données des coupes</h2>
+                            <div class="span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Modèle de poteaux</label>
+                                <div class="flex items-center mb-2">
+                                    <input type="checkbox" id="bypass-filters" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                                    <label for="bypass-filters" class="ml-2 block text-sm font-medium text-gray-900">Voir tous les modèles de structure</label>
+                                </div>
+                                <div id="model-filter-error" class="text-red-600 text-sm font-semibold hidden mb-2" style="display: none !important;"></div>
+                                <div id="model-btn-group" class="mt-1 flex flex-wrap gap-1 rounded-md shadow-sm">
+                                    <button id="modelOffsetPost"
+                                        class="flex-1 relative inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-l-md">Simple 3 rangées</button>
+                                    <button id="modelDoublePost"
+                                        class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Simple 4 rangées</button>
+                                    <button id="modelInclinedPost"
+                                        class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">6 rangées Sud</button>
+                                    <button id="modelYShape"
+                                        class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Double 3 rangées E-O</button>
+                                </div>
+                            </div>
+                            <div class="span-2 flex items-center" style="display: none !important;">
+                                <label class="block text-sm font-medium text-gray-700 mr-4">Type de renfort</label>
+                                <div class="flex rounded-md shadow-sm toggle-btn-group equal-width flex-grow">
+                                    <button id="reinforceBracons"
+                                        class="relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Bracons</button>
+                                    <button id="reinforceJarrets"
+                                        class="relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Jarrets</button>
+                                </div>
+                            </div>
+                            <div id="doublePostControls"
+                                class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                                <div class="span-2 flex items-center justify-between mb-2 border-b pb-2">
+                                    <label class="block text-sm font-medium text-gray-700">Inverser la pente de la toiture</label>
+                                    <button type="button" id="btnInvertSlopeDouble" class="tool-button icon-only px-2 text-lg" title="Inverser la pente">⇅</button>
+                                </div>
+                                <div style="display: none;"><label for="postSpacing" class="block text-sm font-medium text-gray-700">Entraxe
+                                        (m)</label><input type="number" id="postSpacing" value="1.61" step="0.1" min="0.01"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                                <div class="span-2"><label class="block text-sm font-medium text-gray-700">Variante</label>
+                                    <div class="mt-1 grid grid-cols-2 rounded-md shadow-sm toggle-btn-group"
+                                        id="bracing-variant-group">
+                                        <button id="bracingV1"
+                                            class="text-xs px-2 py-1 border border-gray-300 rounded-l-md active">V1 Standard</button>
+                                        <button id="bracingV2"
+                                            class="text-xs px-2 py-1 -ml-px border border-gray-300 rounded-r-md">V2 Inversée</button>
+                                    </div>
+                                </div>
+                                <div class="span-2 flex items-center" style="display: none;"><input type="checkbox" id="showDoubleBracing"
+                                        class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                        checked><label for="showDoubleBracing"
+                                        class="ml-2 block text-sm text-gray-900">Afficher contreventement</label></div>
+                            </div>
+                            <div id="inclinedPostControls"
+                                class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                                <div style="display: none;"><label for="postSpacingInclined"
+                                        class="block text-sm font-medium text-gray-700">Entraxe (m)</label><input
+                                        type="number" id="postSpacingInclined" value="3.24" step="0.1" min="0.01"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                                <div class="hidden"><label for="postInclinationInclined"
+                                        class="block text-sm font-medium text-gray-700">Inclinaison (°)</label><input
+                                        type="number" id="postInclinationInclined" value="65" step="1" min="0" max="90"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                                <div class="span-2 flex items-center" style="display: none;">
+                                        <input type="checkbox" id="hideCentralPost"
+                                            class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                                        <label for="hideCentralPost" class="ml-2 block text-sm text-gray-900">Masquer le poteau central</label>
+                                </div>
+                            </div>
+                            <div id="offsetPostControls"
+                                class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                                <div class="span-2 flex items-center justify-between mb-2 border-b pb-2">
+                                    <label class="block text-sm font-medium text-gray-700">Inverser la pente de la toiture</label>
+                                    <button type="button" id="btnInvertSlopeOffset" class="tool-button icon-only px-2 text-lg" title="Inverser la pente">⇅</button>
+                                </div>
+                                <div class="span-2"><label class="block text-sm font-medium text-gray-700">Variante</label>
+                                    <div id="offset-variant-group" class="mt-1 grid grid-cols-2 rounded-md shadow-sm toggle-btn-group">
+                                        <button id="offsetBracingV1"
+                                            class="text-xs px-2 py-1 border border-gray-300 rounded-l-md active">V1 Standard</button>
+                                        <button id="offsetBracingV2"
+                                            class="text-xs px-2 py-1 -ml-px border border-gray-300 rounded-r-md">V2 Inversée</button>
+                                    </div>
+                                </div>
+                                <div style="display: none;"><label for="postEccentricity"
+                                        class="block text-sm font-medium text-gray-700">Excentrement (m)</label><input
+                                        type="number" id="postEccentricity" value="2.0" step="0.01" min="0"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                                <p id="postEccentricityError" class="text-red-600 text-sm span-2"></p>
+                            </div>
+
+                            <div class="span-2" style="display: none;">
+                                <label for="bracingPosition" class="block text-sm font-medium text-gray-700">Position contreventement (%)</label>
+                                <input type="number" id="bracingPosition" value="80" min="0" max="100"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            
+                            <div id="dual-inclination-group" class="span-2 hidden" style="display: none !important;">
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label for="postInclinationLeft" class="block text-sm font-medium text-gray-700">Inclinaison poteau gauche (°)</label>
+                                        <input type="number" id="postInclinationLeft" value="68" min="0" max="90"
+                                            class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                    </div>
+                                    <div>
+                                        <label for="postInclinationRight" class="block text-sm font-medium text-gray-700">Inclinaison poteau droit (°)</label>
+                                        <input type="number" id="postInclinationRight" value="68" min="0" max="90"
+                                            class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="single-inclination-group" class="span-2 hidden" style="display: none !important;">
+                                <label for="postInclinationSingle" class="block text-sm font-medium text-gray-700">Inclinaison poteau (°)</label>
+                                <input type="number" id="postInclinationSingle" value="68" min="0" max="90"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+                            <div style="display: none;"><label for="passageHeight" class="block text-sm font-medium text-gray-700">Hauteur
+                                    libre de passage (m)</label><input type="number" id="passageHeight" value="2.8"
+                                    step="0.1" min="0.01" max="10"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div class="hidden"><label for="lowPointHeight" class="block text-sm font-medium text-gray-700">Hauteur bas
+                                    structure (calc.)</label><input type="number" id="lowPointHeight" value="3.38"
+                                    step="0.01"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100"
+                                    readonly></div>
+                            <p id="heightError" class="hidden text-red-600 text-sm span-2"></p>
+
+                            <div class="hidden"><label for="postHeight" class="block text-sm font-medium text-gray-700">Hauteur Poteau
+                                    (calc.)</label><input type="number" id="postHeight" value="3.50" step="0.01"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100"
+                                    readonly></div>
+                            <div id="braceHeightControl" class="hidden"><label for="heightUnderBrace"
+                                    class="block text-sm font-medium text-gray-700">Hauteur sous renfort
+                                    (m)</label><input type="number" id="heightUnderBrace" value="2.0" step="0.1" min="0.01"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+
+                            <div style="display: none;"><label for="anchorDepth" class="block text-sm font-medium text-gray-700">Profondeur
+                                    d'ancrage (m)</label><input type="number" id="anchorDepth" value="0.3" step="0.05" min="0.01" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+
+<!-- La largeur champ PV est ici -->
+                            <div style="display: none;"><label for="panelWidth" class="block text-sm font-medium text-gray-700">Largeur champ
+                                    PV (m)</label><input type="number" id="panelWidth" value="12.40" step="0.1" min="0.01" max="25"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required disabled>
+                            </div>
+                            <div style="display: none;"><label for="roofSlope" class="block text-sm font-medium text-gray-700">Pente de la
+                                    toiture (°)</label><input type="number" id="roofSlope" value="8" step="1" min="0" max="20"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+
+                            <div class="span-2" style="display: none !important;"><label class="block text-sm font-medium text-gray-700">Type de
+                                    porte-à-faux</label>
+                                <div class="mt-1 flex rounded-md shadow-sm toggle-btn-group"><button id="overhangSym"
+                                        class="w-full relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Symétrique</button><button
+                                        id="overhangAsym"
+                                        class="w-full relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Asymétrique</button>
+                                </div>
+                            </div>
+                            <div id="overhangSymContainer" class="span-2" style="display: none !important;"><label for="overhangSymValue"
+                                    class="block text-sm font-medium text-gray-700">Porte-à-faux (m)</label><input
+                                    type="number" id="overhangSymValue" value="0.5" step="0.1" min="0"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div id="overhangAsymContainer" class="hidden span-2"><label for="overhangAsymHigh"
+                                    class="block text-sm font-medium text-gray-700">Porte-à-faux Haut / Bas (m)</label>
+                                <div class="flex gap-2"><input type="number" id="overhangAsymHigh" value="0.5"
+                                        step="0.1" min="0"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"><input
+                                        type="number" id="overhangAsymLow" value="1.0" step="0.1" min="0"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                            </div>
+
+                            <div class="span-2 mt-4 mb-2">
+                                <button id="toggleFoundations" type="button" class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-gray-400 hover:bg-gray-500">Afficher les fondations</button>
+                            </div>
+
+                            <h2 id="geometry-title"
+                                class="input-group-title cursor-pointer flex justify-between items-center collapsed">
+                                <span>Géométrie matériels</span>
+                                <svg id="geometry-chevron" class="w-5 h-5 transition-transform"
+                                    xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd"
+                                        d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                        clip-rule="evenodd" />
+                                </svg>
+                            </h2>
+                            <div id="geometry-inputs" class="span-2 input-grid collapsed">
+                                <div><label for="postWidth" class="block text-sm font-medium text-gray-700">Épaisseur
+                                        Poteau (m)</label><input type="number" id="postWidth" value="0.30" step="0.01" min="0.01" max="1"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                                <div><label for="purlinHeight" class="block text-sm font-medium text-gray-700">Épaisseur
+                                        pannes (m)</label><input type="number" id="purlinHeight" value="0.30"
+                                        step="0.01" min="0.01" max="1"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                                <div><label for="panelThickness"
+                                        class="block text-sm font-medium text-gray-700">Épaisseur panneaux
+                                        (m)</label><input type="number" id="panelThickness" value="0.03" step="0.01" min="0.01" max="1"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                                <div><label for="integrationSystemHeight"
+                                        class="block text-sm font-medium text-gray-700">Hauteur système d’intégration
+                                        (m)</label><input type="number" id="integrationSystemHeight" value="0.1"
+                                        step="0.01" min="0.01" max="1"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                                <div><label for="beamHeight" class="block text-sm font-medium text-gray-700">Épaisseur
+                                        Traverse (m)</label><input type="number" id="beamHeight" value="0.15"
+                                        step="0.01" min="0.01" max="1"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                                <div><label for="beamWidth" class="block text-sm font-medium text-gray-700">Largeur
+                                        Traverse (m)</label><input type="number" id="beamWidth" value="0.15" step="0.01" min="0.01" max="1"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                                <div><label for="braceWidth" class="block text-sm font-medium text-gray-700">Épaisseur
+                                        des bracons (m)</label><input type="number" id="braceWidth" value="0.10"
+                                        step="0.01" min="0.01" max="1"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                                <div><label for="braceThickness" class="block text-sm font-medium text-gray-700">Épaisseur
+                                        contreventement (cm)</label><input type="number" id="braceThickness" value="25"
+                                        step="1" min="1"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+
+                                <div class="span-2"><label for="purlinCount"
+                                        class="block text-sm font-medium text-gray-700">Nombre de pannes</label><input
+                                        type="number" id="purlinCount" value="6" step="1" min="2" max="20"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                                <div id="braceFixControl"><label for="braceFixPercentage"
+                                        class="block text-sm font-medium text-gray-700">Fixation renfort
+                                        (%)</label><input type="number" id="braceFixPercentage" value="70" step="1" min="50" max="80"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                            </div>
+
+                            <div style="border:#4b5563 1px dashed; margin-top: 2vh;"></div>
+                            <div style="border:#4b5563 1px dashed; margin-top: 25vh;"></div>
+
+
+
+                            <h2 id="facade-data-title" class="input-group-title">Données de Façade</h2>
+<!-- La longueur totale est ici -->
+                            <div style="display: none;"><label for="facadeLength" class="block text-sm font-medium text-gray-700">Longueur
+                                    totale (m)</label><input type="number" id="facadeLength" value="39" step="1" min="0.01" max="200"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required disabled>
+                            </div>
+                            <div><label for="paf_display" class="block text-sm font-medium text-gray-700">Porte-à-faux (m)</label>
+                                <input type="number" id="paf_display" value="0.46" step="0.01"
+                                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm bg-gray-100 sm:text-sm"
+                                    readonly>
+                            </div>
+                            <input type="hidden" id="leftOverhang" class="all-inputs" value="0.46">
+                            <input type="hidden" id="rightOverhang" class="all-inputs" value="0.46">
+                            <!-- Terrain automatique (geometrie_structure/terrain_plans.js) : profil réel du champ PV
+                                 (IGN en France, Google ailleurs) sous les plans de coupe et de façade.
+                                 Décoché : saisie manuelle du dénivelé et de l'altitude ci-dessous.
+                                 Les boutons pilotent le <select> caché #terrainLigneFacade (c'est lui qui est
+                                 sauvegardé) ; id sans suffixe "-group" pour ne pas être sauvegardé en double. -->
+                            <div class="span-2 rounded-md border border-gray-200 bg-gray-50 p-2">
+                                <div class="flex items-center"><input type="checkbox" id="terrainAuto" checked
+                                        title="Coché (défaut) : terrain réel du champ PV sous les plans de coupe et de façade. Décoché : saisie manuelle de l'altitude et du dénivelé."
+                                        class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"><label
+                                        for="terrainAuto" class="ml-2 block text-sm font-medium text-gray-900">Terrain automatique</label>
+                                </div>
+                                <label class="block text-sm font-medium text-gray-700 mt-2 mb-1">Profil de terrain de la façade</label>
+                                <div id="terrainLigneFacadeBoutons" class="flex rounded-md shadow-sm toggle-btn-group equal-width">
+                                    <button type="button" data-ligne="avant" title="Ligne de poteaux avant (bord bas des panneaux)"
+                                        class="terrain-ligne-btn relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md">Avant</button>
+                                    <button type="button" data-ligne="centre" title="Axe central des poteaux (défaut)"
+                                        class="terrain-ligne-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium active">Centre</button>
+                                    <button type="button" data-ligne="arriere" title="Ligne de poteaux arrière (bord haut des panneaux)"
+                                        class="terrain-ligne-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Arrière</button>
+                                </div>
+                                <select id="terrainLigneFacade" class="all-inputs hidden" aria-hidden="true" tabindex="-1">
+                                    <option value="centre" selected>centre</option>
+                                    <option value="avant">avant</option>
+                                    <option value="arriere">arriere</option>
+                                </select>
+                                <div id="terrainAutoInfo" class="mt-1 text-xs text-gray-600"></div>
+                            </div>
+                            <div><label for="groundSlopeFacade" class="block text-sm font-medium text-gray-700">Dénivelé
+                                    du terrain (m)</label><input type="number" id="groundSlopeFacade" value="0.00"
+                                    step="0.01" min="-3" max="3"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div><label for="baseAltimetry" class="block text-sm font-medium text-gray-700">Altimétrie
+                                    au point +0.00m (m)</label><input type="number" id="baseAltimetry" value="0"
+                                    step="0.01" min="0" max="1800"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+
+                            <div class="span-2"><label for="pvLayout"
+                                    class="block text-sm font-medium text-gray-700">Nbre de PV Calepinage
+                                    (LxC)</label><input type="text" id="pvLayout" value="10L x 30C"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm bg-gray-100"
+                                    placeholder="ex: 10L x 30C" readonly></div>
+                            <div class="flex items-center span-2"><input type="checkbox" id="alignRoof" checked
+                                    class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"><label
+                                    for="alignRoof" class="ml-2 block text-sm text-gray-900">Alignement toiture</label>
+                            </div>
+
+                            <div class="span-2"><label for="postDistances"
+                            class="block text-sm font-medium text-gray-700">Entraxes poteaux (ex: 4*7.5 +
+                              2*8, calculé automatiquement, éditable)</label><input type="text" id="postDistances" value="4*7.5"
+                            class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                            pattern="[0-9*+\s.]+" title="Utilisez uniquement des nombres, + et *">
+                            <div id="postDistancesInfo" class="text-blue-600 text-sm mt-1"></div>
+                            <div id="postDistancesError" class="text-red-600 text-sm mt-1"></div>
+                            </div>
+
+<div id="validationError" class="text-red-600 text-sm span-2 mt-2"></div>
+
+                            <h2 id="actions-title" class="input-group-title">Actions</h2>
+                            <div class="span-2 space-y-2">
+                                <button id="exportCoupeBtn"
+                                    class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Exporter
+                                    Plan de Coupe en PNG</button>
+                                <button id="exportFacadeBtn"
+                                    class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Exporter
+                                    Plan de Façade en PNG</button>
+                                <div class="border-t pt-2">
+                                    <button id="exportPdfBtn"
+                                        class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Exporter
+                                        tous les plans en PDF</button>
+                                    <button id="printBtn"
+                                        class="w-full mt-2 bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Imprimer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <script>
+        // Validation supplémentaire: hauteur sous renfort < hauteur libre de passage
+        const passageHeightInput = document.getElementById('passageHeight');
+        const heightUnderBraceInput = document.getElementById('heightUnderBrace');
+
+        function validateHeightUnderBrace() {
+            const passage = parseFloat(passageHeightInput.value) || 0;
+            const brace = parseFloat(heightUnderBraceInput.value) || 0;
+            if (brace >= passage) {
+                heightUnderBraceInput.setCustomValidity('La hauteur sous renfort doit être inférieure à la hauteur libre de passage.');
+            } else {
+                heightUnderBraceInput.setCustomValidity('');
+            }
+        }
+        passageHeightInput.addEventListener('input', validateHeightUnderBrace);
+        heightUnderBraceInput.addEventListener('input', validateHeightUnderBrace);
+        validateHeightUnderBrace();
+    </script>
+
+    <script>
+        function _getTargetPvId(data) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const pvId = urlParams.get('pvId');
+            if (pvId && data.shapes?.[pvId]) return pvId;
+            return Object.keys(data.shapes ?? {})[0] ?? null;
+        }
+
+        // Appliquer les règles d'affichage des boutons selon count_y
+        function applyModelFilters() {
+            const bypassCheckbox = document.getElementById('bypass-filters');
+            const errorDiv = document.getElementById('model-filter-error');
+            const btnGroup = document.getElementById('model-btn-group');
+            
+            const btnOffset = document.getElementById('modelOffsetPost');
+            const btnDouble = document.getElementById('modelDoublePost');
+            const btnInclined = document.getElementById('modelInclinedPost');
+            const btnYShape = document.getElementById('modelYShape');
+            
+            const allBtns = [btnOffset, btnDouble, btnInclined, btnYShape];
+            
+            allBtns.forEach(btn => { if(btn) btn.style.display = 'inline-flex'; });
+            if(errorDiv) errorDiv.classList.add('hidden');
+            if(btnGroup) btnGroup.style.display = 'flex';
+            
+            if (bypassCheckbox && bypassCheckbox.checked) return;
+            
+            let count_y = null;
+            
+            // Essayer de lire count_y depuis l'iframe
+            try {
+                const iframe = document.getElementById('iframeCalepinage');
+                if (iframe && iframe.contentWindow && iframe.contentWindow.document) {
+                    const countYInput = iframe.contentWindow.document.getElementById('count_y');
+                    if (countYInput && countYInput.value) {
+                        count_y = parseInt(countYInput.value, 10);
+                    }
+                }
+            } catch (e) {}
+
+            // Fallback via le localStorage
+            if (count_y === null || isNaN(count_y)) {
+                try {
+                    const savedData = localStorage.getItem('solarProjectData');
+                    if (savedData) {
+                        const data = JSON.parse(savedData);
+                        const targetPvId = _getTargetPvId(data);
+                        if (targetPvId && data.formData && data.formData[targetPvId]) {
+                            if (data.formData[targetPvId].count_y) {
+                                count_y = parseInt(data.formData[targetPvId].count_y, 10);
+                            } else if (data.shapes && data.shapes[targetPvId] && data.shapes[targetPvId].gridInfo) {
+                                count_y = parseInt(data.shapes[targetPvId].gridInfo.numRows, 10);
+                            }
+                        }
+                    }
+                } catch (e) { console.warn('Erreur lecture count_y:', e); }
+            }
+            
+            if (count_y === null || isNaN(count_y)) return;
+            
+            allBtns.forEach(btn => { if(btn) btn.style.display = 'none'; });
+            let hasVisible = false;
+            
+            if (count_y === 3) {
+                if(btnOffset) { btnOffset.style.display = 'inline-flex'; hasVisible = true; }
+            } else if (count_y === 4) {
+                if(btnDouble) { btnDouble.style.display = 'inline-flex'; hasVisible = true; }
+            } else if (count_y === 6) {
+                if(btnInclined) { btnInclined.style.display = 'inline-flex'; hasVisible = true; }
+                if(btnYShape) { btnYShape.style.display = 'inline-flex'; hasVisible = true; }
+            }
+            
+            if (!hasVisible) {
+                if(btnGroup) btnGroup.style.display = 'none';
+                if(errorDiv) {
+                    errorDiv.textContent = "Configuration calepinage non conforme aux gabarits existants des ombrières Solumbra. Veuillez contacter le fabricant de l’ombrière pour la prise en compte de votre calepinage hors catalogue.";
+                    errorDiv.classList.remove('hidden');
+                }
+            } else {
+                if(btnGroup) btnGroup.style.display = 'flex';
+                if(errorDiv) errorDiv.classList.add('hidden');
+                
+                const activeBtn = document.querySelector('#model-btn-group button.active');
+                if (!activeBtn || activeBtn.style.display === 'none') {
+                    const firstVisible = allBtns.find(btn => btn && btn.style.display !== 'none');
+                    if (firstVisible) firstVisible.click();
+                }
+            }
+        }
+
+        // Fonction pour mettre à jour les champs depuis localStorage
+        function updateDimensionsFromStorage() {
+            try {
+                const savedData = localStorage.getItem('solarProjectData');
+                if (!savedData) return;
+
+                const data = JSON.parse(savedData);
+                const targetPvId = _getTargetPvId(data);
+                if (!targetPvId) return;
+
+                const gridInfo = data.shapes[targetPvId]?.gridInfo;
+                if (!gridInfo) return;
+
+                const totalLength = gridInfo.totalPanelLength;
+                const totalWidth = gridInfo.totalPanelWidth;
+                // Normalisation identique à SummaryModal.js
+                const longueur = Math.max(totalLength, totalWidth);
+                const largeur = Math.min(totalLength, totalWidth);
+
+                // Synchronise "Nbre de PV Calepinage (LxC)" avec la disposition réelle du calepinage
+                // (même source que le tableau de synthèse de SummaryModal.js : gridInfo.numRows/numCols).
+                const pvLayoutInput = document.getElementById('pvLayout');
+                if (pvLayoutInput && gridInfo.numRows && gridInfo.numCols) {
+                    pvLayoutInput.value = `${gridInfo.numRows}L x ${gridInfo.numCols}C`;
+                }
+
+                const facadeInput = document.getElementById('facadeLength');
+                const panelWidthInput = document.getElementById('panelWidth');
+
+                // facadeLength = longueur (grande dim), comme SummaryModal
+                if (facadeInput && longueur) {
+                    facadeInput.value = longueur.toFixed(2);
+                    facadeInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+                // panelWidth = largeur (petite dim), comme SummaryModal
+                if (panelWidthInput && largeur) {
+                    panelWidthInput.value = largeur.toFixed(2);
+                    panelWidthInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+
+                // Synchroniser l'inclinaison depuis formData du pvId cible
+                const inclinaison = data.formData?.[targetPvId]?.inclinaison;
+                if (inclinaison !== undefined && inclinaison !== '' && inclinaison !== null) {
+                    const roofSlopeInput = document.getElementById('roofSlope');
+                    if (roofSlopeInput) {
+                        roofSlopeInput.value = inclinaison;
+                        roofSlopeInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                    const iframe = document.getElementById('iframeCalepinage');
+                    if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.postMessage({ type: 'SET_INCLINAISON', value: Number(inclinaison) }, '*');
+                    }
+                }
+
+                // Envoyer les dimensions toiture au calepinage iframe
+                // Priorité : formData.longueur/largeur (dimensions surface dessinée), sinon gridInfo
+                const formLongueur = parseFloat(data.formData?.[targetPvId]?.longueur) || null;
+                const formLargeur = parseFloat(data.formData?.[targetPvId]?.largeur) || null;
+                const dimLongueur = formLongueur || (totalLength ? Number(totalLength.toFixed(2)) : null);
+                const dimLargeur = formLargeur || (totalWidth ? Number(totalWidth.toFixed(2)) : null);
+                if (dimLongueur && dimLargeur) {
+                    const iframe = document.getElementById('iframeCalepinage');
+                    if (iframe && iframe.contentWindow) {
+                        iframe.contentWindow.postMessage({
+                            type: 'SET_TOITURE_DIMS',
+                            longueur: dimLongueur,
+                            largeur: dimLargeur
+                        }, '*');
+                    }
+                }
+
+                // Optionnel : actualiser le filtrage après synchro
+                applyModelFilters();
+            } catch (e) {
+                console.warn('Erreur lors de la lecture des dimensions:', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            updateDimensionsFromStorage();
+            
+            const bypassCheckbox = document.getElementById('bypass-filters');
+            if (bypassCheckbox) {
+                bypassCheckbox.addEventListener('change', applyModelFilters);
+            }
+            
+            // Lancer après initialisation pour s'assurer que le localstorage est peuplé
+            setTimeout(() => {
+                applyModelFilters();
+            }, 500);
+            
+            const iframe = document.getElementById('iframeCalepinage');
+            if (iframe) {
+                iframe.addEventListener('load', () => {
+                    updateDimensionsFromStorage();
+                    try {
+                        const countYInput = iframe.contentWindow.document.getElementById('count_y');
+                        if (countYInput) {
+                            countYInput.addEventListener('change', applyModelFilters);
+                            countYInput.addEventListener('input', applyModelFilters);
+                        }
+                    } catch(e) {}
+                    applyModelFilters();
+                });
+            }
+        });
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'solarProjectData') {
+                updateDimensionsFromStorage();
+                applyModelFilters();
+            }
+        });
+        
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'CALEPINAGE_UPDATE') {
+                applyModelFilters();
+            }
+        });
+    </script>
+
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/terrain_plans.js') }}?v=7"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/ombriere_solumbra.js') }}?v=5"></script>
+    <!-- Icônes 👁️/✂️ « un seul plan dans le canevas » (reprises du petit champ solaire, qui garde
+         les siennes dans son gabarit) : boutons + bascule posés à l'exécution. -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/geometrie_plans_toggle.js') }}?v=1"></script>
+    <script>window.GEOMETRIE_STRUCTURE_TYPE = 'solumbra';</script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/storage_manager_geometrie_structure.js') }}?v=4"></script>
+
+    <!-- Dossier de plans « Ombrières » (page parente) : enregistreur vectoriel partagé + pont,
+         cf. geometrie_structure/ombrieres/dossier_plans/iframe/pont_dossier_ombriere.js. -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/enregistreur_vectoriel.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/ombrieres/dossier_plans/iframe/pont_dossier_ombriere.js') }}?v=1"></script>
+</body>
+
+</html>

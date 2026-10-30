@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Points Géodésiques et Adresse Manuelle</title>
+    <link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/modalHeaderCommon.css">
+    <style>
+        /* Variables de style */
+        :root {
+            --bg-page: #f0f2f5;
+            --bg-modal: #ffffff;
+            --bg-panel: #f8f9fa;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --accent-primary: #dc2626;
+            /* Rouge Solakvan */
+            --accent-primary-hover: #991b1b;
+            --main-color: #DC2626;
+            --main-color-hover: #B91C1C;
+            --border-color: #e5e7eb;
+            --font-family: 'Inter', sans-serif;
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --border-radius-lg: 0.75rem;
+            --border-radius-md: 0.5rem;
+        }
+
+        /* Styles généraux */
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-page);
+            margin: 0;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-image: linear-gradient(45deg, #eef2f3, #e0e9f0);
+        }
+
+        /* Bouton de lancement */
+        #launch-modal-btn {
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            background-color: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-md);
+        }
+
+
+        /* Conteneur principal de la modale */
+        #geocoding-app-modal {
+            display: none;
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            width: 250px;
+            max-width: 90vw;
+            max-height: 65vh;
+            background-color: var(--bg-modal);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 100005;
+            flex-direction: column;
+            border: 2px solid var(--accent-primary);
+        }
+
+        /* Force le mode flex quand le JavaScript le rend visible (évite le bug du contenu invisible) */
+        #geocoding-app-modal:not([style*="display: none"]) {
+            display: flex !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        /* En-tête unifiée gérée par modalHeaderCommon.css */
+
+        /* Contenu du modal avec la carte */
+        #geocoding-modal-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 10px;
+            position: relative;
+            opacity: 1 !important;
+            visibility: visible !important;
+            background-color: white;
+        }
+
+        /* Ajustements typographiques pour le petit format */
+        #geocoding-modal-content h3 {
+            font-size: 13px;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+        #geocoding-modal-content p, #geocoding-modal-content div {
+            font-size: 11px;
+        }
+
+        /* Styles pour la nouvelle section PDL/CG */
+        #pdl-cg-container {
+            border-top: 1px dashed #ccc;
+            padding-top: 10px;
+            margin-top: 15px;
+        }
+
+        .coord-item {
+            margin-bottom: 5px;
+            padding: 5px;
+            border-left: 3px solid transparent;
+        }
+
+        .pdl-item {
+            border-left-color: #fbbc05;
+        }
+
+        .cg-item {
+            border-left-color: #28a745;
+        }
+
+        /* Styles des titres de groupe */
+        .group-header {
+            margin-top: 10px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .group-separator {
+            border: 0;
+            height: 1px;
+            background-image: linear-gradient(to right, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0));
+            margin: 15px 0;
+        }
+
+        .action-buttons {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .action-buttons button {
+            flex-grow: 1;
+            border-radius: 4px;
+            border: 1px solid transparent;
+            padding: 6px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        /* Couleurs et bordures spécifiques */
+        #add-pdl-marker {
+            background-color: #fbbc05;
+            color: black;
+            border-color: #fbbc05;
+        }
+
+        #add-cg-marker {
+            background-color: #28a745;
+            color: white;
+            border-color: #28a745;
+        }
+
+        /* NOUVEAUX STYLES pour les boutons de gestion de la visibilité */
+        .toggle-visibility-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .toggle-visibility-buttons button {
+            width: 100%;
+            background-color: #3f51b5;
+            /* Bleu */
+            color: white;
+            border: none;
+            padding: 6px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+        }
+
+        .toggle-visibility-buttons button:hover {
+            background-color: #303f9f;
+        }
+
+        #geocode-button {
+            width: 100%;
+            margin-top: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        #geocode-button:hover {
+            background-color: #1e7e34;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="geocoding-app-modal" style="display: none;">
+        {% set modal_title = "Multi-Points Géodésiques et Adresse Manuelle" %}
+        {% set show_toggle = false %}
+        {% include 'concevoir_mon_projet/components/modal_header_unified.html' %}
+
+        <div id="geocoding-modal-content">
+                    <h3>🔍 Géocodage Manuel</h3>
+                    <input type="text" id="address-input" placeholder="Entrez une adresse ici..."
+                        style="width: 100%; padding: 8px; box-sizing: border-box; border: 1px solid #ccc;">
+                    <button id="geocode-button">Centrer la carte sur l'adresse</button>
+                    <hr>
+
+                    <h3>📍 Marqueur Principal</h3>
+                    <p id="modal-address">Adresse : En attente...</p>
+                    <p id="modal-dd-coords">DD(Lat, Long) : En attente...</p>
+                    <p id="modal-dms-coords">DMS : En attente...</p>
+
+                    <div id="pdl-cg-container">
+                        <div id="point-groups">
+                            <div id="group-1">
+                                <h3 class="group-header">PDL et Coord. Géodésique Centrale 1</h3>
+                                <div id="pdl-coord-display-1" class="coord-item pdl-item">PDL (DD) : Non défini</div>
+                                <div id="cg-list-1" class="cg-list-container"></div>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button id="add-pdl-marker">Ajouter PDL</button>
+                            <button id="add-cg-marker">Ajouter Centrale Géodésique</button>
+                        </div>
+
+                        <div class="toggle-visibility-buttons">
+                            <button id="toggle-primary-marker">Masquer Marqueur Principal</button>
+                            <button id="toggle-group-markers">Masquer PDL/CG</button>
+                        </div>
+
+                    </div>
+        </div>
+    </div>
+
+       <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/shapes/geocoding.js') }}"></script> 
+</body>
+
+</html>

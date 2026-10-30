@@ -1,0 +1,15 @@
+# Fichiers sensibles et tokens
+.env
+.env.*
+*.key
+*.pem
+credentials.json
+service-account*.json
+
+# Fichiers Cloud et Firebase
+.firebaserc
+.gcloud/
+
+# Logs et sauvegardes
+*.log
+.Dockerfile_backup

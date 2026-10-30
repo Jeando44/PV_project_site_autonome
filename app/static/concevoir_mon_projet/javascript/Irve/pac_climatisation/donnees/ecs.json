@@ -1,0 +1,162 @@
+{
+  "_source": "Hypothèses par défaut de l'eau chaude sanitaire, toutes modifiables. Chaleur massique de l'eau : 1,163 Wh/(L·K) (physique). Pertes de ballon : valeur d'étiquette (kWh/24 h) mesurée pour un écart d'environ 45 K entre l'eau et l'ambiance, ramenée à l'écart réel (proportionnalité de la déperdition à l'écart de température).",
+  "chaleur_massique_wh_l_k": 1.163,
+  "litres_par_personne_jour_40c": 50,
+  "temperature_usage_c": 40,
+  "ecart_etiquette_pertes_k": 45,
+  "pertes_ballon_defaut_kwh_24h": [
+    {
+      "volume_l": 100,
+      "pertes": 0.9
+    },
+    {
+      "volume_l": 150,
+      "pertes": 1.1
+    },
+    {
+      "volume_l": 200,
+      "pertes": 1.3
+    },
+    {
+      "volume_l": 250,
+      "pertes": 1.5
+    },
+    {
+      "volume_l": 300,
+      "pertes": 1.7
+    },
+    {
+      "volume_l": 500,
+      "pertes": 2.3
+    }
+  ],
+  "eau_froide": {
+    "_source": "Modèle propre à ce module : l'eau du réseau suit la température moyenne annuelle de l'air avec une variation saisonnière amortie et retardée (canalisations enterrées). T_ef(mois) = T_an + amortissement × (T_air du mois précédent − T_an), bornée.",
+    "amortissement": 0.5,
+    "min_c": 5,
+    "max_c": 22
+  },
+  "profils_puisage": {
+    "_source": "Répartitions horaires (heure murale, somme = 1) propres à ce module, modifiables.",
+    "standard": {
+      "libelle": "Matin et soir",
+      "fractions": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.02,
+        0.1,
+        0.16,
+        0.08,
+        0.04,
+        0.03,
+        0.04,
+        0.05,
+        0.03,
+        0.02,
+        0.02,
+        0.03,
+        0.04,
+        0.07,
+        0.12,
+        0.09,
+        0.05,
+        0.01,
+        0
+      ]
+    },
+    "matin": {
+      "libelle": "Surtout le matin",
+      "fractions": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.04,
+        0.18,
+        0.22,
+        0.12,
+        0.05,
+        0.03,
+        0.03,
+        0.03,
+        0.02,
+        0.02,
+        0.02,
+        0.02,
+        0.03,
+        0.04,
+        0.05,
+        0.04,
+        0.03,
+        0.03,
+        0.0
+      ]
+    },
+    "soir": {
+      "libelle": "Surtout le soir",
+      "fractions": [
+        0,
+        0,
+        0,
+        0,
+        0,
+        0.01,
+        0.05,
+        0.07,
+        0.04,
+        0.02,
+        0.02,
+        0.03,
+        0.04,
+        0.02,
+        0.02,
+        0.02,
+        0.03,
+        0.06,
+        0.12,
+        0.17,
+        0.14,
+        0.09,
+        0.04,
+        0.01
+      ]
+    },
+    "reparti": {
+      "libelle": "Réparti dans la journée",
+      "fractions": [
+        0.01,
+        0.01,
+        0.01,
+        0.01,
+        0.01,
+        0.02,
+        0.06,
+        0.08,
+        0.06,
+        0.05,
+        0.05,
+        0.05,
+        0.06,
+        0.05,
+        0.04,
+        0.04,
+        0.05,
+        0.05,
+        0.06,
+        0.07,
+        0.06,
+        0.04,
+        0.03,
+        0.03
+      ]
+    }
+  },
+  "antilegionelle": {
+    "temperature_c": 60,
+    "_source": "Maintien à 60 °C ou plus pour limiter le développement des légionelles (recommandation sanitaire publique)."
+  }
+}

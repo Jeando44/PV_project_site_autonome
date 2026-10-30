@@ -1,0 +1,15 @@
+{
+  "_source": "Températures de départ par défaut, modifiables. 'depart_base' = départ à la température de base ; 'depart_doux' = départ à la température de non-chauffage (loi d'eau linéaire entre les deux). Ordres de grandeur d'usage pour chaque technologie d'émetteur (pas de tableau normatif). Air-air : 'puits' = air intérieur (conditions de mesure usuelles : 20 °C en chaud, 27 °C en froid).",
+  "emetteurs": [
+    { "id": "plancher", "libelle": "Plancher chauffant / rafraîchissant", "systeme": "air_eau", "chaud": { "depart_base": 35, "depart_doux": 25 }, "froid": { "depart": 18, "_note": "au-dessus du point de rosée pour éviter la condensation" } },
+    { "id": "plafond", "libelle": "Plafond chauffant / rafraîchissant", "systeme": "air_eau", "chaud": { "depart_base": 38, "depart_doux": 26 }, "froid": { "depart": 17 } },
+    { "id": "radiateurs_bt", "libelle": "Radiateurs basse température", "systeme": "air_eau", "chaud": { "depart_base": 45, "depart_doux": 30 }, "froid": null },
+    { "id": "radiateurs_ht", "libelle": "Radiateurs haute température", "systeme": "air_eau", "chaud": { "depart_base": 65, "depart_doux": 40 }, "froid": null },
+    { "id": "convecteurs_eau", "libelle": "Convecteurs à eau (dynamiques basse température)", "systeme": "air_eau", "chaud": { "depart_base": 45, "depart_doux": 30 }, "froid": null },
+    { "id": "ventilo", "libelle": "Ventilo-convecteurs", "systeme": "air_eau", "chaud": { "depart_base": 45, "depart_doux": 30 }, "froid": { "depart": 7 } },
+    { "id": "murale", "libelle": "Unité murale", "systeme": "air_air", "chaud": { "puits": 20 }, "froid": { "puits": 27 } },
+    { "id": "cassette", "libelle": "Cassette", "systeme": "air_air", "chaud": { "puits": 20 }, "froid": { "puits": 27 } },
+    { "id": "gainable", "libelle": "Gainable", "systeme": "air_air", "chaud": { "puits": 20 }, "froid": { "puits": 27 } },
+    { "id": "console", "libelle": "Console", "systeme": "air_air", "chaud": { "puits": 20 }, "froid": { "puits": 27 } }
+  ]
+}

@@ -1,0 +1,137 @@
+body, html {
+    margin: 0px;
+    padding: 0px;
+    width: 100%;
+    min-width: 60%;
+    height: 100%;  
+}
+
+.EnteteMenu {
+    height: 50px;
+    width: 100%;
+    background-color: #de0000;
+    color: rgb(252, 252, 252);
+    padding-left: 5%;
+    padding-right: 5%;
+    line-height: 50px;
+    position: fixed;
+}
+
+.BarEntete{
+    display: inline-flex;
+    width: 100%;
+}
+
+.Software {
+    width: 20%;
+    float: left;
+    text-align: initial;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.TitreProjet {
+    width: 30%;
+    float: left;
+    text-align: center;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.FlashMessage{
+    width:30%;
+    float: left;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.Utilisateur {
+    width: 15%;
+    float: left;
+    text-align: center;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.M1 {
+    width: 5%;
+    float: left;
+    text-align: center;
+}
+
+
+.dialogSortir {
+margin:  0 auto;
+width: 450px;
+border: 1px solid #de0000;
+padding: 1%;
+margin-top: 7%;
+background: #f4f5fd;
+filter: drop-shadow(0px 0px 1px #de0000);
+}
+
+.dialogS {
+margin-top: 10px;
+float: left;
+width: 87.5%;
+}
+.button2S {
+margin-top: 10px;
+float: left;
+width: 12.5%;
+text-align: center;
+font-size: 1.4em;
+border: none;
+color: red;
+font-weight: 500;
+background: none;
+}
+.btn {
+background: linear-gradient(270deg, rgb(247, 1, 1), #de0000, rgb(247,1,1));
+width: 27.5%;
+margin-left: 10%;
+margin-right: 10%;
+text-decoration: none;
+border-radius: 5px; color: white; background-color: #de0000; border: none; padding: 2%;
+}
+.Infos{
+float: left;
+text-align: center;
+overflow: hidden;
+white-space: nowrap;
+text-overflow: ellipsis;
+height: 80%;
+width: 100%;
+
+
+}
+.error{
+color: rgb(150, 0, 0);
+
+}
+.succes{
+
+color: rgb(0, 150, 0);
+
+
+}
+.box{
+margin-top: 10px;
+margin-bottom: 10px;
+height: 30px;
+width: 100%;
+background-color: rgb(225, 229, 232);
+border-radius: 7px;
+line-height: 30px;
+
+}
+.MENU {
+    width: 5%;
+    height: 100%;  
+}
+/*
+CSS PARA MODELES
+*/

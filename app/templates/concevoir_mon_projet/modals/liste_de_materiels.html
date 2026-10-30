@@ -1,0 +1,1595 @@
+<div id="pv-app-container">
+    <style>
+        /* Empêcher le texte des boutons de section de revenir à la ligne */
+        #pv-app-container .btn-config {
+            white-space: nowrap !important;
+            display: inline-block !important;
+            width: auto !important;
+        }
+
+        /* Forcer l'ordre Z-index pour les modales superposées (au-delà des styles inline existants) */
+        #pv-app-container #liste-materiels-backdrop {
+            z-index: 100000 !important;
+        }
+
+        #pv-app-container #mainAppModal {
+            z-index: 100001 !important;
+        }
+
+        #pv-app-container #modalConfig {
+            z-index: 100005 !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        /* Force l'affichage du contenu */
+        #pv-app-container .modal-body {
+            display: block !important;
+            opacity: 1 !important;
+        }
+
+        /* Style des Boutons */
+        #pv-app-container .btn-red-solid,
+        #pv-app-container .btn-config {
+            color: #ffffff !important;
+            background-color: var(--primary-red, #dc2626) !important;
+            border: 1px solid var(--primary-red, #dc2626) !important;
+        }
+
+        /* Amélioration du Tableau */
+        #pv-app-container #tableMateriels {
+            border-collapse: collapse !important;
+        }
+
+        #pv-app-container #tableMateriels th,
+        #pv-app-container #tableMateriels td {
+            border: 1px solid #dee2e6 !important;
+            /* Lignes visibles */
+            padding: 12px 8px !important;
+        }
+
+        #pv-app-container #tableMateriels thead th {
+            border-bottom: 2px solid #000000 !important;
+        }
+
+        /* Garantir l'affichage du contenu des onglets dans le modal Expertise */
+        #pv-app-container .tab-content {
+            display: block !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        #pv-app-container .tab-content>.tab-pane {
+            display: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            height: 0 !important;
+            overflow: hidden !important;
+        }
+
+        #pv-app-container .tab-content>.tab-pane.active {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+
+        /* 1. Refonte visuelle du Modal "Expertise Matériel & Calculs" */
+        #pv-app-container #modalConfig .modal-content {
+            border: 2px solid #dc2626 !important;
+            border-radius: 0.75rem !important;
+            /* Harmonisation avec le modal principal */
+            overflow: hidden !important;
+            /* Force le background de l'en-tête à épouser les bords arrondis (full-bleed) */
+            width: 85vw !important;
+            max-width: 1700px !important;
+            height: 90vh !important;
+            max-height: 90vh !important;
+            padding: 0 !important;
+
+        }
+
+        #pv-app-container #modalConfig .modal-header {
+            background: #dc2626 !important;
+            background-color: #dc2626 !important;
+            color: #ffffff !important;
+            margin: 0 !important;
+            padding: 1.25rem 1.5rem !important;
+            /* Ajout du padding pour que la couleur de fond s'étende bien */
+            border: none !important;
+            border-radius: 0 !important;
+            /* Laisse le conteneur parent masquer le débordement */
+        }
+
+        #pv-app-container #modalConfig .modal-header .modal-title {
+            color: #ffffff !important;
+            width: 90vw !important;
+        }
+
+        #pv-app-container #modalConfig .modal-header .btn-close {
+            filter: invert(1) brightness(2) !important;
+        }
+
+        /* Boutons avec bordures rouges (uniquement le corps, pas le footer) */
+        #pv-app-container #modalConfig .modal-body .btn {
+            border: 1px solid #dc2626 !important;
+        }
+
+        /* Navigation par Onglets */
+        #pv-app-container #modalTabs {
+            flex-wrap: nowrap !important;
+            overflow: hidden !important;
+            /* Masque la barre de défilement */
+            width: 98%;
+            gap: 10px !important;
+        }
+
+        #pv-app-container #modalTabs .nav-item {
+            flex: 1 1 auto;
+            text-align: center;
+        }
+
+        #pv-app-container #modalTabs .nav-link {
+            color: #dc2626 !important;
+            font-weight: 500;
+            white-space: nowrap !important;
+            padding: 0.5rem 0.2rem !important;
+            /* Réduction du padding pour faire de la place */
+            font-size: 0.85rem !important;
+            /* Légère réduction pour tenir sur une seule ligne sans scroll */
+            width: 100%;
+        }
+
+        #pv-app-container #modalTabs .nav-link.active {
+            color: #000000 !important;
+            border-bottom: 3px solid #000000 !important;
+        }
+
+        /* 2. Ajustements des Boutons d'Action dans le Tableau (Centrage des icônes) */
+        #pv-app-container #tableMateriels .btn-sm.btn-outline-primary,
+        #pv-app-container #tableMateriels .btn-sm.btn-outline-dark,
+        #pv-app-container #tableMateriels .btn-sm.btn-outline-secondary {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 32px !important;
+            height: 32px !important;
+            padding: 0 !important;
+        }
+
+        /* Décalage bouton Choisir les composants */
+        #pv-app-container .section-divider .btn-config {
+            margin-left: auto !important;
+        }
+
+        #pv-app-container .section-divider td {
+            white-space: nowrap !important;
+            flex-wrap: nowrap !important;
+        }
+
+        /* 3. Structure du Tableau de données (Traits Verticaux) */
+        #pv-app-container #tableMateriels th,
+        #pv-app-container #tableMateriels td {
+            border: 1px solid #dee2e6 !important;
+            border-left: 1px solid #dee2e6 !important;
+            border-right: 1px solid #dee2e6 !important;
+            text-align: center !important;
+            vertical-align: middle !important;
+        }
+
+        /* Conservation de l'alignement pour les titres de section du tableau */
+        #pv-app-container #tableMateriels .section-divider td {
+            text-align: left !important;
+        }
+
+        /* Centrage forcé des champs de saisie (inputs) dans les cellules */
+        #pv-app-container #tableMateriels input.form-control {
+            text-align: center !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+        }
+
+        /* 4. Masquage conditionnel des prix dans le Modal d'Expertise */
+        #pv-app-container #modalConfig.hide-prices .price-element {
+            display: none !important;
+        }
+
+        /* Masquage conditionnel des prix dans le tableau principal */
+        #pv-app-container.hide-prices #tableMateriels th:nth-child(5),
+        #pv-app-container.hide-prices #tableMateriels td:nth-child(5) {
+            display: none !important;
+        }
+
+        /* 5. Ajustement de la largeur des colonnes pour le bouton Copier */
+        #pv-app-container #tableMateriels th:nth-child(4),
+        #pv-app-container #tableMateriels td:nth-child(4) {
+            width: 8% !important;
+            white-space: nowrap !important;
+        }
+        #pv-app-container #tableMateriels th:last-child,
+        #pv-app-container #tableMateriels td:last-child {
+            width: 20% !important;
+            min-width: 170px !important;
+        }
+
+        /* 6. Correction de la largeur excessive des boutons du footer */
+        #pv-app-container #modalConfig .modal-footer .btn {
+            width: auto !important;
+            flex: 0 1 auto !important;
+            display: inline-block !important;
+            padding: 8px 16px !important;
+        }
+        #pv-app-container #modalConfig .modal-footer {
+            display: flex !important;
+            justify-content: flex-end !important;
+            gap: 12px !important;
+        }
+    </style>
+    <!-- Backdrop pour la modale -->
+    <div id="liste-materiels-backdrop"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 10000;">
+    </div>
+
+    <!-- Conteneur principal de la modale -->
+    <div id="mainAppModal"
+        style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90vw; height: 90vh; max-width: 1700px; min-width: 800px; max-height: 90vh; background-color: #ffffff; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 100000; border: 2px solid #dc2626; overflow: hidden; flex-direction: column;">
+
+        <!-- En-tête de la modale -->
+        <div id="mainAppModal-header"
+            style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.5rem; background-color: #dc2626; color: white; border-bottom: 1px solid #991b1b; cursor: default;">
+            <h1 style="font-size: 1.25rem; margin: 0; font-weight: 600;">Liste de matériels</h1>
+            <button id="close-mainAppModal"
+                style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: white; opacity: 0.8; padding: 0; line-height: 1;"
+                title="Fermer">×</button>
+        </div>
+
+        <!-- Corps de la modale (scrollable) -->
+        <div style="flex: 1; overflow-y: auto; padding: 2rem;">
+            <!-- Section Paramètres projet -->
+            <div class="card mb-4 shadow-sm border-0" style="background-color: #ffffff;">
+                <div class="card-header bg-transparent border-bottom-0 pt-3 pb-0">
+                    <h5 style="color: #cc0000 !important; font-weight: bold;">Paramètres projet</h5>
+                </div>
+                <div class="card-body">
+                    <!-- Ligne 1 -->
+                    <div class="row g-3 mb-3 text-start align-items-start">
+                        <div class="col-md-4">
+                            <label for="nom_projet" class="form-label fw-bold mb-1">Nom du projet</label>
+                            <input type="text" class="form-control" id="nom_projet" name="nom_projet"
+                                placeholder="Saisir le nom du projet">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="type_projet_select" class="form-label fw-bold mb-1">Type de
+                                projet</label>
+                            <select class="form-select" id="type_projet_select" name="type_projet_select" required
+                                onchange="updateProjectLogic()">
+                                <option value="Ombrière">Ombrière</option>
+                                <option value="Toiture inclinée">Toiture inclinée</option>
+                                <option value="Toiture terrasse">Toiture terrasse</option>
+                                <option value="Ombrière + Toiture terrasse">Ombrière + Toiture terrasse</option>
+                                <option value="Petit champ solaire">Petit champ solaire</option>
+                                <option value="Autres">Autres</option>
+                            </select>
+                            <div id="div_autre_type_projet" class="mt-2" style="display: none;">
+                                <input type="text" class="form-control" id="autre_type_projet_select"
+                                    name="autre_type_projet_select" placeholder="Préciser le type">
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="adresse_projet" class="form-label fw-bold mb-1">Adresse du
+                                projet</label>
+                            <input type="text" class="form-control" id="adresse_projet" name="adresse_projet"
+                                placeholder="Saisir l'adresse">
+                        </div>
+                    </div>
+                    <!-- Ligne 2 -->
+                    <div class="row g-3 text-start align-items-end">
+                        <div class="col-md-4">
+                            <label for="date_projet" class="form-label fw-bold mb-1">Date du jour</label>
+                            <input type="date" class="form-control" id="date_projet" name="date_projet">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="indice_projet" class="form-label fw-bold mb-1">Indice liste de
+                                matériels</label>
+                            <select class="form-select" id="indice_projet" onchange="toggleAutreIndice()">
+                                <option value="Indice A" selected>Indice A</option>
+                                <option value="Indice B">Indice B</option>
+                                <option value="Indice C">Indice C</option>
+                                <option value="Autres">Autres (préciser)</option>
+                            </select>
+                            <input type="text" class="form-control mt-2 d-none" id="autre_indice_projet"
+                                placeholder="Préciser l'indice">
+                        </div>
+                        <div class="col-md-4 d-flex flex-column align-items-center">
+                            <div class="d-flex w-100 gap-2">
+                                <button type="button" class="btn btn-secondary w-50" onclick="previewChiffrage()">👁️ Prévisualiser chiffrage</button>
+                                <button type="button" class="btn btn-red-solid w-50" id="btn_export_pdf" onclick="generatePDF()" disabled>📄
+                                    Exporter PDF A4</button>
+                            </div>
+                            <div class="mt-2 d-none" id="div_pv_ready">
+                                <div class="form-check pv-ready-box d-inline-flex align-items-center mb-0">
+                                    <input class="form-check-input m-0 me-2" type="checkbox" id="batiment_pv_ready"
+                                        name="batiment_pv_ready" onchange="toggleFondations()">
+                                    <label class="form-check-label fw-bold mb-0" for="batiment_pv_ready">
+                                        Bâtiment PV Ready
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Nouvelles lignes : Puissance projet, Puissance onduleur, Ratio DC/AC -->
+                    <div class="row g-3 mt-3 border-top pt-3 text-start align-items-end">
+                        <div class="col-md-4">
+                            <label for="summary_puissance_projet" class="form-label fw-bold mb-1">Puissance projet
+                                (kWc)</label>
+                            <input type="text" class="form-control bg-light" id="summary_puissance_projet" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="summary_puissance_onduleur" class="form-label fw-bold mb-1">Puissance onduleur
+                                (kVA)</label>
+                            <input type="text" class="form-control bg-light" id="summary_puissance_onduleur" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="summary_ratio_dc_ac" class="form-label fw-bold mb-1">Ratio DC/AC</label>
+                            <input type="text" class="form-control bg-light" id="summary_ratio_dc_ac" readonly>
+                        </div>
+                    </div>
+
+                    <!-- Section Chiffrage : Devise, TVA et Intégration du Prix (Divisé en 3 cartes) -->
+                    <div class="row g-3 mt-3 border-top pt-3 text-start align-items-stretch">
+                        <div class="col-md-4" onchange="lockExport()">
+                            <div class="card card-body shadow-sm border-0 h-100">
+                                <label class="form-label fw-bold mb-2" style="color: #cc0000;">Devise du projet</label>
+                                <div class="d-flex flex-wrap gap-4 align-items-center">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="devise_projet" id="devise_eur" value="€" checked onchange="updateCurrencyLabels()">
+                                        <label class="form-check-label" for="devise_eur">€</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="devise_projet" id="devise_usd" value="$" onchange="updateCurrencyLabels()">
+                                        <label class="form-check-label" for="devise_usd">$</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="devise_projet" id="devise_fcfa" value="FCFA" onchange="updateCurrencyLabels()">
+                                        <label class="form-check-label" for="devise_fcfa">FCFA</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="devise_projet" id="devise_htg" value="HTG" onchange="updateCurrencyLabels()">
+                                        <label class="form-check-label" for="devise_htg">HTG</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4" onchange="lockExport()">
+                            <div class="card card-body shadow-sm border-0 h-100">
+                                <label for="tva_projet" class="form-label fw-bold mb-2" style="color: #cc0000;">TVA applicable</label>
+                                <div class="d-flex gap-3 align-items-center">
+                                    <select class="form-select w-50" id="tva_projet" onchange="toggleCustomTVA()">
+                                        <option value="20" selected>20%</option>
+                                        <option value="10">10%</option>
+                                        <option value="5.5">5.5%</option>
+                                        <option value="0">0%</option>
+                                        <option value="autres">Autres...</option>
+                                    </select>
+                                    <div id="div_tva_custom" class="d-none w-50">
+                                        <input type="number" class="form-control" id="tva_custom" placeholder="Saisir taux" step="0.1" oninput="lockExport()">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card card-body shadow-sm border-0 h-100">
+                                <label for="integration_prix" class="form-label fw-bold mb-2" style="color: #cc0000;">Intégration du prix dans LDM</label>
+                                <div class="d-flex align-items-center h-100">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="integration_prix" checked onchange="togglePriceVisibility()" style="transform: scale(1.3); margin-right: 0.5rem; cursor: pointer;">
+                                        <label class="form-check-label fw-semibold" for="integration_prix" style="cursor: pointer;">Afficher les prix</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Résumé Projet -->
+                    <div class="row mt-3 border-top pt-2">
+                        <div class="col-12 text-center text-secondary fw-bold" id="project_summary_display"
+                            style="font-size: 0.95rem;">
+                            <!-- Le résumé dynamique (Puissance, Bornes, Batterie) s'affichera ici -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mx-auto shadow-sm" style="max-width: 100%;">
+                <div class="card-header bg-transparent border-bottom-0 pt-3 pb-0">
+                    <h5 style="color: #cc0000 !important; font-weight: bold;">Matériels projet</h5>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-bordered table-hover mb-0 text-center align-middle" id="tableMateriels">
+                        <thead>
+                            <tr>
+                                <th>Composants </th>
+                                <th>Désignation / Fabricant </th>
+                                <th>Référence </th>
+                                <th>Quantité </th>
+                                <th>Prix Total HT</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr class="section-divider" id="sec-dc">
+                                <td colspan="6"
+                                    class="d-flex justify-content-between align-items-center text-start ps-3">
+                                    <span class="me-3 fw-bold">Matériels DC</span>
+                                    <button class="btn btn-red-solid btn-config" onclick="showTab('modules')">Choisir
+                                        les composants DC</button>
+                                </td>
+                            </tr>
+
+                            <tr class="section-divider" id="sec-ac">
+                                <td colspan="6"
+                                    class="d-flex justify-content-between align-items-center text-start ps-3">
+                                    <span class="me-3 fw-bold">Matériels AC</span>
+                                    <button class="btn btn-red-solid btn-config" onclick="showTab('onduleurs')">Choisir
+                                        les composants AC</button>
+                                </td>
+                            </tr>
+
+                            <tr class="section-divider" id="sec-cables">
+                                <td colspan="6"
+                                    class="d-flex justify-content-between align-items-center text-start ps-3">
+                                    <span class="me-3 fw-bold">Câbles</span>
+                                    <button class="btn btn-red-solid btn-config" onclick="showTab('cables')">Choisir les
+                                        Câbles DC/AC/PE/L.équip</button>
+                                </td>
+                            </tr>
+
+                            <tr class="section-divider" id="sec-reseaux">
+                                <td colspan="6"
+                                    class="d-flex justify-content-between align-items-center text-start ps-3">
+                                    <span class="me-3 fw-bold">Chemin de câble & Réseaux</span>
+                                    <button class="btn btn-red-solid btn-config" onclick="showTab('reseaux')">Choisir
+                                        les composants Réseaux</button>
+                                </td>
+                            </tr>
+
+                            <tr class="section-divider" id="sec-structure">
+                                <td colspan="6" class="text-start ps-3">Structure porteuse
+                                </td>
+                            </tr>
+
+
+                            <tr class="section-divider" id="sec-fondations">
+                                <td colspan="6" class="text-start ps-3">Fondations</td>
+                            </tr>
+
+
+                            <tr class="section-divider d-none" id="section-autres-materiels">
+                                <td colspan="6"
+                                    class="d-flex justify-content-between align-items-center text-start ps-3">
+                                    <span class="me-3 fw-bold">Autres matériels</span>
+                                    <button class="btn btn-red-solid btn-config" onclick="showTab('autres')">Choisir les
+                                        Autres composants</button>
+                                </td>
+                            </tr>
+
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div class="modal fade" id="modalConfig" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable"
+            style="display: flex; align-items: center; justify-content: center; ">
+            <div class="modal-content">
+                <div class="modal-header"
+                    style=" background: #dc2626 !important; color: #ffffff !important; border-bottom: none;">
+                    <h5 class="modal-title" style="color: #ffffff !important;">Expertise Matériel & Calculs</h5>
+                    <button type="button" class="btn-close" id="close-modalConfig-btn" aria-label="Close"
+                        style="filter: invert(1) brightness(2) !important; opacity: 1;"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-4 flex-nowrap" id="modalTabs" role="tablist">
+                        <li class="nav-item"><button class="nav-link active" id="tab-modules" data-bs-toggle="tab"
+                                data-bs-target="#modules">Modules & connectiques</button></li>
+                        <li class="nav-item"><button class="nav-link" id="tab-onduleurs" data-bs-toggle="tab"
+                                data-bs-target="#onduleurs">Onduleurs</button></li>
+                        <li class="nav-item"><button class="nav-link" id="tab-cables" data-bs-toggle="tab"
+                                data-bs-target="#cables">Câbles</button></li>
+                        <li class="nav-item"><button class="nav-link" id="tab-shelter" data-bs-toggle="tab"
+                                data-bs-target="#shelter">Shelter/TGBT</button></li>
+                        <li class="nav-item"><button class="nav-link" id="tab-autres-ac" data-bs-toggle="tab"
+                                data-bs-target="#autres-ac">Autres matériels AC</button></li>
+                        <li class="nav-item"><button class="nav-link" id="tab-reseaux" data-bs-toggle="tab"
+                                data-bs-target="#reseaux">Réseaux & CDC</button></li>
+                        <li class="nav-item"><button class="nav-link" id="tab-autres" data-bs-toggle="tab"
+                                data-bs-target="#autres">Autres matériels</button></li>
+                    </ul>
+
+                    <div class="tab-content">
+                        <div class="tab-pane fade show active" id="modules">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h6>Configuration Modules & connectiques</h6>
+                                    <div class="row g-3">
+                                        <!-- Panneaux -->
+                                        <div class="col-12">
+                                            <h6 class="mb-1 text-secondary">Panneaux photovoltaïques</h6>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Fabricant</label>
+                                            <input type="text" class="form-control form-control-sm" id="mod_fab"
+                                                placeholder="Ex: JASOLAR" pattern="[a-zA-Z0-9\s\-.]+">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Référence</label>
+                                            <input type="text" class="form-control form-control-sm" id="mod_ref"
+                                                placeholder="Ex: 465W" pattern="[a-zA-Z0-9\s\-.]+">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Puissance (Wc)</label>
+                                            <input type="number" class="form-control form-control-sm" id="mod_pwr_unit"
+                                                value="470" min="100" max="1000" oninput="calculerPrixPanneaux()">
+                                        </div>
+                                        <div class="col-md-1">
+                                            <label class="form-label" style="font-size: 0.85rem;">Quantité</label>
+                                            <input type="number" class="form-control form-control-sm" id="mod_qty"
+                                                placeholder="100" min="1" oninput="calculerPrixPanneaux()">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Tarification</label>
+                                            <select class="form-select form-select-sm" id="mod_tarif_mode" onchange="calculerPrixPanneaux()">
+                                                <option value="panneau">/ Panneau</option>
+                                                <option value="wc">/ Wc</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-1">
+                                            <label class="form-label" style="font-size: 0.85rem;">PU (<span class="currency-label">€</span>)</label>
+                                            <input type="number" class="form-control form-control-sm" id="mod_pu" oninput="calculerPrixPanneaux()" min="0" step="0.01">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Total HT</label>
+                                            <input type="text" class="form-control form-control-sm bg-light" id="mod_pt" readonly>
+                                        </div>
+
+                                        <!-- Chaînes PV -->
+                                        <div class="col-12 mt-3">
+                                            <h6 class="mb-1 text-secondary">Chaînes PV</h6>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" style="font-size: 0.85rem;">Fabricant</label>
+                                            <input type="text" class="form-control form-control-sm" id="chaines_fab"
+                                                placeholder="Ex: N/A" pattern="[a-zA-Z0-9\s\-.]+">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" style="font-size: 0.85rem;">Référence</label>
+                                            <input type="text" class="form-control form-control-sm" id="chaines_ref"
+                                                placeholder="Ex: Chaîne de modules" pattern="[a-zA-Z0-9\s\-.]+">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Quantité</label>
+                                            <input type="number" class="form-control form-control-sm" id="mod_chaines"
+                                                placeholder="Ex: 47" min="1" max="200" oninput="calculerPrixGenerique('mod_chaines', 'chaines_pu', 'chaines_pt')">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">PU (<span class="currency-label">€</span>)</label>
+                                            <input type="number" class="form-control form-control-sm" id="chaines_pu" oninput="calculerPrixGenerique('mod_chaines', 'chaines_pu', 'chaines_pt')" min="0.01" max="200.00" step="0.01">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Total HT</label>
+                                            <input type="text" class="form-control form-control-sm bg-light" id="chaines_pt" readonly>
+                                        </div>
+
+                                        <!-- Connecteurs -->
+                                        <div class="col-12 mt-3">
+                                            <h6 class="mb-1 text-secondary">Connecteurs PV</h6>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" style="font-size: 0.85rem;">Fabricant</label>
+                                            <input type="text" class="form-control form-control-sm" id="conn_fab"
+                                                placeholder="Ex: Stäubli">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" style="font-size: 0.85rem;">Référence</label>
+                                            <input type="text" class="form-control form-control-sm" id="mod_connecteurs"
+                                                placeholder="Ex: MC4-EVO2A">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Quantité</label>
+                                            <input type="number" class="form-control form-control-sm" id="conn_qty"
+                                                placeholder="Ex: 94" min="1" oninput="calculerPrixGenerique('conn_qty', 'conn_pu', 'conn_pt')">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">PU (<span class="currency-label">€</span>)</label>
+                                            <input type="number" class="form-control form-control-sm" id="conn_pu" oninput="calculerPrixGenerique('conn_qty', 'conn_pu', 'conn_pt')" min="0" step="0.01">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Total HT</label>
+                                            <input type="text" class="form-control form-control-sm bg-light" id="conn_pt" readonly>
+                                        </div>
+                                        
+                                        <!-- Optimiseurs -->
+                                        <div class="col-12 mt-3">
+                                            <h6 class="mb-1 text-secondary">Optimiseurs de puissance</h6>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" style="font-size: 0.85rem;">Fabricant</label>
+                                            <input type="text" class="form-control form-control-sm" id="opti_fab" placeholder="Ex: SolarEdge">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" style="font-size: 0.85rem;">Référence</label>
+                                            <input type="text" class="form-control form-control-sm" id="opti_ref" placeholder="Ex: S500">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Quantité</label>
+                                            <input type="number" class="form-control form-control-sm" id="opti_qty" placeholder="0" min="0" oninput="calculerPrixGenerique('opti_qty', 'opti_pu', 'opti_pt')">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">PU (<span class="currency-label">€</span>)</label>
+                                            <input type="number" class="form-control form-control-sm" id="opti_pu" oninput="calculerPrixGenerique('opti_qty', 'opti_pu', 'opti_pt')" min="0" step="0.01">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Total HT</label>
+                                            <input type="text" class="form-control form-control-sm bg-light" id="opti_pt" readonly>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 mt-2">
+                                        <div class="col-md-12 border-top pt-3">
+                                            <div class="d-flex align-items-center mb-3">
+                                                <h6 class="mb-0 me-3">Coffret DC</h6>
+                                                <div class="form-check form-check-inline mb-0">
+                                                    <input class="form-check-input" type="radio"
+                                                        name="mod_coffret_dc_choix" id="mod_coffret_oui" value="oui"
+                                                        onchange="toggleCoffretDC()">
+                                                    <label class="form-check-label" for="mod_coffret_oui">Oui</label>
+                                                </div>
+                                                <div class="form-check form-check-inline mb-0">
+                                                    <input class="form-check-input" type="radio"
+                                                        name="mod_coffret_dc_choix" id="mod_coffret_non" value="non"
+                                                        onchange="toggleCoffretDC()" checked>
+                                                    <label class="form-check-label" for="mod_coffret_non">Non</label>
+                                                </div>
+                                            </div>
+                                            <div class="row g-3 d-none" id="div_coffret_dc_details">
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Fabricant</label>
+                                                    <input type="text" class="form-control" id="mod_coffret_fab"
+                                                        placeholder="Ex: Techsun">
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <label class="form-label">Référence</label>
+                                                    <input type="text" class="form-control" id="mod_coffret_ref"
+                                                        placeholder="Ex: Coffret 2 entrées">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Quantité</label>
+                                                    <input type="number" class="form-control" id="mod_coffret_qty"
+                                                        placeholder="Ex: 1" value="1" min="1" oninput="calculerPrixGenerique('mod_coffret_qty', 'mod_coffret_pu', 'mod_coffret_pt')">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">PU (<span class="currency-label">€</span>)</label>
+                                                    <input type="number" class="form-control" id="mod_coffret_pu" oninput="calculerPrixGenerique('mod_coffret_qty', 'mod_coffret_pu', 'mod_coffret_pt')" min="0" step="0.01">
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <label class="form-label">Total HT</label>
+                                                    <input type="text" class="form-control bg-light" id="mod_coffret_pt" readonly>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                
+                                    <!-- Système d'intégration -->
+                                    <div class="row g-3 mt-2 border-top pt-3">
+                                        <div class="col-12 mb-1">
+                                            <h6 class="mb-0 text-secondary">Système d'intégration</h6>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" style="font-size: 0.85rem;">Fabricant / Distributeur</label>
+                                            <input type="text" class="form-control form-control-sm" id="sys_fab" placeholder="Ex: Dome Solar">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label" style="font-size: 0.85rem;">Référence</label>
+                                            <input type="text" class="form-control form-control-sm" id="sys_ref" placeholder="Ex: RC3">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Quantité</label>
+                                            <input type="number" class="form-control form-control-sm" id="sys_qty" placeholder="1" min="1" oninput="calculerPrixGenerique('sys_qty', 'sys_pu', 'sys_pt')">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">PU (<span class="currency-label">€</span>)</label>
+                                            <input type="number" class="form-control form-control-sm" id="sys_pu" oninput="calculerPrixGenerique('sys_qty', 'sys_pu', 'sys_pt')" min="0" step="0.01">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label class="form-label" style="font-size: 0.85rem;">Total HT</label>
+                                            <input type="text" class="form-control form-control-sm bg-light" id="sys_pt" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="cables">
+                            <div class="row">
+                                <div class="col-md-6 border-end">
+                                    <h6>Sélection des câbles (Multi-sélection)</h6>
+                                    <div class="mb-3 cable-selection list-group list-group-flush shadow-sm"
+                                        style="max-height: 350px; overflow-y: auto;">
+
+                                        <!-- DC (Cuivre) -->
+                                        <div
+                                            class="list-group-item cable-row d-flex align-items-center justify-content-between p-2">
+                                            <div class="form-check m-0 flex-grow-1">
+                                                <input class="form-check-input cable-cb" type="checkbox"
+                                                    value="DC (Cuivre)" id="cb_dc_cu"
+                                                    onchange="toggleCableDropdowns(this)">
+                                                <label class="form-check-label" for="cb_dc_cu">DC (Cuivre)</label>
+                                            </div>
+                                            <input type="number"
+                                                class="form-control form-control-sm w-auto cable-len ms-2"
+                                                placeholder="Long. (m)" disabled style="max-width: 90px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                            <select class="form-select form-select-sm w-auto cable-sec ms-2" disabled
+                                                style="min-width: 100px;">
+                                                <option value="4">4 mm²</option>
+                                                <option value="6">6 mm²</option>
+                                                <option value="10">10 mm²</option>
+                                                <option value="16">16 mm²</option>
+                                                <option value="25">25 mm²</option>
+                                            </select>
+                                            <input type="number" class="form-control form-control-sm w-auto cable-pu ms-2" placeholder="PU/m" disabled style="max-width: 70px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                            <input type="text" class="form-control form-control-sm w-auto cable-pt ms-2 bg-light" placeholder="Total" readonly style="max-width: 80px;">
+                                        </div>
+
+                                        <!-- DC (Alu) -->
+                                        <div
+                                            class="list-group-item cable-row d-flex align-items-center justify-content-between p-2">
+                                            <div class="form-check m-0 flex-grow-1">
+                                                <input class="form-check-input cable-cb" type="checkbox"
+                                                    value="DC (Alu)" id="cb_dc_alu"
+                                                    onchange="toggleCableDropdowns(this)">
+                                                <label class="form-check-label" for="cb_dc_alu">DC (Alu)</label>
+                                            </div>
+                                            <input type="number"
+                                                class="form-control form-control-sm w-auto cable-len ms-2"
+                                                placeholder="Long. (m)" disabled style="max-width: 90px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                            <select class="form-select form-select-sm w-auto cable-sec ms-2" disabled
+                                                style="min-width: 100px;">
+                                                <option value="4">4 mm²</option>
+                                                <option value="6">6 mm²</option>
+                                                <option value="10">10 mm²</option>
+                                                <option value="16">16 mm²</option>
+                                                <option value="25">25 mm²</option>
+                                            </select>
+                                            <input type="number" class="form-control form-control-sm w-auto cable-pu ms-2" placeholder="PU/m" disabled style="max-width: 70px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                            <input type="text" class="form-control form-control-sm w-auto cable-pt ms-2 bg-light" placeholder="Total" readonly style="max-width: 80px;">
+                                        </div>
+
+                                        <!-- AC (Cuivre-PR / XLPE) -->
+                                        <div
+                                            class="list-group-item cable-row d-flex align-items-center justify-content-between p-2">
+                                            <div class="form-check m-0 flex-grow-1">
+                                                <input class="form-check-input cable-cb" type="checkbox"
+                                                    value="AC (Cuivre-PR / XLPE)" id="cb_ac_cu_pr"
+                                                    onchange="toggleCableDropdowns(this)">
+                                                <label class="form-check-label" for="cb_ac_cu_pr"
+                                                    style="font-size: 0.9rem;">AC (Cuivre-PR / XLPE)</label>
+                                            </div>
+                                            <input type="number"
+                                                class="form-control form-control-sm w-auto cable-len ms-2"
+                                                placeholder="Long. (m)" disabled style="max-width: 90px;">
+                                            <select class="form-select form-select-sm w-auto cable-sec ms-2" disabled
+                                                style="min-width: 100px;">
+                                                <option value="1.5">1.5 mm²</option>
+                                                <option value="2.5">2.5 mm²</option>
+                                                <option value="4">4 mm²</option>
+                                                <option value="6">6 mm²</option>
+                                                <option value="10">10 mm²</option>
+                                                <option value="16">16 mm²</option>
+                                                <option value="25">25 mm²</option>
+                                                <option value="35">35 mm²</option>
+                                                <option value="50">50 mm²</option>
+                                                <option value="70">70 mm²</option>
+                                                <option value="95">95 mm²</option>
+                                                <option value="120">120 mm²</option>
+                                                <option value="150">150 mm²</option>
+                                                <option value="185">185 mm²</option>
+                                                <option value="240">240 mm²</option>
+                                                <option value="300">300 mm²</option>
+                                                <option value="400">400 mm²</option>
+                                            </select>
+                                            <input type="number" class="form-control form-control-sm w-auto cable-pu ms-2" placeholder="PU/m" disabled style="max-width: 70px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                            <input type="text" class="form-control form-control-sm w-auto cable-pt ms-2 bg-light" placeholder="Total" readonly style="max-width: 80px;">
+                                        </div>
+
+                                        <!-- AC (Alu-PR / XLPE) -->
+                                        <div
+                                            class="list-group-item cable-row d-flex align-items-center justify-content-between p-2">
+                                            <div class="form-check m-0 flex-grow-1">
+                                                <input class="form-check-input cable-cb" type="checkbox"
+                                                    value="AC (Alu-PR / XLPE)" id="cb_ac_alu_pr"
+                                                    onchange="toggleCableDropdowns(this)">
+                                                <label class="form-check-label" for="cb_ac_alu_pr"
+                                                    style="font-size: 0.9rem;">AC (Alu-PR / XLPE)</label>
+                                            </div>
+                                            <input type="number"
+                                                class="form-control form-control-sm w-auto cable-len ms-2"
+                                                placeholder="Long. (m)" disabled style="max-width: 90px;">
+                                            <select class="form-select form-select-sm w-auto cable-sec ms-2" disabled
+                                                style="min-width: 100px;">
+                                                <option value="1.5">1.5 mm²</option>
+                                                <option value="2.5">2.5 mm²</option>
+                                                <option value="4">4 mm²</option>
+                                                <option value="6">6 mm²</option>
+                                                <option value="10">10 mm²</option>
+                                                <option value="16">16 mm²</option>
+                                                <option value="25">25 mm²</option>
+                                                <option value="35">35 mm²</option>
+                                                <option value="50">50 mm²</option>
+                                                <option value="70">70 mm²</option>
+                                                <option value="95">95 mm²</option>
+                                                <option value="120">120 mm²</option>
+                                                <option value="150">150 mm²</option>
+                                                <option value="185">185 mm²</option>
+                                                <option value="240">240 mm²</option>
+                                                <option value="300">300 mm²</option>
+                                                <option value="400">400 mm²</option>
+                                            </select>
+                                            <input type="number" class="form-control form-control-sm w-auto cable-pu ms-2" placeholder="PU/m" disabled style="max-width: 70px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                            <input type="text" class="form-control form-control-sm w-auto cable-pt ms-2 bg-light" placeholder="Total" readonly style="max-width: 80px;">
+                                        </div>
+
+                                        <!-- AC (Cuivre-Caoutchouc) -->
+                                        <div
+                                            class="list-group-item cable-row d-flex align-items-center justify-content-between p-2">
+                                            <div class="form-check m-0 flex-grow-1">
+                                                <input class="form-check-input cable-cb" type="checkbox"
+                                                    value="AC (Cuivre-Caoutchouc)" id="cb_ac_cu_ca"
+                                                    onchange="toggleCableDropdowns(this)">
+                                                <label class="form-check-label" for="cb_ac_cu_ca"
+                                                    style="font-size: 0.9rem;">AC (Cuivre-Caoutchouc)</label>
+                                            </div>
+                                            <input type="number"
+                                                class="form-control form-control-sm w-auto cable-len ms-2"
+                                                placeholder="Long. (m)" disabled style="max-width: 90px;">
+                                            <select class="form-select form-select-sm w-auto cable-sec ms-2" disabled
+                                                style="min-width: 100px;">
+                                                <option value="1.5">1.5 mm²</option>
+                                                <option value="2.5">2.5 mm²</option>
+                                                <option value="4">4 mm²</option>
+                                                <option value="6">6 mm²</option>
+                                                <option value="10">10 mm²</option>
+                                                <option value="16">16 mm²</option>
+                                                <option value="25">25 mm²</option>
+                                                <option value="35">35 mm²</option>
+                                                <option value="50">50 mm²</option>
+                                                <option value="70">70 mm²</option>
+                                                <option value="95">95 mm²</option>
+                                                <option value="120">120 mm²</option>
+                                                <option value="150">150 mm²</option>
+                                                <option value="185">185 mm²</option>
+                                                <option value="240">240 mm²</option>
+                                                <option value="300">300 mm²</option>
+                                                <option value="400">400 mm²</option>
+                                            </select>
+                                            <input type="number" class="form-control form-control-sm w-auto cable-pu ms-2" placeholder="PU/m" disabled style="max-width: 70px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                            <input type="text" class="form-control form-control-sm w-auto cable-pt ms-2 bg-light" placeholder="Total" readonly style="max-width: 80px;">
+                                        </div>
+
+                                        <!-- PE V/J -->
+                                        <div
+                                            class="list-group-item cable-row d-flex align-items-center justify-content-between p-2">
+                                            <div class="form-check m-0 flex-grow-1">
+                                                <input class="form-check-input cable-cb" type="checkbox" value="PE V/J"
+                                                    id="cb_pe_vj" onchange="toggleCableDropdowns(this)">
+                                                <label class="form-check-label" for="cb_pe_vj">PE V/J</label>
+                                            </div>
+                                            <input type="number"
+                                                class="form-control form-control-sm w-auto cable-len ms-2"
+                                                placeholder="Long. (m)" disabled style="max-width: 90px;">
+                                            <select class="form-select form-select-sm w-auto cable-sec ms-2" disabled
+                                                style="min-width: 100px;">
+                                                <option value="6">6 mm²</option>
+                                                <option value="16">16 mm²</option>
+                                                <option value="25">25 mm²</option>
+                                                <option value="35">35 mm²</option>
+                                                <option value="50">50 mm²</option>
+                                                <option value="70">70 mm²</option>
+                                                <option value="95">95 mm²</option>
+                                            </select>
+                                            <input type="number" class="form-control form-control-sm w-auto cable-pu ms-2" placeholder="PU/m" disabled style="max-width: 70px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                            <input type="text" class="form-control form-control-sm w-auto cable-pt ms-2 bg-light" placeholder="Total" readonly style="max-width: 80px;">
+                                        </div>
+
+                                        <!-- Cuivre nu -->
+                                        <div
+                                            class="list-group-item cable-row d-flex align-items-center justify-content-between p-2">
+                                            <div class="form-check m-0 flex-grow-1">
+                                                <input class="form-check-input cable-cb" type="checkbox"
+                                                    value="Cuivre nu" id="cb_cu_nu"
+                                                    onchange="toggleCableDropdowns(this)">
+                                                <label class="form-check-label" for="cb_cu_nu">Cuivre nu</label>
+                                            </div>
+                                            <input type="number"
+                                                class="form-control form-control-sm w-auto cable-len ms-2"
+                                                placeholder="Long. (m)" disabled style="max-width: 90px;">
+                                            <select class="form-select form-select-sm w-auto cable-sec ms-2" disabled
+                                                style="min-width: 100px;">
+                                                <option value="16">16 mm²</option>
+                                                <option value="25" selected>25 mm²</option>
+                                                <option value="35">35 mm²</option>
+                                            </select>
+                                            <input type="number" class="form-control form-control-sm w-auto cable-pu ms-2" placeholder="PU/m" disabled style="max-width: 70px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                            <input type="text" class="form-control form-control-sm w-auto cable-pt ms-2 bg-light" placeholder="Total" readonly style="max-width: 80px;">
+                                        </div>
+
+                                        <!-- Câble Mx et Au -->
+                                        <div class="list-group-item cable-row d-flex flex-column align-items-start p-2">
+                                            <div class="form-check m-0 w-100">
+                                                <input class="form-check-input cable-cb" type="checkbox"
+                                                    value="Câble Mx et Au" id="cb_mx_au"
+                                                    onchange="toggleCableDropdowns(this)">
+                                                <label class="form-check-label" for="cb_mx_au">Câble Mx et Au</label>
+                                            </div>
+                                            <div class="d-flex mt-2 ms-4 w-100 pe-2">
+                                                <input type="number"
+                                                    class="form-control form-control-sm w-auto cable-len me-2 flex-grow-1"
+                                                    placeholder="Long. (m)" disabled>
+                                                <select
+                                                    class="form-select form-select-sm w-auto cable-opt me-2 flex-grow-1"
+                                                    disabled>
+                                                    <option value="CR1-C1">CR1-C1</option>
+                                                    <option value="U1000-R2V">U1000-R2V</option>
+                                                    <option value="H07RNF">H07RNF</option>
+                                                </select>
+                                                <select class="form-select form-select-sm w-auto cable-sec flex-grow-1"
+                                                    disabled>
+                                                    <option value="1.5">1.5 mm²</option>
+                                                    <option value="2.5">2.5 mm²</option>
+                                                    <option value="4">4 mm²</option>
+                                                    <option value="6">6 mm²</option>
+                                                    <option value="10">10 mm²</option>
+                                                    <option value="16">16 mm²</option>
+                                                    <option value="25">25 mm²</option>
+                                                    <option value="35">35 mm²</option>
+                                                    <option value="50">50 mm²</option>
+                                                </select>
+                                                <input type="number" class="form-control form-control-sm w-auto cable-pu ms-2 flex-grow-1" placeholder="PU/m" disabled style="max-width: 70px;" oninput="calculerPrixLineaire(this, '.cable-len', '.cable-pu', '.cable-pt')">
+                                                <input type="text" class="form-control form-control-sm w-auto cable-pt ms-2 bg-light flex-grow-1" placeholder="Total" readonly style="max-width: 80px;">
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+                                <div class="col-md-6 px-4">
+                                    <div class="calc-box">
+                                        <h6> Calculateur de Chute de Tension</h6>
+                                        <div class="row g-2 align-items-end">
+
+                                            <!-- Paramètres de calcul (toujours présents pour la logique métier) -->
+                                            <div class="col-6"><input type="number" id="calc_L"
+                                                    class="form-control form-control-sm" placeholder="Long. (m)"></div>
+
+                                            <div class="col-6">
+                                                <label class="form-label mb-1" style="font-size: 0.85rem;">dU Max
+                                                    (%)</label>
+                                                <input type="number" id="calc_du_max"
+                                                    class="form-control form-control-sm" value="3">
+                                            </div>
+
+                                            <div class="col-6">
+                                                <label class="form-label mb-1" style="font-size: 0.85rem;">Tension
+                                                    chaîne Umpp_STC calculé
+                                                    (V)</label>
+                                                <input type="number" id=" umpp_chaine"
+                                                    class="form-control form-control-sm" placeholder="Umpp_chaîne (V)">
+                                            </div>
+
+                                            <div class="col-6">
+                                                <label class="form-label mb-1" style="font-size: 0.85rem;">dU
+                                                    calculé</label>
+                                                <input type="text" id="res_chute"
+                                                    class="form-control form-control-sm text-primary fw-bold" readonly>
+                                            </div>
+
+                                            <div class="col-12"><button class="btn btn-accent btn-sm w-100 mt-1"
+                                                    style="background:#6c757d; color:white;"
+                                                    onclick="runCalcul('chute_tension')">Calculer</button></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="onduleurs">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h6>Configuration Onduleur AC</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label>Fabricant</label>
+                                            <select class="form-select" id="ond_fab" onchange="updateInverterRefs()">
+                                                <option value="">Sélectionner...</option>
+                                                <option value="Huawei">Huawei</option>
+                                                <option value="SMA">SMA</option>
+                                                <option value="SUNGROW">SUNGROW</option>
+                                                <option value="SOLAREDGE">SOLAREDGE</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label>Référence</label>
+                                            <div class="input-group">
+                                                <select class="form-select" id="ond_ref"
+                                                    onchange="updateInverterPower()">
+                                                    <option value="">Sélectionner un fabricant...</option>
+                                                </select>
+                                                <input type="text" class="form-control d-none" id="ond_ref_custom"
+                                                    placeholder="Référence personnalisée">
+                                                <button class="btn btn-outline-secondary" type="button"
+                                                    onclick="toggleCustomRef()" title="Définir soi-même">✏️</button>
+                                                <button class="btn btn-success d-none" type="button"
+                                                    id="btn_save_custom" onclick="saveCustomInverter()"
+                                                    title="Enregistrer l'onduleur">💾</button>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label>Puissance (kVA)</label>
+                                            <input type="number" class="form-control" id="ond_pwr"
+                                                placeholder="Ex: 100">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label>Rendement (%)</label>
+                                            <input type="number" class="form-control" id="ond_rendement" placeholder="Ex: 98.5" step="0.1">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label>Type onduleur</label>
+                                            <select class="form-select" id="ond_type" onchange="updateTensionOptions()">
+                                                <option value="Monophasé">Monophasé</option>
+                                                <option value="Triphasé" selected>Triphasé</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label>Tension (V)</label>
+                                            <select class="form-select" id="ond_tension">
+                                                <option value="400V" selected>400V</option>
+                                                <option value="480V">480V</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>Quantité</label>
+                                            <input type="number" class="form-control" id="ond_qty" value="1" min="1" oninput="calculerPrixGenerique('ond_qty', 'ond_pu', 'ond_pt')">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label>P. Injection Max (kVA)</label>
+                                            <input type="number" class="form-control" id="ond_max_injection" placeholder="Ex: 55" step="0.1">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>Onduleur Hybride</label>
+                                            <select class="form-select" id="ond_hybride">
+                                                <option value="Oui">Oui</option>
+                                                <option value="Non" selected>Non</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>Comp. Optimiseur</label>
+                                            <input type="text" class="form-control bg-light" id="ond_opti" readonly placeholder="Oui/Non">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>PU (<span class="currency-label">€</span>)</label>
+                                            <input type="number" class="form-control" id="ond_pu" min="0" step="0.01" oninput="calculerPrixGenerique('ond_qty', 'ond_pu', 'ond_pt')">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>Total HT</label>
+                                            <input type="text" class="form-control bg-light" id="ond_pt" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="shelter">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <h6>Configuration Shelteriste / Tableautier</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-4">
+                                            <label>Fabricant / Distributeur</label>
+                                            <input type="text" class="form-control" id="she_fab"
+                                                placeholder="Ex: Schneider">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label>Référence shelter</label>
+                                            <input type="text" class="form-control" id="she_ref"
+                                                placeholder="Ex: TGBT-400A">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label>Emplacement onduleur</label>
+                                            <select class="form-select" id="she_emp"
+                                                onchange="toggleOther('she_emp', 'she_emp_other')">
+                                                <option value="Poteau">Poteau</option>
+                                                <option value="Shelter">Shelter</option>
+                                                <option value="Toiture">Toiture</option>
+                                                <option value="Façade">Façade</option>
+                                                <option value="Autres">Autres</option>
+                                            </select>
+                                            <input type="text" class="form-control mt-2 d-none" id="she_emp_other"
+                                                placeholder="Préciser l'emplacement">
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label>Environnement d’installation</label>
+                                            <select class="form-select" id="she_env"
+                                                onchange="toggleOther('she_env', 'she_env_other')">
+                                                <option value="Zone Urbaine">Zone Urbaine</option>
+                                                <option value="Site industriel">Site industriel</option>
+                                                <option value="Site tertiaire">Site tertiaire</option>
+                                                <option value="Site agricole">Site agricole</option>
+                                                <option value="ERP">ERP</option>
+                                                <option value="ERT">ERT</option>
+                                                <option value="ICPE">ICPE</option>
+                                                <option value="Autres">Autres</option>
+                                            </select>
+                                            <input type="text" class="form-control mt-2 d-none" id="she_env_other"
+                                                placeholder="Préciser l'environnement">
+                                        </div>
+                                        <div class="col-md-2">
+                                            <label>Quantité</label>
+                                            <input type="number" class="form-control" id="she_qty" oninput="calculerPrixGenerique('she_qty', 'she_pu', 'she_pt')" value="1" min="1">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label>PU unitaire (<span class="currency-label">€</span>)</label>
+                                            <input type="number" class="form-control" id="she_pu" oninput="calculerPrixGenerique('she_qty', 'she_pu', 'she_pt')" value="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label>Total HT</label>
+                                            <input type="text" class="form-control bg-light" id="she_pt" readonly>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="autres-ac">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6>Autres matériels AC</h6>
+                                        <button type="button" class="btn btn-outline-secondary btn-sm"
+                                            onclick="addAutreMaterielACRow()">➕ Ajouter une ligne</button>
+                                    </div>
+                                    <div id="container_autres_materiels_ac" class="d-flex flex-column gap-2">
+                                        <!-- Matériels prédéfinis -->
+                                        <div class="row g-2 align-items-center autre-mat-ac-row">
+                                            <div class="col-md-2 d-flex align-items-center">
+                                                <input class="form-check-input me-2 am-ac-cb" type="checkbox"
+                                                    id="cb_luminaire">
+                                                <input type="text" class="form-control form-control-sm am-ac-composant"
+                                                    value="Luminaires" readonly>
+                                            </div>
+                                            <div class="col-md-2"><input type="text"
+                                                    class="form-control form-control-sm am-ac-designation"
+                                                    placeholder="Désignation / Fab."></div>
+                                            <div class="col-md-2"><input type="text"
+                                                    class="form-control form-control-sm am-ac-reference"
+                                                    placeholder="Référence"></div>
+                                            <div class="col-md-1"><input type="number"
+                                                    class="form-control form-control-sm am-ac-quantite"
+                                                    placeholder="Qté" min="1" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="number" class="form-control form-control-sm am-ac-pu" placeholder="PU" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="text" class="form-control form-control-sm bg-light am-ac-pt" placeholder="Total" readonly></div>
+                                        </div>
+
+                                        <div class="row g-2 align-items-center autre-mat-ac-row">
+                                            <div class="col-md-2 d-flex align-items-center">
+                                                <input class="form-check-input me-2 am-ac-cb" type="checkbox"
+                                                    id="cb_borne">
+                                                <input type="text" class="form-control form-control-sm am-ac-composant"
+                                                    value="Borne de recharge" readonly>
+                                            </div>
+                                            <div class="col-md-2"><input type="text"
+                                                    class="form-control form-control-sm am-ac-designation"
+                                                    placeholder="Désignation / Fab."></div>
+                                            <div class="col-md-2"><input type="text"
+                                                    class="form-control form-control-sm am-ac-reference"
+                                                    placeholder="Référence"></div>
+                                            <div class="col-md-1"><input type="number"
+                                                    class="form-control form-control-sm am-ac-quantite"
+                                                    placeholder="Qté" min="1" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="number" class="form-control form-control-sm am-ac-pu" placeholder="PU" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="text" class="form-control form-control-sm bg-light am-ac-pt" placeholder="Total" readonly></div>
+                                        </div>
+
+                                        <div class="row g-2 align-items-center autre-mat-ac-row">
+                                            <div class="col-md-2 d-flex align-items-center">
+                                                <input class="form-check-input me-2 am-ac-cb" type="checkbox"
+                                                    id="cb_batterie">
+                                                <input type="text" class="form-control form-control-sm am-ac-composant"
+                                                    value="Batterie" readonly>
+                                            </div>
+                                            <div class="col-md-1"><input type="text"
+                                                    class="form-control form-control-sm am-ac-designation"
+                                                    placeholder="Désig. / Fab."></div>
+                                            <div class="col-md-2"><input type="text"
+                                                    class="form-control form-control-sm am-ac-reference"
+                                                    placeholder="Référence"></div>
+                                            <div class="col-md-1"><input type="number"
+                                                    class="form-control form-control-sm am-ac-capacite"
+                                                    id="batterie_cap_unitaire" placeholder="Cap. (kWh)" min="0"
+                                                    step="0.1"></div>
+                                            <div class="col-md-1"><input type="number"
+                                                    class="form-control form-control-sm am-ac-quantite"
+                                                    placeholder="Qté" min="1" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="number" class="form-control form-control-sm am-ac-pu" placeholder="PU" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="text" class="form-control form-control-sm bg-light am-ac-pt" placeholder="Total" readonly></div>
+                                        </div>
+
+                                        <div class="row g-2 align-items-center autre-mat-ac-row">
+                                            <div class="col-md-2 d-flex align-items-center">
+                                                <input class="form-check-input me-2 am-ac-cb" type="checkbox"
+                                                    id="cb_poste">
+                                                <input type="text" class="form-control form-control-sm am-ac-composant"
+                                                    value="Poste de transformation" readonly>
+                                            </div>
+                                            <div class="col-md-2"><input type="text"
+                                                    class="form-control form-control-sm am-ac-designation"
+                                                    placeholder="Désignation / Fab."></div>
+                                            <div class="col-md-2"><input type="text"
+                                                    class="form-control form-control-sm am-ac-reference"
+                                                    placeholder="Référence"></div>
+                                            <div class="col-md-1"><input type="number"
+                                                    class="form-control form-control-sm am-ac-quantite"
+                                                    placeholder="Qté" min="1" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="number" class="form-control form-control-sm am-ac-pu" placeholder="PU" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="text" class="form-control form-control-sm bg-light am-ac-pt" placeholder="Total" readonly></div>
+                                        </div>
+
+                                        <div class="row g-2 align-items-center autre-mat-ac-row">
+                                            <div class="col-md-2 d-flex align-items-center">
+                                                <input class="form-check-input me-2 am-ac-cb" type="checkbox"
+                                                    id="cb_coffret">
+                                                <input type="text" class="form-control form-control-sm am-ac-composant"
+                                                    value="Coffret AC" readonly>
+                                            </div>
+                                            <div class="col-md-2"><input type="text"
+                                                    class="form-control form-control-sm am-ac-designation"
+                                                    placeholder="Désignation / Fab."></div>
+                                            <div class="col-md-2"><input type="text"
+                                                    class="form-control form-control-sm am-ac-reference"
+                                                    placeholder="Référence"></div>
+                                            <div class="col-md-1"><input type="number"
+                                                    class="form-control form-control-sm am-ac-quantite"
+                                                    placeholder="Qté" min="1" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="number" class="form-control form-control-sm am-ac-pu" placeholder="PU" oninput="calculerPrixLineaire(this, '.am-ac-quantite', '.am-ac-pu', '.am-ac-pt')"></div>
+                                            <div class="col-md-2"><input type="text" class="form-control form-control-sm bg-light am-ac-pt" placeholder="Total" readonly></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="reseaux">
+                            <div class="row">
+                                <!-- Carte Chemin de Câbles -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card card-body h-100 shadow-sm border-0 calc-box">
+                                        <h6>🛤️ Chemins de câbles (CDC)</h6>
+                                        <div class="mb-2">
+                                            <label class="form-label mb-1" style="font-size: 0.9rem;">Type de
+                                                CDC</label>
+                                            <select class="form-select form-select-sm" id="cdc_type"
+                                                onchange="updateCDCBtns()">
+                                                <option value="Cablofil">Cablofil</option>
+                                                <option value="Dalle Marine">Dalle Marine</option>
+                                                <option value="Dalle Marine (AC) & Cablofil (DC)">Dalle Marine (AC) &
+                                                    Cablofil (DC)</option>
+                                                <option value="Dalle Marine (DC) & Cablofil (AC)">Dalle Marine (DC) &
+                                                    Cablofil (AC)</option>
+                                            </select>
+                                        </div>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-3">
+                                                <label class="form-label mb-1" style="font-size: 0.9rem;">Largeur
+                                                    (mm)</label>
+                                                <input type="number" id="cdc_largeur"
+                                                    class="form-control form-control-sm" placeholder="Ex: 300">
+                                            </div>
+                                            <div class="col-3">
+                                                <label class="form-label mb-1" style="font-size: 0.9rem;">Longueur
+                                                    (m)</label>
+                                                <input type="number" id="cdc_longueur"
+                                                    class="form-control form-control-sm" placeholder="Ex: 50" oninput="calculerPrixGenerique('cdc_longueur', 'cdc_pu', 'cdc_pt')">
+                                            </div>
+                                            <div class="col-3">
+                                                <label class="form-label mb-1" style="font-size: 0.9rem;">PU / m</label>
+                                                <input type="number" id="cdc_pu" class="form-control form-control-sm" placeholder="Prix" oninput="calculerPrixGenerique('cdc_longueur', 'cdc_pu', 'cdc_pt')">
+                                            </div>
+                                            <div class="col-3">
+                                                <label class="form-label mb-1" style="font-size: 0.9rem;">Total HT</label>
+                                                <input type="text" id="cdc_pt" class="form-control form-control-sm bg-light" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="d-flex flex-wrap gap-2 mt-2">
+                                            <button class="btn btn-red-solid btn-sm px-3" id="btn_add_cdc_dc"
+                                                onclick="addCDC('DC', 'Cablofil')">Ajouter CDC DC (Cablofil)</button>
+                                            <button class="btn btn-red-solid btn-sm px-3" id="btn_add_cdc_ac"
+                                                onclick="addCDC('AC', 'Cablofil')">Ajouter CDC AC (Cablofil)</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Carte Infrastructures -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card card-body h-100 shadow-sm border-0 calc-box">
+                                        <h6>🕳️ Chambres de tirage & Regards</h6>
+                                        <div class="mb-2">
+                                            <label>Type d'ouvrage</label>
+                                            <select class="form-select" id="infra_type"
+                                                onchange="toggleOther('infra_type', 'infra_type_other')">
+                                                <option value="Chambre de tirage (L0T)">Chambre de tirage (L0T)</option>
+                                                <option value="Chambre de tirage (L1T)">Chambre de tirage (L1T)</option>
+                                                <option value="Chambre de tirage (L2T)">Chambre de tirage (L2T)</option>
+                                                <option value="Regard béton 40x40">Regard béton 40x40</option>
+                                                <option value="Regard béton 60x60">Regard béton 60x60</option>
+                                                <option value="Autres">Autres</option>
+                                            </select>
+                                            <input type="text" id="infra_type_other" class="form-control mt-2 d-none"
+                                                placeholder="Préciser la chambre">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label>Quantité</label>
+                                            <input type="number" id="infra_qty" class="form-control" value="1" min="1">
+                                        </div>
+                                        <div class="row g-2 mb-2">
+                                            <div class="col-6">
+                                                <label class="form-label mb-1" style="font-size: 0.9rem;">PU Unitaire</label>
+                                                <input type="number" id="infra_pu" class="form-control form-control-sm" placeholder="Prix" oninput="calculerPrixGenerique('infra_qty', 'infra_pu', 'infra_pt')">
+                                            </div>
+                                            <div class="col-6">
+                                                <label class="form-label mb-1" style="font-size: 0.9rem;">Total HT</label>
+                                                <input type="text" id="infra_pt" class="form-control form-control-sm bg-light" readonly>
+                                            </div>
+                                        </div>
+                                        <div class="mt-auto pt-3">
+                                            <button class="btn btn-red-solid btn-sm px-3" onclick="addInfra()">Ajouter à
+                                                la liste</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="calc-box mb-3 mt-2">
+                                <h6>📏 Calculateur fourreaux</h6>
+                                <div class="row g-2 mb-2">
+                                    <div class="col-sm-6">
+                                        <label class="form-label mb-1" style="font-size: 0.9rem;">Type de
+                                            fourreau</label>
+                                        <select class="form-select form-select-sm" id="fourreau_std"
+                                            onchange="toggleFourreauCustom()">
+                                            <option value="">Sélectionner...</option>
+                                            <option value="40" data-int="30">Standard Ø40</option>
+                                            <option value="63" data-int="47">Standard Ø63</option>
+                                            <option value="90" data-int="67">Standard Ø90</option>
+                                            <option value="110" data-int="82">Standard Ø110</option>
+                                            <option value="160" data-int="120">Standard Ø160</option>
+                                            <option value="200" data-int="150">Standard Ø200</option>
+                                            <option value="custom">Personnalisé...</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label mb-1" style="font-size: 0.9rem;">Ø Ext. du Câble
+                                            (mm)</label>
+                                        <input type="number" id="fourreau_ext_cable"
+                                            class="form-control form-control-sm" placeholder="Ex: 12">
+                                    </div>
+                                    <div class="col-sm-6">
+                                        <label class="form-label mb-1" style="font-size: 0.9rem;">Type de Câble</label>
+                                        <select class="form-select form-select-sm" id="fourreau_type_cable"
+                                            onchange="toggleFourreauType()">
+                                            <option value="mono">Mono-conducteur</option>
+                                            <option value="multi">Multi-conducteur</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-sm-6" id="div_fourreau_mono">
+                                        <label class="form-label mb-1" style="font-size: 0.9rem;">Nombre de
+                                            câbles</label>
+                                        <input type="number" id="fourreau_nb_cables"
+                                            class="form-control form-control-sm" value="4">
+                                    </div>
+                                    <div class="col-sm-6 d-none" id="div_fourreau_multi">
+                                        <label class="form-label mb-1" style="font-size: 0.9rem;">Nombre de
+                                            circuits</label>
+                                        <input type="number" id="fourreau_nb_circuits"
+                                            class="form-control form-control-sm" value="1">
+                                    </div>
+                                </div>
+                                <div class="row g-2 mb-2 d-none" id="fourreau_custom_div">
+                                    <div class="col-12"><label class="form-label mb-1" style="font-size: 0.9rem;">Ø Ext.
+                                            Fourreau (mm)</label><input type="number" id="fourreau_ext"
+                                            class="form-control form-control-sm"></div>
+                                </div>
+                                <div class="d-flex gap-3 mb-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="fourreau_inc_cu_nu">
+                                        <label class="form-check-label" for="fourreau_inc_cu_nu"
+                                            style="font-size: 0.85rem;">Inclure Cuivre nu</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="fourreau_inc_pe_vj">
+                                        <label class="form-check-label" for="fourreau_inc_pe_vj"
+                                            style="font-size: 0.85rem;">Inclure PE V/J</label>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-2">
+                                    <button class="btn btn-sm btn-red-solid px-3"
+                                        onclick="runCalcul('fourreaux')">Vérifier le taux d'ccupation</button>
+                                </div>
+                                <div id="res_fourreaux" class="mt-2 fw-bold text-center"></div>
+                                <div class="row g-2 mb-2 mt-3 border-top pt-2">
+                                    <div class="col-sm-3">
+                                        <label class="form-label mb-1" style="font-size: 0.9rem;">Nbre de
+                                            fourreaux</label>
+                                        <input type="number" id="fourreau_nb" class="form-control form-control-sm"
+                                            value="1" min="1" oninput="calculerPrixGenerique('fourreau_longueur', 'fourreau_pu', 'fourreau_pt')"> <!-- La logique JS interne combinera avec nb -->
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label class="form-label mb-1" style="font-size: 0.9rem;">Longueur (m)</label>
+                                        <input type="number" id="fourreau_longueur" class="form-control form-control-sm"
+                                            placeholder="Ex: 50" oninput="calculerPrixGenerique('fourreau_longueur', 'fourreau_pu', 'fourreau_pt')">
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label class="form-label mb-1" style="font-size: 0.9rem;">PU / m</label>
+                                        <input type="number" id="fourreau_pu" class="form-control form-control-sm" placeholder="Prix" oninput="calculerPrixGenerique('fourreau_longueur', 'fourreau_pu', 'fourreau_pt')">
+                                    </div>
+                                    <div class="col-sm-3">
+                                        <label class="form-label mb-1" style="font-size: 0.9rem;">Total HT</label>
+                                        <input type="text" id="fourreau_pt" class="form-control form-control-sm bg-light" readonly>
+                                    </div>
+                                    <div class="col-12 mt-2 text-center">
+                                        <button class="btn btn-sm btn-red-solid px-3"
+                                            onclick="addFourreauToList()">Ajouter fourreau à la liste matériels</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="autres">
+                            <div class="row">
+                                <div class="col-md-12">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6>Autres matériels</h6>
+                                        <button type="button" class="btn btn-outline-success btn-sm"
+                                            onclick="addAutreMaterielModalField()">➕ Ajouter un champ</button>
+                                    </div>
+                                
+                                    <div class="mb-4 border-bottom pb-3">
+                                        <h6 class="text-secondary">Type de structure</h6>
+                                        <div class="row g-2 align-items-end mb-3">
+                                            <div class="col-md-3"><label class="form-label mb-1" style="font-size: 0.85rem;">Entreprise / Fab.</label><input type="text" class="form-control form-control-sm" id="autre_struct_fab" placeholder="Entreprise"></div>
+                                            <div class="col-md-3"><label class="form-label mb-1" style="font-size: 0.85rem;">Désignation</label><input type="text" class="form-control form-control-sm" id="autre_struct_des" placeholder="Type de structure"></div>
+                                            <div class="col-md-2"><label class="form-label mb-1" style="font-size: 0.85rem;">Quantité</label><input type="number" class="form-control form-control-sm" id="autre_struct_qty" min="1" oninput="calculerPrixGenerique('autre_struct_qty', 'autre_struct_pu', 'autre_struct_pt')"></div>
+                                            <div class="col-md-2"><label class="form-label mb-1" style="font-size: 0.85rem;">PU (<span class="currency-label">€</span>)</label><input type="number" class="form-control form-control-sm" id="autre_struct_pu" oninput="calculerPrixGenerique('autre_struct_qty', 'autre_struct_pu', 'autre_struct_pt')" min="0" step="0.01"></div>
+                                            <div class="col-md-2"><label class="form-label mb-1" style="font-size: 0.85rem;">Total HT</label><input type="text" class="form-control form-control-sm bg-light" id="autre_struct_pt" readonly></div>
+                                        </div>
+
+                                        <h6 class="text-secondary">Fondations</h6>
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-3"><label class="form-label mb-1" style="font-size: 0.85rem;">Entreprise / Fab.</label><input type="text" class="form-control form-control-sm" id="autre_fond_fab" placeholder="Entreprise"></div>
+                                            <div class="col-md-3">
+                                                <label class="form-label mb-1" style="font-size: 0.85rem;">Désignation</label>
+                                                <select class="form-select form-select-sm" id="autre_fond_des" onchange="document.getElementById('autre_fond_des_other').classList.toggle('d-none', this.value !== 'Autres')">
+                                                    <option value="" selected disabled>Type de fondations</option>
+                                                    <option value="Semelle isolée">Semelle isolée</option>
+                                                    <option value="Puits">Puits</option>
+                                                    <option value="Micropieux">Micropieux</option>
+                                                    <option value="Pieux battus">Pieux battus</option>
+                                                    <option value="Longrine béton">Longrine béton</option>
+                                                    <option value="Autres">Autres (donnée utilisateur)...</option>
+                                                </select>
+                                                <input type="text" class="form-control form-control-sm mt-1 d-none" id="autre_fond_des_other" placeholder="Précisez...">
+                                            </div>
+                                            <div class="col-md-2"><label class="form-label mb-1" style="font-size: 0.85rem;">Quantité</label><input type="number" class="form-control form-control-sm" id="autre_fond_qty" min="1" oninput="calculerPrixGenerique('autre_fond_qty', 'autre_fond_pu', 'autre_fond_pt')"></div>
+                                            <div class="col-md-2"><label class="form-label mb-1" style="font-size: 0.85rem;">PU (<span class="currency-label">€</span>)</label><input type="number" class="form-control form-control-sm" id="autre_fond_pu" oninput="calculerPrixGenerique('autre_fond_qty', 'autre_fond_pu', 'autre_fond_pt')" min="0" step="0.01"></div>
+                                            <div class="col-md-2"><label class="form-label mb-1" style="font-size: 0.85rem;">Total HT</label><input type="text" class="form-control form-control-sm bg-light" id="autre_fond_pt" readonly></div>
+                                        </div>
+                                    </div>
+
+                                    <div id="container_autres_materiels_modal" class="d-flex flex-column gap-2">
+                                        <!-- Les champs s'ajouteront ici -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="cancel-modalConfig-btn">Annuler</button>
+                    <button type="button" class="btn btn-success" onclick="addRowFromModal();">Ajouter à la liste principale</button>
+                    <button type="button" class="btn btn-danger" id="close-modalConfig-bottom-btn" onclick="window.closeModalConfig(event)">Fermer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateTensionOptions() {
+            const ondType = document.getElementById('ond_type').value;
+            const ondTension = document.getElementById('ond_tension');
+            ondTension.innerHTML = '';
+            if (ondType === 'Monophasé') {
+                ondTension.innerHTML = '<option value="110V">110V</option><option value="210V" selected>210V</option>';
+            } else {
+                ondTension.innerHTML = '<option value="400V" selected>400V</option><option value="480V">480V</option>';
+            }
+        }
+
+        // 4. Correction du champ Adresse (Logique de Parsing Automatique)
+        document.addEventListener('DOMContentLoaded', () => {
+            const addressInput = document.getElementById('adresse_projet');
+            if (addressInput) {
+                const parseAndCleanAddress = (rawAddressData) => {
+                    if (!rawAddressData) return "";
+                    try {
+                        // Détecte si la valeur insérée ressemble à une chaîne JSON valide
+                        if (typeof rawAddressData === 'string' && rawAddressData.trim().startsWith('{')) {
+                            const parsedData = JSON.parse(rawAddressData);
+                            return parsedData.adresse ? parsedData.adresse : rawAddressData;
+                        }
+                        // Cas où la valeur est déjà un objet JS
+                        if (typeof rawAddressData === 'object' && rawAddressData !== null) {
+                            return rawAddressData.adresse ? rawAddressData.adresse : JSON.stringify(rawAddressData);
+                        }
+                    } catch (error) {
+                        console.warn("Erreur mineure : L'adresse fournie n'est pas un JSON. Valeur textuelle conservée.");
+                    }
+                    return rawAddressData;
+                };
+
+                const descriptor = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+                if (descriptor && descriptor.set) {
+                    const originalSet = descriptor.set;
+                    Object.defineProperty(addressInput, 'value', {
+                        get: descriptor.get,
+                        set: function (val) {
+                            originalSet.call(this, parseAndCleanAddress(val));
+                        }
+                    });
+                }
+
+                // Force un nettoyage de sécurité si le champ a été rempli avant l'exécution du script
+                if (addressInput.value) {
+                    addressInput.value = addressInput.value;
+                }
+            }
+        });
+
+        window.closePreviewModal = function() {
+            const modal = document.getElementById('previewChiffrageModal');
+            const backdrop = document.getElementById('previewChiffrageModal-backdrop');
+            if (modal) { modal.style.display = 'none'; modal.classList.remove('show'); }
+            if (backdrop) { backdrop.style.display = 'none'; }
+        }
+    </script>
+</div>
+
+<!-- Modal Prévisualisation Chiffrage -->
+<div id="previewChiffrageModal-backdrop" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 105999;"></div>
+<div id="previewChiffrageModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85vw; max-width: 1200px; max-height: 90vh; background-color: #ffffff; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); z-index: 106000; border: 2px solid #dc2626; overflow: hidden; flex-direction: column;">
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.5rem; background-color: #dc2626; color: white; border-bottom: 1px solid #991b1b;">
+        <h5 style="margin: 0; font-weight: 600;"><i class="fas fa-file-invoice-dollar"></i> Aperçu du Chiffrage</h5>
+        <button type="button" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: white; opacity: 0.8; padding: 0; line-height: 1;" onclick="closePreviewModal()">×</button>
+    </div>
+    <div style="flex: 1; overflow-y: auto; padding: 2rem;" id="previewChiffrageBody">
+        <!-- Contenu injecté via JS -->
+    </div>
+    <div style="padding: 1rem 1.5rem; border-top: 1px solid #dee2e6; display: flex; justify-content: flex-end; gap: 10px; background-color: #f8f9fa;">
+        <button type="button" class="btn btn-red-solid" id="btn_export_pdf_modal" onclick="generatePDF(); closePreviewModal();" disabled>📄 Exporter PDF A4</button>
+        <button type="button" class="btn btn-success" id="btn_valider_devis" onclick="validerDevis()">Valider le devis</button>
+        <button type="button" class="btn btn-secondary" onclick="closePreviewModal()">Fermer</button> 
+    </div>
+</div>
+
+
+<!-- Le script JS est déjà inclus dans menu.html -->

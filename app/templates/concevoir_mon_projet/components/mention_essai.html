@@ -1,0 +1,6 @@
+{# Mention « période d'essai gratuite » des documents générés (cf. app/services/mention_essai.py).
+   À inclure JUSTE APRÈS la balise <script> de jsPDF : trial_watermark.js enveloppe alors son
+   constructeur pour apposer la mention sur chaque page de chaque PDF, et ajoute la mention aux
+   impressions HTML. Drapeau décidé côté serveur (context processor inject_user). #}
+<script>window.SOCALTS_MENTION_ESSAI = { active: {{ (mention_essai_active | default(false)) | tojson }}, texte: {{ (mention_essai_texte | default('')) | tojson }} };</script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/services/trial_watermark.js') }}?v=1"></script>

@@ -1,0 +1,89 @@
+{
+  "_source": "Règles de compatibilité (physique des systèmes) et valeurs GÉNÉRIQUES de pré-remplissage, à remplacer par la fiche technique de l'équipement. Conditions de mesure notées comme dans les fiches constructeurs : A = air extérieur (°C), W = départ d'eau (°C) ; pour l'air-air, la seconde valeur est l'air intérieur.",
+  "types": [
+    { "id": "air_eau", "libelle": "PAC air-eau", "reversible_possible": true, "ecs_possible": true, "systeme_emetteurs": "air_eau" },
+    { "id": "air_air", "libelle": "PAC air-air", "reversible_possible": true, "ecs_possible": false, "systeme_emetteurs": "air_air" },
+    { "id": "clim", "libelle": "Climatiseur (froid seul)", "reversible_possible": false, "ecs_possible": false, "systeme_emetteurs": "air_air" }
+  ],
+  "usages": [
+    { "id": "chauffage", "libelle": "Chauffage seul", "chauffage": true, "froid": false, "ecs": false },
+    { "id": "froid", "libelle": "Climatisation seule", "chauffage": false, "froid": true, "ecs": false },
+    { "id": "ecs", "libelle": "Eau chaude sanitaire seule", "chauffage": false, "froid": false, "ecs": true },
+    { "id": "chauffage_ecs", "libelle": "Chauffage + ECS", "chauffage": true, "froid": false, "ecs": true },
+    { "id": "chauffage_froid", "libelle": "Chauffage + climatisation", "chauffage": true, "froid": true, "ecs": false },
+    { "id": "chauffage_froid_ecs", "libelle": "Chauffage + climatisation + ECS", "chauffage": true, "froid": true, "ecs": true }
+  ],
+  "_regles": "ECS possible seulement en air-eau ; climatisation seulement avec une PAC réversible ou un climatiseur ; le climatiseur ne fait que du froid.",
+  "points_chaud_generiques": {
+    "air_eau": [
+      { "a": 7, "w": 35, "p_kw": 8.0, "cop": 4.6 },
+      { "a": 2, "w": 35, "p_kw": 7.0, "cop": 3.6 },
+      { "a": -7, "w": 35, "p_kw": 6.2, "cop": 2.8 },
+      { "a": 7, "w": 55, "p_kw": 7.6, "cop": 2.9 }
+    ],
+    "air_air": [
+      { "a": 7, "w": 20, "p_kw": 3.5, "cop": 4.2 },
+      { "a": 2, "w": 20, "p_kw": 3.0, "cop": 3.3 },
+      { "a": -7, "w": 20, "p_kw": 2.6, "cop": 2.6 }
+    ]
+  },
+  "points_froid_generiques": {
+    "air_eau": [
+      { "a": 35, "w": 18, "p_kw": 7.5, "eer": 4.2 },
+      { "a": 35, "w": 7, "p_kw": 5.8, "eer": 3.0 }
+    ],
+    "air_air": [
+      { "a": 35, "w": 27, "p_kw": 3.5, "eer": 3.6 }
+    ]
+  },
+  "modele_carnot": {
+    "_source": "COP de Carnot corrigé (physique publique) : COP = η × T_cond / (T_cond − T_evap), températures en kelvins, avec des pincements d'échangeur. Pincements et rendements η ci-dessous : hypothèses propres à ce module, utilisées seulement quand la fiche technique ne fournit pas assez de points (les points saisis recalent η).",
+    "pincement_evaporateur_air_k": 6,
+    "pincement_condenseur_eau_k": 5,
+    "pincement_condenseur_air_k": 15,
+    "pincement_evaporateur_eau_k": 5,
+    "pincement_evaporateur_air_interieur_k": 15,
+    "pincement_condenseur_air_exterieur_k": 10,
+    "eta_chaud_defaut": 0.5,
+    "eta_froid_defaut": 0.45,
+    "ecart_minimal_k": 5
+  },
+  "puissance_selon_temperature": {
+    "_source": "Hypothèse en l'absence de points de puissance : variation linéaire de la puissance disponible avec la température extérieure, bornée.",
+    "chaud_pct_par_k": 2.0,
+    "froid_pct_par_k": 1.0,
+    "borne_min": 0.4,
+    "borne_max": 1.3
+  },
+  "charge_partielle": {
+    "_source": "Cyclage marche/arrêt sous le taux de modulation minimal : COP_cyclage = COP × CR / (Cd × CR + 1 − Cd), CR = charge / puissance minimale (forme de calcul publiée dans la littérature sur les PAC, la norme EN 14825 n'étant qu'une référence méthodologique). Cd par défaut : valeur usuelle, modifiable.",
+    "modulation_min_pct": 30,
+    "cd": 0.9
+  },
+  "degivrage": {
+    "_source": "Hypothèse propre à ce module : perte de COP et de puissance maximale autour de +2 °C, nulle à −7 °C et +7 °C (triangle), proportionnelle à l'humidité au-delà de 60 % (pleine à 90 %). Ne s'applique pas si les performances saisies incluent déjà le dégivrage.",
+    "perte_max_pct": 10,
+    "t_min": -7,
+    "t_pic": 2,
+    "t_max": 7,
+    "humidite_debut_pct": 60,
+    "humidite_pleine_pct": 90
+  },
+  "liaisons_frigorifiques": {
+    "_source": "Estimation par défaut propre à ce module (à remplacer par la valeur du constructeur) : perte de puissance au-delà d'une longueur de référence précontrainte, plus dénivelé et coudes.",
+    "longueur_reference_m": 7.5,
+    "pct_par_m": 0.2,
+    "pct_par_m_denivele": 0.2,
+    "pct_par_coude_90": 0.1,
+    "pct_par_coude_180": 0.2,
+    "perte_max_pct": 25
+  },
+  "auxiliaires_defaut": {
+    "_source": "Hypothèses modifiables. Résistance de carter : active compresseur à l'arrêt sous la température indiquée.",
+    "circulateur_w": 40,
+    "veille_w": 12,
+    "carter_w": 30,
+    "carter_seuil_c": 10,
+    "ventilateur_interieur_w": 25
+  }
+}

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  {% include 'concevoir_mon_projet/components/headLinks.html' %}
+  <link href="/static/concevoir_mon_projet/CSS/Modele.css?v=2" rel="stylesheet" />
+  <link href="/static/concevoir_mon_projet/CSS/GoogleMaps.css?v=2" rel="stylesheet" />
+  <link href="/static/concevoir_mon_projet/CSS/ProfilAltimetrique.css" rel="stylesheet"/>
+  <link href="/static/concevoir_mon_projet/CSS/Tabs.css?v=2" rel="stylesheet" />
+  <link href="/static/concevoir_mon_projet/CSS/exportPlansModal.css" rel="stylesheet" />
+  <link href="/static/concevoir_mon_projet/CSS/declarationPrealable.css?v=3" rel="stylesheet" />
+  <link href="/static/concevoir_mon_projet/CSS/petitChampDossier.css?v=2" rel="stylesheet" />
+  <title>Calepinage - Socalts</title>
+  <meta name="description" content="Formulaire de calepinage pour la conception d'ombrières solaires Solakvan.">
+  <meta name="keywords" content="ombrières solaires, calepinage, panneaux solaires, Solakvan">
+</head>
+
+<body>
+  <div class="container">
+    {% include 'concevoir_mon_projet/components/menu_list.html' %}
+    {% include 'concevoir_mon_projet/pages/parametre.html' %}
+    <link href="/static/concevoir_mon_projet/CSS/GraphModal.css" rel="stylesheet" />
+  </div>
+  <div class="Section" style="overflow: hidden;">
+
+    <!-- Modele  -->
+    <div id="Modele" class="Modele"
+      style="display: flex; flex-direction: row; overflow: hidden;">
+      <div class="map-container">
+        <div id="map"></div>
+      </div>
+      <div class="resize-handle"><span class="resize-handle-icon"><i class="fas fa-chevron-left"></i></span></div>
+      <template id="calepinageTemplate">
+        {% include 'concevoir_mon_projet/pages/calepinage.html' %}
+      </template>
+      <div class="form-container">
+        <h6 class="text-center" style="color:#de0000">Calepinage<i class="fas fa-solar-panel"></i></h6>
+        <div class="tabs-container" style="background-color: rgb(238, 238, 245)">
+          <div class="tabs-header" id="pvTabs">
+            <!-- Les onglets seront ajoutés ici dynamiquement -->
+          </div>
+          <div class="tabs-content" id="pvForms" style="background-color: white">
+            <!-- Les formulaires seront ajoutés ici dynamiquement -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <!-- <script src="/static/concevoir_mon_projet/javascript/modele.js"></script> -->
+    <!-- <script src="/static/concevoir_mon_projet/javascript/vuesModele.js"></script> -->
+    <!-- <script src="/static/concevoir_mon_projet/javascript/ParametresTypeOmbriere.js"></script> -->
+    <!-- <script src="/static/concevoir_mon_projet/javascript/positionModele.js"></script> -->
+    <!-- <script src="/static/concevoir_mon_projet/javascript/param.js"></script> -->
+
+    <script src="/static/concevoir_mon_projet/javascript/menu_list.js"></script>
+   
+
+    <!-- FONCTION RESIZE -->
+    <script src="/static/concevoir_mon_projet/javascript/resize.js?v=2"></script>
+    <!-- FONCTION TABS MANAGER -->
+    <script type="module" src="/static/concevoir_mon_projet/javascript/components/TabsManager.js"></script>
+     <script type="module"
+      src="{{ url_for('static', filename='concevoir_mon_projet/javascript/parametreProjetMap/initialisationMap.js') }}?v=33"></script>
+       <!-- <script src="/static/concevoir_mon_projet/javascript/ParametresProjet.js"></script> -->
+
+    <!-- SERVICE CALEPINAGE DATA -->
+    <script type="module" src="/static/concevoir_mon_projet/javascript/services/CalepinageDataService.js"></script>
+
+    <!-- MODAL MES PROJETS -->
+    <script type="module" src="/static/concevoir_mon_projet/javascript/components/MesProjetsModal.js?v=5"></script>
+
+    <!-- LOGGER (doit être chargé avant geometrieModal.js) -->
+    <script src="/static/concevoir_mon_projet/javascript/logger.js"></script>
+
+    <!-- MODAL GEOMETRIE -->
+    <script src="/static/concevoir_mon_projet/javascript/geometrieModal.js?v=3"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <!-- pdf lib -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    {% include 'concevoir_mon_projet/components/mention_essai.html' %}
+    <!-- jsPDF-AutoTable -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <!-- PDF.js pour lire les fichiers PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+      // Configurer le worker de pdf.js
+      if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      }
+    </script>
+    <!-- Mammoth.js pour lire les fichiers .docx -->
+    <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
+
+    <!-- Chargement automatique du contenu de la page système -->
+    <script type="module" src="/static/concevoir_mon_projet/javascript/services/SystemPageLoader.js"></script>
+
+    <script>
+      HTMLCanvasElement.prototype.getContext = function (origFn) {
+        return function (type, attribs) {
+          attribs = attribs || {};
+          attribs.preserveDrawingBuffer = true;
+          return origFn.call(this, type, attribs);
+        };
+      }(HTMLCanvasElement.prototype.getContext);
+
+    </script>
+
+    <!-- Ancien formulaire ombrière/parking ("ParamètresModele", "Entraxes", "LargeursPlacesParking",
+         "PlacesParkingPMR") : ids absents de tous les templates actuels (même famille que
+         modele.js/ParametresTypeOmbriere.js ci-dessus, déjà désactivés) — provoquait une erreur
+         "Cannot read properties of null (reading 'addEventListener')" à chaque chargement de page.
+    <script>
+      const form = document.getElementById('ParamètresModele');
+      form.addEventListener('keypress', function (e) {
+        if (e.keyCode === 13) {
+          e.preventDefault();
+        }
+      })
+
+      document.getElementById("Entraxes").onkeypress = function (e) {
+        var chr = String.fromCharCode(e.which);
+        if ("0123456789*.,/".indexOf(chr) < 0)
+          return false;
+      }
+      document.getElementById("LargeursPlacesParking").onkeypress = function (e) {
+        var chr = String.fromCharCode(e.which);
+        if ("0123456789*.,/".indexOf(chr) < 0)
+          return false;
+      }
+      document.getElementById("PlacesParkingPMR").onkeypress = function (e) {
+        var chr = String.fromCharCode(e.which);
+        if ("0123456789;".indexOf(chr) < 0)
+          return false;
+      }
+    </script>
+    -->
+
+    <!-- Restriction géographique du calepinage : valeur définie côté backend uniquement
+         (cf. config.py -> Config.PROJECT_RADIUS_LIMIT_KM), à ne jamais redéfinir en dur côté JS. -->
+    <script>
+        window.PROJECT_RADIUS_LIMIT_KM = parseFloat("{{ project_radius_limit_km }}");
+    </script>
+
+    <!-- window.ACTIVE_PROJECT_TYPOLOGIE est défini par parametre.html (inclus plus haut dans cette
+         page), qui est partagé par toutes les pages du module concevoir_mon_projet — masquage
+         spécifique à cette page (panneau calepinage) uniquement. -->
+    <script>
+        if (window.isResidentialPath()) {
+            document.addEventListener('DOMContentLoaded', () => {
+                const formContainer = document.querySelector('.form-container');
+                const resizeHandle = document.querySelector('.resize-handle');
+                if (formContainer) formContainer.style.display = 'none';
+                if (resizeHandle) resizeHandle.style.display = 'none';
+            });
+        }
+    </script>
+
+    <!-- CORRECTIF (bug rapporté : "un projet supprimé — cas du calepinage maison résidentielle —
+         reste ouvert/affiché sur la carte même après avoir actualisé la page") : le calepinage
+         résidentiel (calepinage_maison_v1/calepinage_maison_polygons_v1) et le calepinage
+         grands-projets (solarProjectData...) vivent dans des clés localStorage GLOBALES, jamais
+         scopées par projet — supprimer un projet côté serveur ne les efface donc jamais côté
+         client, et un rechargement de page ne fait que redessiner ce qui traîne encore dans ces
+         clés. Ce script (classique, PAS un module — s'exécute avant tout le reste, notamment avant
+         MaisonPolygonManagerInstance.restorePolygons()/storageManager.loadPageData() plus bas dans
+         la page) compare le projet actif CÔTÉ SERVEUR (vérifié en base, cf. main.py:index()) à
+         celui mémorisé côté client — s'ils ne correspondent plus (projet supprimé, ou changé
+         depuis un autre onglet/poste), on vide ces clés AVANT que quoi que ce soit ne les lise. -->
+    <script>
+        (function () {
+            const serverActiveProjetId = "{{ active_projet_id|default('', true) }}";
+            const localProjetId = localStorage.getItem('current_projet_id');
+            if (localProjetId && String(localProjetId) !== String(serverActiveProjetId)) {
+                localStorage.removeItem('current_projet_id');
+                localStorage.removeItem('current_projet_nom');
+                localStorage.removeItem('solarProjectData');
+                localStorage.removeItem('solarProjectData_owner_id');
+                localStorage.removeItem('solar_sim_data');
+                localStorage.removeItem('solar_storage_data');
+                localStorage.removeItem('calepinage_maison_v1');
+                localStorage.removeItem('calepinage_maison_polygons_v1');
+                localStorage.removeItem('calepinage_maison_owner_id');
+                // Système hybride (modale de consommation) : données de l'ancien projet actif.
+                Object.keys(localStorage).filter((k) => k.startsWith('skv_systeme_hybride_')).forEach((k) => localStorage.removeItem(k));
+                sessionStorage.removeItem('activeAutoconsoRate');
+            }
+
+            // CORRECTIF (bug rapporté : "fuite de données — les maisons/champs PV du calepinage
+            // résidentiel d'un projet apparaissent dans un autre projet") : le test ci-dessus ne
+            // suffit pas pour ce cas précis, car les points d'entrée de changement de projet (menu
+            // "Mes projets", sélection dans Paramètres projet) mettent déjà à jour current_projet_id
+            // CÔTÉ CLIENT avant même de recharger la page — le désaccord ci-dessus ne se produit
+            // donc jamais dans ce flux normal. calepinage_maison_owner_id (posé par
+            // polygon_maison.js::_persistPolygons()/calepinage_maison_persistence_db.js) reste lui
+            // sur l'ANCIEN projet tant que rien n'a encore réécrit ces clés pour le nouveau — un
+            // désaccord avec le projet actif SERVEUR ici signale donc de façon fiable un cache
+            // calepinage maison obsolète, quel que soit le point d'entrée emprunté.
+            const maisonOwnerId = localStorage.getItem('calepinage_maison_owner_id');
+            if (maisonOwnerId && String(maisonOwnerId) !== String(serverActiveProjetId)) {
+                localStorage.removeItem('calepinage_maison_v1');
+                localStorage.removeItem('calepinage_maison_polygons_v1');
+                localStorage.removeItem('calepinage_maison_owner_id');
+            }
+
+            // MÊME CORRECTIF, appliqué au calepinage Pro/Grand-projet (angle mort symétrique resté
+            // non traité jusqu'ici) : le tout premier test ci-dessus (localProjetId vs serveur) ne
+            // suffit pas non plus pour solarProjectData, exactement pour la même raison que pour
+            // calepinage_maison_owner_id juste au-dessus — current_projet_id est déjà basculé côté
+            // client avant le rechargement de page dans le flux normal de changement de projet, donc
+            // ce premier test y est systématiquement vrai et inefficace. solarProjectData_owner_id
+            // (posé par CalepinageDataService.js) reste lui sur l'ANCIEN projet tant que rien n'a
+            // encore rechargé les données du nouveau — un désaccord avec le projet actif SERVEUR
+            // signale donc de façon fiable un cache calepinage Pro/Grand-projet obsolète.
+            const solarOwnerId = localStorage.getItem('solarProjectData_owner_id');
+            if (solarOwnerId && String(solarOwnerId) !== String(serverActiveProjetId)) {
+                localStorage.removeItem('solarProjectData');
+                localStorage.removeItem('geometriePlansData');
+                localStorage.removeItem('solarProjectData_owner_id');
+            }
+        })();
+    </script>
+
+    <!-- GOOGLE MAPS API -->
+    <script>
+        (g => { var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window; b = b[c] || (b[c] = {}); var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams, u = () => h || (h = new Promise(async (f, n) => { await (a = m.createElement("script")); e.set("libraries", [...r] + ""); for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]); e.set("callback", c + ".maps." + q); a.src = `https://maps.${c}apis.com/maps/api/js?` + e; d[q] = f; a.onerror = () => h = n(Error(p + " could not load.")); a.nonce = m.querySelector("script[nonce]")?.nonce || ""; m.head.append(a) })); d[l] ? console.warn(p + " only loads once. Ignoring:", g) : d[l] = (f, ...n) => r.add(f) && u().then(() => d[l](f, ...n)) })({
+          key: "{{ google_maps_key }}",
+          v: "3.64",
+          language: "fr",
+          libraries: "drawing,geometry,marker,places",
+          //libraries: "drawing,geometry,marker,places,maps,rendering",
+          // Use the 'v' parameter to indicate the version to use (weekly, beta, alpha, etc.).
+          // Add other bootstrap parameters as needed, using camel case.
+        });
+    </script>
+    <script type="module" src="/static/concevoir_mon_projet/javascript/GoogleMaps.js?v=3"></script>
+
+    <!-- LOADING INDICATOR -->
+    <script type="module">
+      import LoadingIndicator from '/static/concevoir_mon_projet/javascript/components/LoadingIndicator.js';
+
+      // Initialiser le loading indicator globalement
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!window.loadingIndicator) {
+          window.loadingIndicator = new LoadingIndicator();
+          console.log('✅ LoadingIndicator initialisé');
+        }
+      });
+    </script>
+
+    <!-- FONCTION SUMMARY MODAL -->
+    <script type="module">
+      import SummaryModal from '/static/concevoir_mon_projet/javascript/components/SummaryModal.js';
+
+      // Attendre que le DOM soit chargé
+      document.addEventListener('DOMContentLoaded', () => {
+        // Initialiser la modale
+        const summaryModal = new SummaryModal();
+      });
+    </script>
+    <!-- FONCTION GRAPH MODAL -->
+    <script type="module">
+      import GraphModal from '/static/concevoir_mon_projet/javascript/components/GraphModal.js';
+      // Attendre que le DOM soit chargé
+      document.addEventListener('DOMContentLoaded', () => {
+        // Initialiser la modale
+        const graphModal = new GraphModal();
+      });
+    </script>
+
+    <!-- Génération du PDF "Devis" résidentiel (onglet "Devis" du modal Export des plans ci-dessous) :
+         fichier autonome (pas de dépendance aux autres scripts de etude_economique/residentiel/,
+         non chargés sur cette page), cf. plan Chiffrage & Devis Résidentiel. -->
+    <script src="/static/concevoir_mon_projet/javascript/etude_economique/residentiel/DevisPdfGenerator.js?v=17"></script>
+
+    <!-- EXPORT DES PLANS EN PDF ET DXF -->
+    <script type="module">
+      import ExportPlansModal from '/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/ExportPlansModal.js?v=7';
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!window.exportPlansModal) {
+          window.exportPlansModal = new ExportPlansModal();
+        }
+      });
+    </script>
+
+    <!-- DÉCLARATION PRÉALABLE (dossier DP toiture résidentielle, généré dans le navigateur) :
+         ouvert depuis le menu horizontal (menu_list.html::openDeclarationPrealable). Depuis une
+         autre page, le menu redirige ici avec ?dp=1 : le modal s'ouvre une fois la carte prête. -->
+    <script type="module">
+      import DpModal from '/static/concevoir_mon_projet/javascript/declaration_prealable/DpModal.js?v=4';
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!window.declarationPrealableModal) window.declarationPrealableModal = new DpModal();
+        if (new URLSearchParams(window.location.search).get('dp') === '1') {
+          const ouvrirQuandPret = (essais) => {
+            if (window.map && window.mapViewsControl) window.declarationPrealableModal.open();
+            else if (essais > 0) setTimeout(() => ouvrirQuandPret(essais - 1), 500);
+          };
+          ouvrirQuandPret(40);
+        }
+      });
+    </script>
+
+    <!-- DOSSIER DE PLANS DE CONCEPTION « Petit champ solaire » : ouvert depuis le configurateur
+         (iframe du modal géométrie, bouton « Dossier de plans de conception ») par postMessage ;
+         vit dans cette page pour accéder à la carte, à la 3D et aux résultats du calepinage. -->
+    <script type="module">
+      import PetitChampDossierModal from '/static/concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/dossier_plans/PetitChampDossierModal.js?v=12';
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!window.petitChampDossierModal) window.petitChampDossierModal = new PetitChampDossierModal();
+      });
+    </script>
+
+    <!-- DOSSIER DE PLANS DE CONCEPTION « Ombrières » (toutes les ombrières du projet) : ouvert par le
+         bouton de la barre d'outils de la carte (ButtonControl, #ombrieres-dossier-plans-button).
+         Même modal que le petit champ solaire (petitChampDossier.css). -->
+    <script type="module">
+      import OmbriereDossierModal from '/static/concevoir_mon_projet/javascript/geometrie_structure/ombrieres/dossier_plans/OmbriereDossierModal.js?v=14';
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!window.ombriereDossierModal) window.ombriereDossierModal = new OmbriereDossierModal();
+      });
+    </script>
+
+    <!-- EXPORT DXF DU PLAN DE MASSE demandé depuis le configurateur « Petit champ solaire »
+         (bouton de son bloc Actions, dans l'iframe du modal géométrie) : la génération a lieu ici,
+         seule page à disposer de la carte, de drawingControl et de CalepinageMaisonPlans. -->
+    <script type="module">
+      import installerPontPlanDeMasse from '/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/PlanDeMassePont.js?v=4';
+      installerPontPlanDeMasse();
+    </script>
+
+    <script>
+      // Initialisation
+      document.addEventListener("DOMContentLoaded", () => {
+        const informationModal = document.getElementById("information-modal");
+        const buttonPopupInformaion = document.getElementById("popup-informaion");
+        const closeButtonInformaion = document.getElementById(
+          "close-button-information"
+        );
+
+        /**
+         * Ouvre une modale
+         * @param {HTMLElement} modalElement L'élément de la modale à ouvrir
+         */
+        function openModalInformation(modalElement) {
+          if (modalElement) {
+            modalElement.style.display = "flex";
+          }
+        }
+
+        /**
+         * Ferme une modale
+         * @param {HTMLElement} modalElement L'élément de la modale à fermer
+         */
+        function closeModalInformation(modalElement) {
+          if (modalElement) {
+            modalElement.style.display = "none";
+          }
+        }
+
+        // buttonPopupInformaion/closeButtonInformaion : ids absents du DOM actuel (bouton
+        // d'ouverture jamais présent dans les templates, fermeture déjà assurée par le bouton
+        // "Fermer" générique data-close-modal="information-modal") — gardes ajoutées pour éviter
+        // "Cannot read properties of null (reading 'addEventListener')" à chaque chargement de page.
+        if (buttonPopupInformaion) {
+          buttonPopupInformaion.addEventListener("click", () =>
+            openModalInformation(informationModal)
+          );
+        }
+        if (closeButtonInformaion) {
+          closeButtonInformaion.addEventListener("click", () =>
+            closeModalInformation(informationModal)
+          );
+        }
+      });
+    </script>
+
+    <!-- Script du navigateur séquentiel de modales -->
+    <script src="/static/concevoir_mon_projet/javascript/navigation-modales.js?v=6"></script>
+
+    <!-- VALIDATION CALEPINAGE : affiche une modale de recommandation après dessin d'une ombrière -->
+    <script src="/static/concevoir_mon_projet/javascript/gestion_calepin/gestion_calepinage.js"></script>
+
+    {% include 'concevoir_mon_projet/components/page_navigation.html' %}
+</body>
+
+</html>

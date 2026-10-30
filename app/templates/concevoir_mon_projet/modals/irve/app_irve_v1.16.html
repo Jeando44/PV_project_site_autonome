@@ -1,0 +1,2413 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <!-- Version des données du projet : cette modale intégrée reprend l'onglet de la page parente
+         (services/version_projet.js) — à charger avant tout script qui enregistre. -->
+    <script src="/static/concevoir_mon_projet/javascript/services/version_projet.js?v=3"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dimensionnement IRVE - Solakvan BET Solar</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Étiquettes des camemberts de la section Rentabilité (non enregistré globalement : activé
+         graphique par graphique, les autres graphiques de la page sont inchangés). -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    {% include 'concevoir_mon_projet/components/mention_essai.html' %}
+    <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/modalHeaderCommon.css">
+
+    <!-- Typologie du projet actif : cette page est une route indépendante (pas incluse dans
+         parametre.html) — utilisée pour masquer la colonne "Garantie (années)" du tableau des
+         bornes de recharge hors typologie Résidentielle (cf. calcul_irve.js). -->
+    <script>
+        window.ACTIVE_PROJECT_TYPOLOGIE = "{{ active_projet_typologie|default('', true) }}";
+        // Forme canonique (« Residentielle » sans accent -> « Résidentielle »), cf. parametre.html.
+        window.ACTIVE_PROJECT_TYPOLOGIE = (function (v) {
+            var cle = function (x) { return String(x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim(); };
+            var canoniques = ['Résidentielle', 'Professionnelle (C&I)', 'Grand projet'];
+            for (var i = 0; i < canoniques.length; i++) { if (cle(canoniques[i]) === cle(v)) return canoniques[i]; }
+            return String(v || '').trim();
+        })(window.ACTIVE_PROJECT_TYPOLOGIE);
+        // Page indépendante (sa propre fenêtre/iframe) : redéfinition nécessaire, identique à
+        // parametre.html (cf. son commentaire pour le contexte).
+        window.TYPOLOGIE_RESIDENTIELLE = 'Résidentielle';
+
+        // Type de connexion du projet actif ('connecte' / 'hors-ligne'), valeur AUTORITAIRE calculée en
+        // base côté serveur (cf. main.py::_compute_active_projet_type_connexion, injectée dans tous les
+        // templates par un context processor). Jusqu'ici, le frontend ne disposait que de
+        // localStorage.solarProjectData.projectInfo.typeDeProjet — écrite depuis le DOM du formulaire,
+        // donc vide après un rechargement, sur un autre navigateur, ou pour un projet simplement
+        // rechargé depuis la base.
+        window.ACTIVE_PROJECT_TYPE_CONNEXION = "{{ active_projet_type_connexion|default('', true) }}";
+        // Mode de valorisation du projet actif, vérifié en base (context processor main.py) : décide
+        // de l'import de consommation (ACI fichier unique / ACC multi-fichiers) et des lignes Enedis
+        // (cf. switchgrid_workflow.js::_sgReadValorisationMode). Le localStorage n'est qu'un repli.
+        window.ACTIVE_PROJECT_MODE_VALORISATION = "{{ active_projet_mode_valorisation|default('', true) }}";
+        // Adresse du projet actif (JSON : libellé + latitude/longitude), issue de la base côté serveur
+        // (cf. main.py::_inject_active_projet_contexte). Utilisée par autonomyCalculator.js et pompage_solaire_section.js.
+        window.ACTIVE_PROJECT_ADRESSE = {{ active_projet_adresse|tojson|safe }};
+        // Projet actif vérifié en base contre l'utilisateur : clé de la persistance du pompage solaire.
+        window.ACTIVE_PROJECT_ID_VERIFIE = {{ active_projet_id_verifie|tojson|safe }};
+        // Pays du projet actif (base) : inclinaison proposée par défaut du pompage solaire.
+        window.ACTIVE_PROJECT_PAYS = {{ active_projet_pays|default('', true)|tojson|safe }};
+        // Utilisateur connecté : avec le projet, clé du stockage local du système hybride (aucune donnée
+        // partagée entre utilisateurs d'un même navigateur).
+        window.ACTIVE_USER_ID = {{ active_utilisateur_id|tojson|safe }};
+        window.ACTIVE_PROJECT_NOM = {{ active_projet_nom|default('', true)|tojson|safe }};
+        // Même logique que TYPOLOGIE_RESIDENTIELLE : littéral centralisé. Valeur produite par la carte
+        // "Site autonome ou Projet PV Hybride" (parametre.html, #id_projet_non_connecter/data-type).
+        window.TYPE_CONNEXION_HORS_LIGNE = 'hors-ligne';
+
+        /** Projet "Site autonome ou Projet PV Hybride" (pas de raccordement réseau). */
+        window.isSiteAutonomeProject = function () {
+            return window.ACTIVE_PROJECT_TYPE_CONNEXION === window.TYPE_CONNEXION_HORS_LIGNE;
+        };
+
+        /**
+         * Vrai si le projet actif suit le PARCOURS RÉSIDENTIEL (calepinage maison, palette d'outils
+         * réduite, étude économique et rapport résidentiels).
+         *
+         * Demande explicite : un projet Site autonome emprunte ce parcours QUELLE QUE SOIT sa typologie
+         * (Résidentielle ET Professionnelle (C&I) — les deux seules proposées pour ce type de
+         * connexion). C'est la raison d'être de cette indirection : les comparaisons directes
+         * `ACTIVE_PROJECT_TYPOLOGIE === TYPOLOGIE_RESIDENTIELLE` disséminées dans le code excluaient de
+         * fait tout projet hors-ligne Professionnel du parcours qui lui est pourtant destiné.
+         */
+        window.isResidentialPath = function () {
+            return window.ACTIVE_PROJECT_TYPOLOGIE === window.TYPOLOGIE_RESIDENTIELLE
+                || window.isSiteAutonomeProject();
+        };
+    </script>
+
+    <style>
+        /* Variables de style */
+        :root {
+            --bg-page: #f0f2f5;
+            --bg-modal: #ffffff;
+            --bg-panel: #f8f9fa;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --accent-primary: #dc2626;
+            /* Rouge Solakvan */
+            --accent-primary-hover: #991b1b;
+            --main-color: #DC2626;
+            --main-color-hover: #B91C1C;
+            --accent-green: #1E8449;
+            /* Vert foncé pour le bouton Calculer */
+            --accent-green-hover: #156d3a;
+            --accent-orange: #f97316;
+            /* Orange pour optimisation/export */
+            --border-color: #e5e7eb;
+            --danger-color: #ef4444;
+            --success-color: #22c55e;
+            --font-family: 'Inter', sans-serif;
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --border-radius-lg: 0.75rem;
+            --border-radius-md: 0.5rem;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        /* Styles généraux */
+        body {
+            font-family: var(--font-family);
+            height: 100vh;
+            margin: 0;
+            position: relative;
+            background-color: var(--bg-page);
+        }
+
+        /* Modale principale */
+        #app-modal {
+            display: flex;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 95vw;
+            height: 95vh;
+            max-width: 1400px;
+            min-width: 900px;
+            min-height: 700px;
+            background-color: var(--bg-modal);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 1002;
+            flex-direction: column;
+            overflow: hidden;
+            border: 2px solid var(--accent-primary);
+        }
+
+        /* Mode embedded (dans iframe du modal universel) */
+        #app-modal.embedded-mode {
+            position: static !important;
+            top: auto !important;
+            left: auto !important;
+            transform: none !important;
+            width: 100% !important;
+            height: 100vh !important;
+            max-width: none !important;
+            min-width: auto !important;
+            min-height: auto !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+
+        #app-modal.embedded-mode #modal-header {
+            display: none !important;
+        }
+
+        #app-modal.embedded-mode #resize-handle {
+            display: none !important;
+        }
+
+        #modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1001;
+        }
+
+        body.embedded-mode #modal-backdrop {
+            display: none !important;
+        }
+
+        /* En-tête unifiée gérée par modalHeaderCommon.css */
+
+        #resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 15px;
+            height: 15px;
+            cursor: nwse-resize;
+            background-image: linear-gradient(135deg, transparent 40%, var(--accent-primary) 40%, var(--accent-primary) 60%, transparent 60%);
+            background-repeat: no-repeat;
+        }
+
+        /* Contenu et Navigation */
+        .app-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .tabs-container {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            padding: 0 1.5rem;
+            background-color: var(--bg-modal);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .tab-menu {
+            display: flex;
+            gap: 0;
+            margin-right: auto;
+        }
+
+        /* CORRECTIF : renommé depuis .tab-button — calcul_irve.js attache un écouteur de clic
+           vestigial à TOUS les .tab-button de la page (ancien switcher matériels/énergie à 2
+           onglets, cf. "GESTION DES ONGLETS", tabList=['materiels','energie'], mais #energie
+           n'existe plus dans ce template). Réutiliser .tab-button pour ce menu faisait donc
+           déclencher switchTab(null) à chaque clic, qui retire .active de #materiels (seul
+           .tab-pane restant) et masque tout le contenu de la modale. Classe dédiée = plus de
+           collision, tout en gardant le même rendu visuel. */
+        .irve-nav-btn {
+            padding: 0.75rem 1.25rem;
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: none;
+            border: none;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: color 0.2s, border-bottom-color 0.2s;
+            margin-bottom: -1px;
+        }
+
+        .irve-nav-btn.active {
+            color: var(--accent-primary);
+            border-bottom-color: var(--accent-primary);
+            font-weight: 600;
+        }
+
+        /* Classe pour forcer la capitalisation de la première lettre seulement */
+        .capitalize-first-letter::first-letter {
+            text-transform: uppercase !important;
+        }
+
+        /* Contenu des onglets */
+        .tab-content {
+            padding: 1.5rem;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        .tab-pane {
+            display: none;
+            height: 100%;
+        }
+
+        .tab-pane.active {
+            display: block;
+        }
+
+        /* Styles des titres */
+        h2,
+        h3 {
+            color: var(--text-primary);
+        }
+
+        h2 {
+            margin: 0 0 1.5rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        h3 {
+            margin: 0 0 1rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            text-align: center;
+        }
+
+        /* La classe 'capitalize-first' force la première lettre en majuscule, le reste en minuscule */
+        .capitalize-first::first-letter {
+            text-transform: uppercase;
+        }
+
+        .capitalize-first {
+            text-transform: lowercase;
+        }
+
+        /* Formulaires */
+        .form-section {
+            background-color: var(--bg-panel);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-md);
+            margin-bottom: 0rem;
+            border: 1px solid var(--border-color);
+            line-height: 1.8;
+            display: grid;
+            gap: 1rem 0;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-bottom: 1rem;
+        }
+
+        .input-group label {
+            font-weight: 500;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Style du champ de saisie lui-même */
+        .modern-input {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            font-size: 0.95rem;
+            font-family: inherit;
+            background-color: #ffffff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* Effet au clic (Focus) */
+        .modern-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
+            outline: none;
+        }
+
+        /* Mini-shim de grille/formulaire façon Bootstrap : la section "Enedis" (demande de courbe de
+           charge, cf. Irve/switchgrid_workflow.js) a été déplacée depuis parametre.html avec ses
+           classes d'origine (row, col-md-N, form-label, form-control), mais cette page ne charge pas
+           Bootstrap — ces classes restaient donc sans style. On leur donne ici le même rendu que
+           .input-group / .modern-input déjà utilisés partout ailleurs dans ce fichier, plutôt que de
+           réécrire tout le HTML/JS générés avec les classes d'origine. */
+        .row {
+            display: flex;
+            flex-wrap: wrap;
+            margin: 0 -0.5rem;
+        }
+
+        .row>[class*="col-"] {
+            padding: 0 0.5rem;
+            box-sizing: border-box;
+        }
+
+        .col-md-2 {
+            flex: 0 0 16.6667%;
+            max-width: 16.6667%;
+        }
+
+        .col-md-5 {
+            flex: 0 0 41.6667%;
+            max-width: 41.6667%;
+        }
+
+        .col-md-10 {
+            flex: 0 0 83.3333%;
+            max-width: 83.3333%;
+        }
+
+        .g-2 {
+            row-gap: 0.5rem;
+        }
+
+        .align-items-end {
+            align-items: flex-end;
+        }
+
+        .justify-content-center {
+            justify-content: center;
+        }
+
+        .mb-3 {
+            margin-bottom: 1rem;
+        }
+
+        .mt-1 {
+            margin-top: 0.25rem;
+        }
+
+        .mt-2 {
+            margin-top: 0.5rem;
+        }
+
+        .mt-3 {
+            margin-top: 1rem;
+        }
+
+        .ms-2 {
+            margin-left: 0.5rem;
+        }
+
+        .d-inline-block {
+            display: inline-block;
+        }
+
+        .w-100 {
+            width: 100%;
+        }
+
+        .small {
+            font-size: 0.85rem;
+        }
+
+        .text-danger {
+            color: var(--danger-color);
+        }
+
+        .text-muted {
+            color: var(--text-secondary);
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            margin-bottom: 0.35rem;
+        }
+
+        .form-control {
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            font-size: 0.95rem;
+            font-family: inherit;
+            background-color: #ffffff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            box-sizing: border-box;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(220, 38, 38, 0.15);
+            outline: none;
+        }
+
+        .form-control.is-invalid {
+            border-color: var(--danger-color);
+        }
+
+        .form-control-sm {
+            padding: 0.3rem 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .btn-outline-secondary,
+        .btn-outline-danger {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: none;
+            cursor: pointer;
+            border-radius: var(--border-radius-md);
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        .btn-outline-secondary {
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+        }
+
+        .btn-outline-secondary:hover {
+            background-color: #f3f4f6;
+        }
+
+        .btn-outline-danger {
+            border: 1px solid var(--danger-color);
+            color: var(--danger-color);
+        }
+
+        .btn-outline-danger:hover {
+            background-color: var(--danger-color);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.35rem 0.6rem;
+            font-size: 0.85rem;
+        }
+
+        /* Grille pour afficher 2 coefficients côte à côte */
+        .input-grid-2x {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        /* Grille pour afficher 3 coefficients ou plus */
+        .input-grid-auto {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 1rem;
+        }
+
+        /* Styles des boutons d'actions */
+        .btn-base {
+            padding: 0.7rem 1.2rem;
+            border: none;
+            border-radius: var(--border-radius-md);
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s, box-shadow 0.2s;
+            /* MODIFICATION: Décapitalisation pour utiliser la classe */
+            text-transform: none;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-calculate-irve {
+            background-color: var(--accent-green);
+            color: white;
+            padding: 0.8rem 1.5rem;
+            /* MODIFICATION: Décapitalisation pour utiliser la classe */
+            text-transform: none;
+        }
+
+        .btn-calculate-irve:hover {
+            background-color: var(--accent-green-hover);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-primary);
+            color: white;
+            /* MODIFICATION: Décapitalisation pour utiliser la classe */
+            text-transform: none;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--text-secondary);
+            color: white;
+            /* MODIFICATION: Décapitalisation pour utiliser la classe */
+            text-transform: none;
+        }
+
+        .btn-secondary:hover {
+            background-color: #525a65;
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+            padding: 0.3rem 0.6rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            text-transform: none;
+        }
+
+        .btn-danger:hover {
+            background-color: #c53030;
+        }
+
+        /* Import CdC (courbes de production/consommation, cf. Irve/irve_consumption_import.js) :
+           mise en page des boutons d'import et de la zone "fichier sélectionné", non scopée à un id
+           particulier (contrairement à style_autonconso.css) pour rester réutilisable telle quelle. */
+        .file-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .file-buttons>label,
+        .file-buttons>button {
+            flex-grow: 1;
+            text-align: center;
+            padding: 0.6rem 0.8rem;
+            border-radius: var(--border-radius-md);
+        }
+
+        /* Import CdC — mode ACC (renderAccConsumersInput, cf. prodsolaire/main_acc.js, réutilisé tel
+           quel sur cette page) : classes portées depuis style_autonconso.css (non chargé ici) pour que
+           le tableau des consommateurs et les clés de répartition gardent le même rendu que sur la
+           page Autoconsommation, au lieu d'un tableau HTML brut sans style. */
+        .table-card {
+            background: var(--bg-modal);
+            padding: 1rem;
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .seasonal-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .seasonal-table th,
+        .seasonal-table td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .seasonal-table th {
+            background-color: var(--text-secondary);
+            color: white;
+            font-weight: 500;
+        }
+
+        .seasonal-table tbody tr:nth-child(even) {
+            background-color: var(--bg-page);
+        }
+
+        .eco-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            box-sizing: border-box;
+            background-color: #f9fafb;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            text-align: center;
+            font-size: 0.9rem;
+        }
+
+        .eco-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+            outline: none;
+            background-color: #fff;
+        }
+
+        .acc-keys-section-container {
+            padding: 1.25rem;
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .acc-key-input-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .acc-key-label {
+            flex: 1;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .acc-key-input-wrapper {
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .acc-key-input-wrapper:focus-within {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+        }
+
+        .acc-key-input-wrapper input.acc-key-input {
+            border: none;
+            outline: none;
+            background: transparent;
+            width: 60px;
+            text-align: right;
+            padding: 0.5rem 0.2rem 0.5rem 0.8rem;
+        }
+
+        .acc-key-input-wrapper span {
+            padding-right: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+
+        /* 2. Onglet Choix de matériels */
+        .btn-add-irve {
+            background-color: #9ca3af;
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            margin-top: 1.5rem;
+            margin-bottom: 0.5rem;
+            transition: background-color 0.2s;
+            /* MODIFICATION: Décapitalisation pour utiliser la classe */
+            text-transform: none;
+        }
+
+        .btn-add-irve:hover {
+            background-color: #6b7280;
+        }
+
+        /* 2.3: Espacement entre bouton et tableau */
+        #irve-selection-table-container {
+            margin-top: 3mm;
+        }
+
+        .irve-selection-table-container {
+            overflow-x: auto;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+        }
+
+        #irve-selection-table {
+            table-layout: fixed;
+            width: 100%;
+            min-width: 900px;
+        }
+
+        #irve-selection-table th:nth-child(1) {
+            width: 15%;
+        }
+
+        #irve-selection-table th:nth-child(4) {
+            width: 10%;
+        }
+
+        #irve-selection-table th:nth-child(5) {
+            width: 10%;
+        }
+
+        #irve-selection-table th:nth-child(6) {
+            width: 8%;
+        }
+
+        /* Centrage de la puissance totale et action dans le tableau Materiels */
+        #irve-selection-table th:nth-child(7),
+        #irve-selection-table td:nth-child(7) {
+            text-align: center;
+            width: 10%;
+        }
+
+        #irve-selection-table th:nth-child(8),
+        #irve-selection-table td:nth-child(8) {
+            text-align: center;
+            width: 10%;
+        }
+
+        #irve-selection-table input[type="number"],
+        #irve-selection-table select,
+        #irve-selection-table input[type="text"] {
+            width: 90%;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        /* 2.2: Ligne des totaux */
+        #irve-selection-table tfoot td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            font-weight: bold;
+            background-color: #e0e0e0;
+            text-align: center;
+        }
+
+        #irve-selection-table tfoot td:nth-child(5) {
+            text-align: right;
+        }
+
+
+        /* 3. Onglet Bilan de Puissance */
+        /* Mise en forme: 2 cartes côte à côte */
+        .bilan-input-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Mise en forme: tableau des résultats + bouton Calculer alignés */
+        .bilan-results-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        /* Tableaux de Bilan et Résumé */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            margin-top: 1rem;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .results-table th,
+        .results-table td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            text-align: center;
+        }
+
+        .results-table thead th {
+            background-color: var(--accent-primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        .results-table tbody tr:nth-child(even) {
+            background-color: var(--bg-panel);
+        }
+
+        /* Tableau d'équipements (modélisation des charges, Méthode 1) : style moderne épuré */
+        #equipment-table-body input[type="text"],
+        #equipment-table-body input[type="number"] {
+            width: 100%;
+            padding: 0.35rem 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            font-size: 0.85rem;
+            font-family: inherit;
+            background-color: #ffffff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        #equipment-table-body input[type="text"]:focus,
+        #equipment-table-body input[type="number"]:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(30, 132, 73, 0.15);
+        }
+
+
+        #bilan-summary-table {
+            width: 55%;
+            max-width: 60%;
+            margin-left: 0;
+            margin-right: 0;
+            flex-shrink: 0;
+        }
+
+        /* Centrage de la première colonne (indicateur) */
+        .results-table tbody tr td:first-child {
+            text-align: center;
+            font-weight: 500;
+        }
+
+        /* 3.2: Bouton Calculer à droite */
+        #bilan-calculate-btn-right {
+            align-self: center;
+            height: fit-content;
+            margin-left: auto;
+        }
+
+        /* Message d'avertissement */
+        .alert {
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius-md);
+            margin-top: 1.5rem;
+            font-weight: 500;
+            border-left: 5px solid;
+            display: flex;
+            gap: 1rem;
+            align-items: flex-start;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .alert-warning {
+            background-color: #fff8e1;
+            border-color: #ffc107;
+            color: #856404;
+        }
+
+        .alert-icon {
+            font-size: 1.5rem;
+            line-height: 1;
+            color: #ffc107;
+        }
+
+        /* Mise en page Chute de Tension (SUPPRIMÉE, remplacée par Localisation) */
+        .ct-layout-grid,
+        .ct-card {
+            display: none;
+        }
+
+        /* Graphiques */
+        .charts-container-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 1.5rem;
+        }
+
+        /* Zone de message flottante */
+        #message-area {
+            position: fixed;
+            background-color: var(--accent-primary);
+            color: white;
+            padding: 8px 15px;
+            border-radius: 8px;
+            box-shadow: var(--shadow-lg);
+            opacity: 0;
+            transition: opacity 0.5s, transform 0.5s;
+            transform: translateY(20px);
+            z-index: 10000;
+            pointer-events: none;
+        }
+
+        #message-area.visible {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        #message-area.error {
+            background-color: var(--danger-color);
+        }
+
+        /* Modal Capacité Batterie */
+        #batterie-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 10001;
+            border: 2px solid var(--accent-primary);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* 4. Onglet Énergie Consommée */
+        .energie-cards-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .energy-card {
+            background-color: var(--bg-panel);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .energy-card h3 {
+            text-align: left;
+            border-bottom: none;
+            padding-bottom: 0;
+            margin-bottom: 1rem;
+        }
+
+        /* Styles pour les champs de rendement dans Energie Consommée */
+        #planning-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        #planning-controls .input-group {
+            flex-direction: row;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        #capacite-batterie-btn {
+            background-color: #0d9488;
+            /* Couleur cyan/teal */
+            color: white;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: none;
+            transition: background-color 0.2s;
+        }
+
+        #capacite-batterie-btn:hover {
+            background-color: #0f766e;
+        }
+
+
+        /* Styles spécifiques au tableau de planification par groupe */
+        #planning-detail-table th:nth-child(1) {
+            width: 15%;
+            text-align: left;
+        }
+
+        #planning-detail-table th:nth-child(2) {
+            width: 10%;
+        }
+
+        #planning-detail-table th:nth-child(3) {
+            width: 8%;
+        }
+
+        #planning-detail-table th:nth-child(4) {
+            width: 12%;
+        }
+
+        #planning-detail-table th:nth-child(5) {
+            width: 55%;
+        }
+
+        /* Modale « Configuration Batterie & Éco » (analyse_eco_irve.js) */
+        #batterie-detail-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 10000;
+        }
+
+        #batterie-detail-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-modal, #fff);
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            border: 2px solid var(--accent-primary);
+            box-sizing: border-box;
+        }
+
+        /* --- Overlay de la modale d'estimation --- */
+        #recharge-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 10000;
+        }
+
+        /* --- Contenu de la modale d'estimation --- */
+        #recharge-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 10001;
+            border: 2px solid var(--accent-primary);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 400px;
+            font-family: var(--font-family);
+        }
+
+        #recharge-modal-content p {
+            margin: 5px 0;
+        }
+
+        .time-slider-container {
+            margin-top: 0.5rem;
+            background: #fff;
+            padding: 0.75rem 1rem 1rem;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .time-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.4rem;
+        }
+
+        .hour-segment-grid {
+            display: grid;
+            gap: 1px;
+            background-color: var(--border-color);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .segment {
+            background-color: #e0e7ff;
+            height: 28px;
+            cursor: pointer;
+            transition: background-color 0.1s;
+        }
+
+        .segment:hover {
+            background-color: #c7d2fe;
+        }
+
+        .segment.selected {
+            background-color: var(--accent-primary);
+        }
+
+        .segment.selected:hover {
+            background-color: var(--accent-primary-hover);
+        }
+
+        /* Boutons de planification rapide */
+        .quick-plan-buttons {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+        }
+
+        .quick-plan-buttons button {
+            background-color: #f97316;
+            color: white;
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #e06815;
+            border-radius: 4px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            text-transform: none;
+        }
+
+        .quick-plan-buttons button:hover {
+            background-color: #e06815;
+            transform: scale(1.05);
+        }
+
+        /* Style pour les exports */
+        .export-buttons-group {
+            /* CORRECTIF : la modale entière restait invisible la plupart du temps à cause d'une
+               course d'affichage indépendante (cf. calcul_irve.js, correctif isEmbeddedMode/
+               window.onload) — cette marge n'a donc probablement jamais été vue avant ce correctif.
+               Augmentée par rapport au 1er réglage (2.5rem) pour un espace plus net. */
+            margin-bottom: 3.5rem;
+        }
+
+        .export-buttons-group .btn-base {
+            text-transform: none;
+            background-color: var(--accent-orange);
+            color: white;
+            transition: transform 0.1s;
+            padding: 0.6rem 1rem;
+        }
+
+        .export-buttons-group .btn-base:hover {
+            transform: scale(1.02);
+            background-color: #e06815;
+        }
+
+
+        /* Correction d'alignement des boutons du footer */
+        .modal-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--bg-panel);
+            border-top: 1px solid var(--border-color);
+            border-bottom-left-radius: var(--border-radius-lg);
+            border-bottom-right-radius: var(--border-radius-lg);
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+
+        .footer-navigation {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Modal pour la fonction de copie saisonnière */
+        #copy-modal-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 10000;
+        }
+
+        #copy-modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+            z-index: 10001;
+            border: 2px solid var(--accent-primary);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="modal-backdrop"></div>
+
+    <div id="app-modal" style="display: none;">
+        {% set modal_title = "Dimensionnement des installations de bornes de recharge (IRVE)" %}
+        {% set show_toggle = false %}
+        {% include 'concevoir_mon_projet/components/modal_header_unified.html' %}
+
+        <!-- Menu horizontal de navigation IRVE (cf. plan de refactor "menu horizontal + centralisation
+             des imports/Switchgrid") : réutilise la mise en page .tabs-container/.tab-menu déjà
+             présente dans ce fichier, mais avec une classe de bouton dédiée (.irve-nav-btn, pas
+             .tab-button — cf. commentaire CSS ci-dessus) pour ne pas être capté par le switcher
+             d'onglets vestigial de calcul_irve.js. Chaque bouton fait défiler vers une section
+             existante ou ouvre une modale, ce n'est PAS un switcher de panneaux (une seule .tab-pane
+             reste active en permanence). -->
+        <!-- Site autonome : une seule page, celle de la typologie du système du projet (data-page-unique,
+             cf. irve_nav_menu.js) ; la barre d'onglets est masquée pour gagner de la place. -->
+        {% set page_unique = parcours_projet.code == 'site_autonome' %}
+        <div class="tabs-container"{{ ' style="display: none;"'|safe if page_unique }}>
+            <div class="tab-menu" id="irve-nav-menu"{{ ' data-page-unique="1"'|safe if page_unique }}>
+                <button type="button" class="irve-nav-btn" data-irve-nav="enedis">Enedis</button>
+                <button type="button" class="irve-nav-btn" data-irve-nav="irve">Borne de recharge</button>
+                <button type="button" class="irve-nav-btn" data-irve-nav="import-cdc">Import CdC</button>
+                <button type="button" class="irve-nav-btn" data-irve-nav="profil-charge">Créer un profil de charge</button>
+                <button type="button" class="irve-nav-btn" data-irve-nav="pompage-solaire">Pompage solaire</button>
+                <button type="button" class="irve-nav-btn" data-irve-nav="solaire-thermique">Solaire thermique</button>
+                <!-- Masqué par défaut : irve_nav_menu.js ne l'affiche que pour un projet Site autonome. -->
+                <button type="button" class="irve-nav-btn" data-irve-nav="systeme-hybride" style="display:none;">Système hybride</button>
+                <button type="button" class="irve-nav-btn" data-irve-nav="pac">PAC / Climatiseur</button>
+            </div>
+        </div>
+
+        <div class="app-content">
+            <div id="irve-validation-banner" style="display:none; background:#fef2f2; color:#991b1b; border:1px solid #fecaca; border-radius:6px; padding:10px 14px; margin:0.5rem 0; font-size:0.85rem; font-weight:500;"></div>
+            <div class="tab-content">
+                <div id="materiels" class="tab-pane active">
+                    <!-- Section "Enedis" (Switchgrid) : (1) création de commande (client, signature,
+                         finalisation — Irve/switchgrid_workflow.js, déplacé depuis parametre.html) puis
+                         (2) récupération/préparation des données d'une commande déjà créée
+                         (Irve/switchgrid_data.js, déplacé depuis main_autoconso.js). L'order_id produit
+                         par (1) est collé automatiquement dans le champ utilisé par (2). -->
+                    <!-- Étape 1 : création de la commande (déplacé depuis parametre.html,
+                         #demande_courbe_section, cf. Irve/switchgrid_workflow.js). Toujours affiché
+                         dans cette section dédiée "Enedis" (contrairement à parametre.html, où il se
+                         masquait en vente totale/marché libre) — le mode individuelle/collective ne
+                         sert plus qu'à déterminer le nombre de lignes client, cf. _sgOnModeChange(). -->
+                    <div id="demande_courbe_section" class="energy-card step active" style="padding: 1rem; margin-bottom: 1.5rem;">
+                        <h2 class="capitalize-first" style="margin: 0 0 0.75rem 0;">Demande de courbe de charge</h2>
+
+                        <div id="sg-clients-container" class="row justify-content-center">
+                            <!-- Les lignes client sont injectées ici par initSwitchgridWorkflow() -->
+                        </div>
+
+                        <div class="row justify-content-center mt-2" id="sg-add-client-row" style="display:none;">
+                            <div class="col-md-10">
+                                <button type="button" class="btn-outline-secondary btn-sm" style="border:none; width:100%;">
+                                    + Ajouter un client
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="row justify-content-center mt-3">
+                            <div class="col-md-5">
+                                <label class="form-label" style="font-weight:600;">Prénom du signataire *</label>
+                                <input type="text" id="sg-signer-first" class="form-control"
+                                    placeholder="Ex : Félix" autocomplete="given-name">
+                            </div>
+                            <div class="col-md-5">
+                                <label class="form-label" style="font-weight:600;">Nom du signataire *</label>
+                                <input type="text" id="sg-signer-last" class="form-control"
+                                    placeholder="Ex : Joseph" autocomplete="family-name">
+                            </div>
+                        </div>
+
+                        <!-- ID du projet : récupéré automatiquement (current_projet_id) quand possible.
+                             Reste modifiable en secours (readonly retiré par JS) si l'auto-détection
+                             échoue. -->
+                        <div class="row justify-content-center mt-2" id="sg-manual-project-row">
+                            <div class="col-md-10">
+                                <div style="padding:20px; background:#fffbeb; border:1px solid #fcd34d;
+                                            border-radius:6px; font-size:0.85rem;">
+                                    <strong>ID du projet :</strong>
+                                    <input type="number" id="sg-manual-project-id"
+                                        class="form-control form-control-sm d-inline-block ms-2"
+                                        style="width:100px;"
+                                        placeholder="Ex: 3"
+                                        readonly
+                                        title="ID récupéré automatiquement depuis le projet actif">
+                                    <span class="ms-2 text-muted" id="sg-manual-project-help">
+                                        (récupéré automatiquement depuis le projet actif)
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row justify-content-center mt-3">
+                            <div class="col-md-10">
+                                <button type="button" id="sg-launch-btn"
+                                        class="btn-primary w-100"
+                                        style="background-color:#de0000; border:none; font-weight:600; border-radius:0.25rem; padding:0.5rem 1rem; font-size:1rem;">
+                                    Lancer la demande de courbe de charge
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="sg-results-area" class="mt-3" style="display:none;"></div>
+                        <!-- Toutes les demandes du projet (un lien de consentement chacune ; en ACC, une par
+                             participant), suivies en direct par switchgrid_workflow.js::_sgSuivreDemandes. -->
+                        <div id="sg-demandes-area" class="mt-3" style="display:none;"></div>
+                    </div>
+
+                    <!-- Étape 2 : récupération/préparation des données d'une commande déjà créée. -->
+                    <div id="section-enedis-content" class="energy-card" style="padding: 1rem; margin-bottom: 1.5rem;">
+                        <h2 class="capitalize-first" style="margin: 0 0 0.75rem 0;">Récupération des données
+                            <span style="font-size:0.75rem; color: var(--text-secondary); font-weight:400;">(via Switchgrid)</span>
+                        </h2>
+                        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0; margin-bottom: 0.75rem;">
+                            Si des données Enedis ont été récupérées pour ce projet, vous pouvez les visualiser et les télécharger au format Excel.
+                        </p>
+
+                        <div style="display: flex; gap: 0.5rem; align-items: flex-end; margin-bottom: 0.75rem;">
+                            <div style="flex: 1;">
+                                <label for="sg-order-id" style="display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 0.3rem;">
+                                    Identifiant de commande (Order ID)
+                                </label>
+                                <!-- CORRECTIF (bug rapporté : "liste déroulante" affichant tous les Order ID déjà
+                                     saisis, tous projets confondus, risque de confusion) : autocomplete="off" —
+                                     ce champ est auto-rempli par projet (cf. switchgrid_data.js), la suggestion
+                                     d'historique du navigateur n'a plus lieu d'être et ne peut que induire en erreur. -->
+                                <input type="text" id="sg-order-id" class="modern-input" placeholder="ex: uuid de l'order..." autocomplete="off" style="width: 100%; box-sizing: border-box;">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                            <button type="button" id="btn-sg-prepare" class="btn-base btn-primary"
+                                style="flex: 1 1 200px; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 1.05rem; border-radius: 10px;"
+                                title="Nettoyage, comblement des trous et visualisation de la courbe avant utilisation">
+                                🔧 Préparer et visualiser les données
+                            </button>
+                            <button type="button" id="btn-sg-verify" class="btn-base btn-secondary"
+                                style="flex: 1 1 200px; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 1.05rem; border-radius: 10px;">
+                                Vérifier les données (console)
+                            </button>
+                            <button type="button" id="btn-sg-excel" class="btn-base btn-primary"
+                                style="flex: 1 1 200px; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 1.05rem; border-radius: 10px; background-color: #16a34a; border-color: #16a34a;">
+                                Télécharger les données Excel (C68 + R63)
+                            </button>
+                            <button type="button" id="btn-sg-inject" class="btn-secondary"
+                                style="width: 100%; display: none; align-items: center; justify-content: center; gap: 0.5rem;"
+                                title="Remplace le fichier de consommation par la courbe Enedis récupérée">
+                                Utiliser la courbe Enedis comme consommation
+                            </button>
+                        </div>
+
+                        <div id="sg-data-summary" style="display:none; margin-top: 0.75rem; padding: 0.75rem; background: #f0fdf4; border: 1px solid #86efac; border-radius: var(--border-radius-md); font-size: 0.85rem;"></div>
+                        <div id="sg-error-box" style="display:none; margin-top: 0.75rem; padding: 0.75rem; background: #fef2f2; border: 1px solid #fca5a5; border-radius: var(--border-radius-md); font-size: 0.85rem; color: #dc2626;"></div>
+                    </div>
+
+                    <!-- Section "Import CdC" : import de la courbe de production PV et de la courbe de
+                         consommation (individuelle ACI ou collective ACC, déterminé automatiquement
+                         depuis le mode de valorisation du projet — cf. Irve/irve_import_cdc.js). Rendu
+                         via Irve/irve_consumption_import.js, déplacé (pas dupliqué) depuis
+                         main_autoconso.js : les fichiers importés ici sont automatiquement retrouvés par
+                         la modale Autoconsommation (pont IndexedDB, cf. persistence.js), sans re-import
+                         nécessaire — l'IRVE réutilise la même courbe de consommation existante (une
+                         seule courbe en ACI, cf. demande utilisateur). -->
+                    <div id="section-import-cdc-content" class="energy-card" style="padding: 1rem; margin-bottom: 1.5rem;">
+                        <h2 class="capitalize-first" style="margin: 0 0 0.5rem 0;">Import CdC</h2>
+                        <p style="color: var(--text-secondary); font-size: 0.9rem; margin: 0 0 1rem 0;">
+                            Import des courbes de charge de consommation et de production, utilisées à la
+                            fois par le dimensionnement IRVE et par le calcul d'autoconsommation.
+                        </p>
+
+                        <!-- Demande explicite : les 2 boutons d'import sur une même ligne horizontale,
+                             courbe de charge (consommation) en premier, production ensuite — chaque
+                             colonne garde son propre titre pour que l'utilisateur sache sans ambiguïté
+                             quel fichier il importe. -->
+                        <div style="display: flex; flex-wrap: wrap; gap: 1.5rem;">
+                            <div style="flex: 1 1 280px; min-width: 280px;">
+                                <h3 class="capitalize-first" style="margin: 0 0 0.5rem 0; font-size: 1rem; display: flex; align-items: center; gap: 0.4rem;">
+                                    Courbe de charge (consommation)
+                                    <!-- Même modèle Excel que index_autoconso.html (cf. main_autoconso.js). -->
+                                    <a href="/static/concevoir_mon_projet/docs/tuto_version/Modele_de_CdC.xlsx" download="Modele_de_CdC.xlsx"
+                                        title="Télécharger le modèle Excel de courbe de charge" style="display: inline-flex; line-height: 0;">
+                                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#217346"/><path d="M14 2v6h6" fill="#1a5c37"/><path d="M7 12h10M7 15h10M7 18h10M12 12v9" stroke="white" stroke-width="1" stroke-linecap="round" fill="none"/></svg>
+                                    </a>
+                                    <!-- Un modèle par pas de temps (dates continues sur 365 jours). -->
+                                    <span style="font-size:0.75rem; font-weight: normal; white-space:nowrap;"><a href="/static/concevoir_mon_projet/docs/tuto_version/Modele_de_CdC_5min.xlsx" download="Modele_de_CdC_5min.xlsx" title="Modèle Excel au pas de 5 min (entrée seulement : moyenné au pas de simulation choisi)">5</a> · <a href="/static/concevoir_mon_projet/docs/tuto_version/Modele_de_CdC_10min.xlsx" download="Modele_de_CdC_10min.xlsx" title="Modèle Excel au pas de 10 min">10</a> · <a href="/static/concevoir_mon_projet/docs/tuto_version/Modele_de_CdC_15min.xlsx" download="Modele_de_CdC_15min.xlsx" title="Modèle Excel au pas de 15 min">15</a> · <a href="/static/concevoir_mon_projet/docs/tuto_version/Modele_de_CdC_30min.xlsx" download="Modele_de_CdC_30min.xlsx" title="Modèle Excel au pas de 30 min">30</a> · <a href="/static/concevoir_mon_projet/docs/tuto_version/Modele_de_CdC.xlsx" download="Modele_de_CdC.xlsx" title="Modèle Excel au pas de 60 min">60</a> min</span>
+                                </h3>
+                                <p style="font-size: 0.85rem; color: var(--text-secondary); margin: 0 0 0.75rem 0;">Nous vous recommandons de télécharger le modèle Excel pour préparer votre courbe de charge au format attendu. Le fichier doit contenir les données d’une année complète de 365 jours : les années bissextiles ne sont pas prises en compte, le 29 février doit donc être exclu.</p>
+                                <div id="irve-cons-mode-note" style="display:none; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.5rem;"></div>
+                                <div id="irve-cons-input-content"></div>
+                            </div>
+                            <div style="flex: 1 1 280px; min-width: 280px;">
+                                <h3 class="capitalize-first" style="margin: 0 0 0.5rem 0; font-size: 1rem;">Courbe de production</h3>
+                                <div id="irve-pv-input-content"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="section1-header" style="display: flex; align-items: center; justify-content: space-between;">
+                        <h2 class="capitalize-first" style="margin: 0;">1. Modélisation des charges du site</h2>
+                        <button type="button" id="section1-toggle-btn" class="btn-base btn-secondary capitalize-first-letter"
+                            style="text-transform: none; white-space: nowrap;"
+                            onclick="toggleModalSection('section1-content', 'section1-toggle-btn')">masquer</button>
+                    </div>
+
+                    <div id="section1-content" class="energy-card" style="padding: 1rem;">
+                        <h4
+                            style="margin-top: 0; text-align: left; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">
+                            Consommation du site (hors bornes IRVE)</h4>
+
+                        <div
+                            style="display: flex; gap: 20px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap;">
+
+                            <label><input type="radio" name="conso_mode" value="generate"
+                                    onchange="toggleConsoMode('generate')"> Générer un profil</label>
+                            <label><input type="radio" name="conso_mode" value="manual"
+                                    onchange="toggleConsoMode('manual')"> Saisie Manuelle (Saisons)</label>
+
+                            <label><input type="radio" name="conso_mode" value="import"
+                                    onchange="toggleConsoMode('import')"> Import Fichier (.xlsx/.csv)</label>
+                        </div>
+
+                        <div id="generate-conso-section" style="display: none;">
+                            <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+                                <button type="button" class="btn-base btn-calculate-irve capitalize-first-letter"
+                                    onclick="selectGenerationMethod('bottomup')"
+                                    title="Additionne la consommation de chaque équipement du site (frigo, PAC, éclairage...) — approche détaillée et précise, demande de renseigner chaque récepteur.">
+                                    méthode 1 : par équipements
+                                </button>
+                                <button type="button" class="btn-base btn-secondary capitalize-first-letter"
+                                    onclick="selectGenerationMethod('topdown')"
+                                    title="Répartit une consommation annuelle globale (ex. facture EDF) selon un profil type standard — rapide, moins détaillé, ne nécessite qu'un volume annuel.">
+                                    méthode 2 : profil global (annuel)
+                                </button>
+                            </div>
+
+                            <div id="bottomup-panel" style="display:none;">
+                                <div class="input-grid-2x" style="margin-bottom: 1rem;">
+                                    <div class="input-group">
+                                        <label for="bu_foisonnement">Coefficient de foisonnement global (%)</label>
+                                        <input type="number" id="bu_foisonnement" class="modern-input" value="70"
+                                            min="51" max="100">
+                                    </div>
+                                </div>
+
+                                <div class="energy-card" style="padding: 0.75rem 1rem; margin-bottom: 1rem;">
+                                    <h4 style="margin-top: 0; font-size: 0.9rem; font-weight: 600;"
+                                        title="S'applique en plus des coefficients propres à chaque équipement (ex. la PAC varie déjà fortement seule) — module l'ensemble du site (ex. présence accrue au foyer).">
+                                        Coefficients globaux (modulation additionnelle du site)</h4>
+                                    <div class="input-grid-2x">
+                                        <div class="input-group">
+                                            <label for="coeff_saison_hiver">Hiver (référence)</label>
+                                            <input type="number" id="coeff_saison_hiver" class="modern-input"
+                                                value="1.25" min="0" max="2" step="0.05" oninput="recalcEquipmentTable()">
+                                        </div>
+                                        <div class="input-group">
+                                            <label for="coeff_saison_printemps">Printemps</label>
+                                            <input type="number" id="coeff_saison_printemps" class="modern-input"
+                                                value="1.0" min="0" max="2" step="0.05" oninput="recalcEquipmentTable()">
+                                        </div>
+                                        <div class="input-group">
+                                            <label for="coeff_saison_ete">Été</label>
+                                            <input type="number" id="coeff_saison_ete" class="modern-input"
+                                                value="0.95" min="0" max="2" step="0.05" oninput="recalcEquipmentTable()">
+                                        </div>
+                                        <div class="input-group">
+                                            <label for="coeff_saison_automne">Automne</label>
+                                            <input type="number" id="coeff_saison_automne" class="modern-input"
+                                                value="1.0" min="0" max="2" step="0.05" oninput="recalcEquipmentTable()">
+                                        </div>
+                                        <div class="input-group">
+                                            <label for="coeff_semaine">Semaine (Lun-Ven)</label>
+                                            <input type="number" id="coeff_semaine" class="modern-input" value="1.0"
+                                                min="1" max="2" step="0.05" oninput="recalcEquipmentTable()">
+                                        </div>
+                                        <div class="input-group">
+                                            <label for="coeff_weekend">Weekend (Sam-Dim)</label>
+                                            <input type="number" id="coeff_weekend" class="modern-input" value="1.3"
+                                                min="1" max="2" step="0.05" oninput="recalcEquipmentTable()">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="irve-selection-table-container">
+                                    <table class="results-table" id="equipment-table"
+                                        style="table-layout: fixed; width: 100%;">
+                                        <thead>
+                                            <tr>
+                                                <th style="width: 15%;">Équipement</th>
+                                                <th style="width: 9%;">P. unit. (W)</th>
+                                                <th style="width: 6%;">Qté</th>
+                                                <th style="width: 7%;">Cos φ</th>
+                                                <th style="width: 7%;">Début</th>
+                                                <th style="width: 7%;">Fin</th>
+                                                <th style="width: 12%;">Jours actifs</th>
+                                                <th style="width: 18%;">Saisons actives</th>
+                                                <th style="width: 10%;">Énergie/j (kWh)</th>
+                                                <th style="width: 9%;">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="equipment-table-body"></tbody>
+                                        <tfoot>
+                                            <tr class="total-row">
+                                                <td colspan="8" style="text-align: right; font-weight: bold;">TOTAL
+                                                    énergie/jour</td>
+                                                <td id="equipment-total-energy" style="font-weight: bold;">0.00</td>
+                                                <td></td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                                <button type="button" class="btn-base capitalize-first-letter"
+                                    style="margin-top: 0.5rem;" onclick="addEquipmentRow()">+ ajouter un
+                                    équipement</button>
+
+                                <div class="bilan-results-container" style="margin-top: 1rem;">
+                                    <table class="results-table" style="width: auto;">
+                                        <tbody>
+                                            <tr>
+                                                <td>Puissance min. simultanée</td>
+                                                <td id="equipment-power-min">0.00 W</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Puissance max. simultanée (avant foisonnement)</td>
+                                                <td id="equipment-power-max">0.00 W</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Puissance max. foisonnée</td>
+                                                <td id="equipment-power-max-foisonne">0.00 W</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                     <button type="button" class="btn-base btn-calculate-irve capitalize-first-letter"
+                                        onclick="event.stopPropagation(); generateBottomUpProfile()">générer le profil de charge</button>
+                                </div>
+                            </div>
+
+                            <div id="topdown-panel" style="display:none;">
+                                <div class="input-grid-2x">
+                                    <div class="input-group">
+                                        <label for="td_volume_annuel">Volume total annuel consommé</label>
+                                        <div style="display:flex; gap: 0.5rem;">
+                                            <input type="number" id="td_volume_annuel" class="modern-input" value="6000"
+                                                min="0.01" max="3650000" step="any">
+                                            <select id="td_volume_unite" class="modern-input" style="max-width: 100px;">
+                                                <option value="kWh" selected>kWh</option>
+                                                <option value="MWh">MWh</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="td_profil_type">Profil type</label>
+                                        <select id="td_profil_type" class="modern-input">
+                                            <option value="residentiel" selected>Résidentiel (Profil Enedis
+                                                RES1/RES2)</option>
+                                            <option value="tertiaire">Tertiaire</option>
+                                            <option value="industriel">Industriel</option>
+                                            <option value="supermarche">Supermarché</option>
+                                            <option value="agricole">Agricole</option>
+                                            <option value="autres">Autres (profil plat)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-base btn-calculate-irve capitalize-first-letter"
+                                    style="margin-top: 1rem;" onclick="event.stopPropagation(); generateTopDownProfile()">générer le profil de
+                                    charge</button>
+                            </div>
+                        </div>
+
+                        <div id="manual-conso-section" style="display: none;">
+                            <div style="display: flex; justify-content: space-between; gap: 10px; margin-bottom: 10px;">
+                                <button id="copy-seasonal-btn" class="btn-base capitalize-first-letter"
+                                    style="background-color: #10b981; color: white; text-transform: none; padding: 0.4rem 0.8rem;"
+                                    onclick="showSeasonalCopyModal(this)">copier données (saison)</button>
+                                <button id="clear-all-seasonal-btn" class="btn-base btn-danger capitalize-first-letter"
+                                    style="text-transform: none; padding: 0.4rem 0.8rem;"
+                                    onclick="clearAllSeasonalData(this)">effacer toutes les données</button>
+                            </div>
+
+                            <table class="results-table" id="seasonal-consumption-table"
+                                style="width: 100%; table-layout: fixed; margin-top: 0; font-size: 0.8rem; border-radius: 6px; overflow: hidden;">
+                                <thead id="seasonal-table-header"></thead>
+                                <tbody id="seasonal-table-body"></tbody>
+                            </table>
+                            <p id="seasonal-data-status"
+                                style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; margin-top: 1rem;">
+                                Statut : 96 valeurs initialisées à 0. Profil annuel moyen prêt.</p>
+                        </div>
+
+                        <div id="import-conso-section" style="display: none;">
+                            <div class="input-group">
+                                <label for="import_conso_file" style="font-weight: 500;">Sélectionner le fichier de
+                                    courbe de charge (.xlsx, .csv) :</label>
+                                <input type="file" id="import_conso_file" class="modern-input" accept=".xlsx,.csv"
+                                    onchange="importExistingData(this)">
+                                <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                                    Fichier
+                                    attendu : Données horaires (kVA) d'une année complète (colonne Date/Heure et
+                                    colonne
+                                    Puissance).</p>
+                                <p id="import-data-status"
+                                    style="font-size: 0.8rem; color: var(--text-primary); text-align: center;">
+                                    Statut :
+                                    Aucun fichier importé.</p>
+                            </div>
+                            <button class="btn-base btn-danger capitalize-first-letter"
+                                style="width: 100%; text-transform: none; margin-top: 10px;"
+                                onclick="clearImportedData(this)">effacer les données importées</button>
+                        </div>
+
+                        <div id="site-consumption-charts" style="margin-top: 1.5rem;">
+                            <h4
+                                style="margin-top: 0; text-align: left; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">
+                                Consommation du site — vue journalière et mensuelle</h4>
+                            <div
+                                style="display: flex; gap: 1rem; flex-wrap: wrap; justify-content: space-between;">
+                                <div style="flex: 1 1 45%; min-width: 280px;">
+                                    <div style="height: 260px;">
+                                        <canvas id="site-daily-consumption-chart"></canvas>
+                                    </div>
+                                    <p id="site-daily-total" style="text-align: center; font-size: 0.85rem; font-weight: 600; margin-top: 0.5rem;">
+                                        Total jour moyen : – kWh</p>
+                                </div>
+                                <div style="flex: 1 1 45%; min-width: 280px;">
+                                    <div style="height: 260px;">
+                                        <canvas id="site-monthly-consumption-chart"></canvas>
+                                    </div>
+                                    <p id="site-monthly-total" style="text-align: center; font-size: 0.85rem; font-weight: 600; margin-top: 0.5rem;">
+                                        Total annuel : – MWh</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="autonomy-section-header"
+                        style="display: flex; align-items: center; justify-content: space-between; margin-top: 3rem; border-top: 2px solid var(--border-color); padding-top: 1.5rem;">
+                        <h2 class="capitalize-first" style="margin: 0;">2. Analyse d'autonomie énergétique du site
+                        </h2>
+                        <button type="button" id="autonomy-toggle-btn" class="btn-base btn-secondary capitalize-first-letter"
+                            style="text-transform: none; white-space: nowrap;"
+                            onclick="toggleModalSection('autonomy-section-content', 'autonomy-toggle-btn')">masquer</button>
+                    </div>
+
+                    <div id="autonomy-section-content" class="energy-card" style="padding: 1rem;">
+                        <h4
+                            style="margin-top: 0; text-align: left; border-bottom: 1px dashed var(--border-color); padding-bottom: 0.5rem; font-size: 1rem; font-weight: 600;">
+                            Pré-dimensionnement pour site isolé (off-grid)</h4>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary);"
+                            title="Le besoin d'énergie journalière utilisé est celui du site seul (section 1, hors bornes IRVE) — cohérent avec l'isolation systématique de l'énergie IRVE du reste du bâtiment.">
+                            Utilise le besoin d'énergie journalière moyen du site (section 1, hors bornes IRVE) et
+                            interroge l'API de production solaire pour dimensionner une installation autonome.</p>
+
+                        <div class="input-grid-2x">
+                            <div class="input-group">
+                                <label for="auto_cible_autonomie">Cible d'autonomie (%)</label>
+                                <input type="number" id="auto_cible_autonomie" class="modern-input" value="100"
+                                    min="1" max="100" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label for="auto_nb_jours">Nombre de jours d'autonomie</label>
+                                <input type="number" id="auto_nb_jours" class="modern-input" value="2" min="1"
+                                    max="5" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label for="auto_inclinaison">Inclinaison des panneaux (°)</label>
+                                <input type="number" id="auto_inclinaison" class="modern-input" value="30" min="0"
+                                    max="90" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label for="auto_azimut">Azimut (° — 0 = Sud)</label>
+                                <input type="number" id="auto_azimut" class="modern-input" value="0" min="-90"
+                                    max="180" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label for="auto_mount">Type de montage</label>
+                                <select id="auto_mount" class="modern-input">
+                                    <option value="free" selected>Libre</option>
+                                    <option value="building">Bâti (BIPV)</option>
+                                    <option value="sur_imposition">Sur-imposition</option>
+                                    <option value="terrasse">Toit terrasse</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="auto_pertes">Pertes système (%)</label>
+                                <input type="number" id="auto_pertes" class="modern-input" value="10" min="8"
+                                    max="20" step="1">
+                            </div>
+                            <div class="input-group">
+                                <label for="auto_usehorizon">Prise en compte de l'horizon</label>
+                                <select id="auto_usehorizon" class="modern-input">
+                                    <option value="1" selected>Oui</option>
+                                    <option value="0">Non</option>
+                                </select>
+                            </div>
+                            <div class="input-group">
+                                <label for="auto_coeff_evolution">Coefficient d'évolution des besoins</label>
+                                <input type="number" id="auto_coeff_evolution" class="modern-input" value="1.25"
+                                    min="1" max="2" step="0.05">
+                            </div>
+                            <div class="input-group">
+                                <label for="auto_rendement_batterie">Rendement batterie (Li-ion)</label>
+                                <input type="number" id="auto_rendement_batterie" class="modern-input" value="0.90"
+                                    min="0.4" max="1" step="0.01">
+                            </div>
+                            <div class="input-group">
+                                <label for="auto_dod">Profondeur de décharge max (DoD)</label>
+                                <input type="number" id="auto_dod" class="modern-input" value="0.80" min="0.5"
+                                    max="1" step="0.01">
+                            </div>
+                        </div>
+
+
+                        <button type="button" class="btn-base btn-calculate-irve capitalize-first-letter"
+                            style="margin-top: 1rem;" onclick="event.stopPropagation(); calculateAutonomy()">calculer l'autonomie</button>
+
+                        <div id="autonomy-results" style="display:none; margin-top: 1.5rem;">
+                            <div
+                                style="display: flex; gap: 1.5rem; flex-wrap: wrap; align-items: flex-start; justify-content: space-between;">
+                                <table class="results-table" style="width: auto; flex: 1 1 320px;">
+                                    <tbody>
+                                        <tr>
+                                            <td style="text-align:left;">Besoin journalier (site, hors IRVE)</td>
+                                            <td id="autonomy-besoin-journalier">–</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:left;"
+                                                title="Besoin journalier moyen du site ramené à l'année (× 365). Repris tel quel par le champ « Consommation annuelle d'énergie du site (kWh/an) » de l'étude économique.">
+                                                Consommation d'énergie annuelle</td>
+                                            <td id="autonomy-consommation-annuelle">–</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:left;">Performance Ratio (PR)</td>
+                                            <td id="autonomy-pr">–</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:left;"
+                                                title="Production annuelle par kWc installé, après application du Performance Ratio — sert à vérifier la cohérence du calcul (valeur typique ~900-1200 kWh/kWc/an en France).">
+                                                Productible annuel (après PR)</td>
+                                            <td id="autonomy-productible-annuel">–</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:left;">Ensoleillement équivalent min./max.
+                                                (kWh/kWc/j, avant pertes)</td>
+                                            <td id="autonomy-ensoleillement">–</td>
+                                        </tr>
+                                        <tr style="font-weight:bold; background-color:#e0e0e0;">
+                                            <td style="text-align:left;">Puissance PV nécessaire</td>
+                                            <td id="autonomy-puissance-pv">–</td>
+                                        </tr>
+                                        <tr style="font-weight:bold; background-color:#e0e0e0;">
+                                            <td style="text-align:left;">Capacité batterie nécessaire</td>
+                                            <td id="autonomy-capacite-batterie">–</td>
+                                        </tr>
+                                        <tr style="font-weight:bold; background-color:#e0e0e0;">
+                                            <td style="text-align:left;"
+                                                title="Puissance max. simultanée du site (site seul, hors IRVE) × coefficient d'évolution des besoins.">
+                                                Puissance onduleur nécessaire</td>
+                                            <td id="autonomy-puissance-onduleur">–</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <div style="flex: 1 1 260px; max-width: 320px; height: 260px;">
+                                    <canvas id="autonomy-pie-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: 1.5rem; border-top: 1px dashed var(--border-color); padding-top: 1rem;">
+                            <button type="button" class="btn-base btn-secondary capitalize-first-letter"
+                            <button type="button" class="btn-base btn-secondary capitalize-first-letter" style="display: none;"
+                                onclick="compareWithPython()"
+                                title="Bouton temporaire : recalcule les mêmes résultats par une méthode indépendante (validation croisée).">
+                                vérification croisée
+                            </button>
+                            <div id="python-comparison-results" style="display:none; margin-top: 1rem;">
+                                <table class="results-table" style="width: auto;">
+                                    <tbody>
+                                        <tr>
+                                            <td style="text-align:left;">Besoin journalier (vérification)</td>
+                                            <td id="python-besoin-journalier">–</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:left;">PR (vérification)</td>
+                                            <td id="python-pr">–</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:left;">Productible annuel (vérification)</td>
+                                            <td id="python-productible-annuel">–</td>
+                                        </tr>
+                                        <tr>
+                                            <td style="text-align:left;">Ensoleillement min./max. (vérification)</td>
+                                            <td id="python-ensoleillement">–</td>
+                                        </tr>
+                                        <tr style="font-weight:bold; background-color:#e0e0e0;">
+                                            <td style="text-align:left;">Puissance PV nécessaire (vérification)</td>
+                                            <td id="python-puissance-pv">–</td>
+                                        </tr>
+                                        <tr style="font-weight:bold; background-color:#e0e0e0;">
+                                            <td style="text-align:left;">Capacité batterie nécessaire (vérification)</td>
+                                            <td id="python-capacite-batterie">–</td>
+                                        </tr>
+                                        <tr style="font-weight:bold; background-color:#e0e0e0;">
+                                            <td style="text-align:left;">Puissance onduleur nécessaire (vérification)</td>
+                                            <td id="python-puissance-onduleur">–</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="section3-header"
+                        style="display: flex; align-items: center; justify-content: space-between; margin-top: 3rem; border-top: 2px solid var(--border-color); padding-top: 1.5rem;">
+                        <h2 class="capitalize-first" style="margin: 0;">1. Choix et quantité des bornes de recharge
+                        </h2>
+                        <button type="button" id="section3-toggle-btn" class="btn-base btn-secondary capitalize-first-letter"
+                            style="text-transform: none; white-space: nowrap;"
+                            onclick="toggleModalSection('section3-content', 'section3-toggle-btn')">masquer</button>
+                    </div>
+
+                    <div id="section3-content">
+                        <button class="btn-add-irve capitalize-first-letter" onclick="addRow(this)">➕ ajouter une
+                            borne</button>
+
+                    <div class="irve-selection-table-container" id="irve-selection-table-container">
+                        <table class="irve-selection-table" id="irve-selection-table">
+                            <thead>
+                                <tr>
+                                    <th>Fabricant</th>
+                                    <th>Type</th>
+                                    <th>Tension</th>
+                                    <th>Puissance (kW)</th>
+                                    <th>Nbre Pdc par borne</th>
+                                    <th>Quantité</th>
+                                    <th>Puissance totale (kW)</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                            <tfoot>
+                                <tr class="total-row">
+                                    <td colspan="5" style="text-align: right; font-weight: bold;">TOTAL</td>
+                                    <td id="total-qty">0</td>
+                                    <td id="total-puissance">0.00</td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+
+                    <h3 class="capitalize-first" style="margin-top: 2rem;">bilan
+                        de puissance : paramètres du site et coefficients</h3>
+
+                    <div class="bilan-input-grid">
+                        <div class="form-section" id="bilan-card-reseau">
+                            <h3 class="capitalize-first">alimentation réseau</h3>
+                            <div class="input-group">
+                                <label>Mode de raccordement du site :</label>
+                                <div class="radio-group" style="display: flex; gap: 1rem;">
+                                    <label><input type="radio" name="mode_raccordement" value="BT" checked
+                                            onchange="updateRaccordementMode(this)"> Basse tension (BT)</label>
+                                    <label><input type="radio" name="mode_raccordement" value="HTA"
+                                            onchange="updateRaccordementMode(this)"> HTA</label>
+                                </div>
+                            </div>
+                            <div class="input-group" id="puissance-transfo-group" style="display:none;">
+                                <label for="puissance_transfo">Préciser la puissance du transformateur (kVA) :</label>
+                                <input type="number" id="puissance_transfo" class="modern-input" value="630" step="10"
+                                    min="0">
+                            </div>
+                            <div class="input-grid-2x">
+                                <div class="input-group">
+                                    <label for="puissance_souscrite">Puissance souscrite actuelle du site (kVA) :</label>
+                                    <input type="number" id="puissance_souscrite" class="modern-input" value="250"
+                                        step="0.1" min="0" max="5000">
+                                </div>
+                                <div class="input-group">
+                                    <label for="puissance_raccordement_irve">Puissance raccordement (kVA) :</label>
+                                    <input type="number" id="puissance_raccordement_irve" class="modern-input"
+                                        step="0.1" min="0" max="5000"
+                                        title="Synchronisé automatiquement depuis les données Enedis validées (section « Enedis »)">
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>Source d’alimentation électrique des bornes de recharge :</label>
+                                <div class="radio-group" style="display: flex; gap: 1rem;">
+                                    <label><input type="radio" name="source_alim" value="pv" checked> Sur le circuit
+                                        photovoltaïque</label>
+                                    <label><input type="radio" name="source_alim" value="tgbt"> Directement depuis le
+                                        TGBT</label>
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label style="display: none;">Régime de neutre de distribution au niveau du TGBT du site
+                                    :</label>
+                                <div class="radio-group" style="display: flex; gap: 1rem;">
+                                    <label style="display: none;"><input type="radio" name="regime_neutre" value="TT"
+                                            checked> TT</label>
+                                    <label style="display: none;"><input type="radio" name="regime_neutre" value="TN-S">
+                                        TN-S</label>
+                                    <label style="display: none;"><input type="radio" name="regime_neutre" value="IT">
+                                        IT</label>
+                                </div>
+                            </div>
+                            <div class="input-grid-2x">
+                                <div class="input-group">
+                                    <label for="limitation_puissance">Limitation de puissance des bornes (kVA) :</label>
+                                    <input type="number" id="limitation_puissance" class="modern-input" value="0"
+                                        step="0.1" min="0" max="5000">
+                                </div>
+                                <div class="input-group">
+                                    <label for="pic_puissance_irve">Pic de puissance (kW) :</label>
+                                    <input type="number" id="pic_puissance_irve" class="modern-input"
+                                        step="0.1" min="0"
+                                        title="Synchronisé automatiquement depuis les données Enedis validées (section « Enedis »)">
+                                </div>
+                            </div>
+                            <div class="input-group">
+                                <label>Mode de Gestion de la recharge des bornes :</label>
+                                <div class="radio-group" style="display: flex; gap: 1rem;">
+                                    <label><input type="radio" name="gestion_puissance" value="statique" checked
+                                            onchange="updateDPMDisplay()"> Statique</label>
+                                    <label><input type="radio" name="gestion_puissance" value="dynamique"
+                                            onchange="updateDPMDisplay()"> Dynamique</label>
+                                </div>
+
+                            </div>
+                            <div class="input-group" id="dpm-type-group" style="display:none;">
+                                <label>Type de gestion de puissance :</label>
+                                <div class="radio-group" style="display: flex; gap: 1rem;">
+                                    <label><input type="radio" name="dpm_type" value="integre"> Fonctionnalité intégrée
+                                        dans
+                                        les bornes</label>
+                                    <label><input type="radio" name="dpm_type" value="automate"> Automate
+                                        externe</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-section" id="bilan-card-coeffs">
+                            <h3 class="capitalize-first">coefficient de calculs</h3>
+                            <div class="input-grid-auto">
+                                <div class="input-group">
+                                    <label for="ks">Coefficient de simultanéité (Ks)</label>
+                                    <input type="number" id="ks" class="modern-input" value="1.0" step="0.01" min="0"
+                                        max="1">
+                                </div>
+                                <div class="input-group" style="visibility: hidden;">
+                                    <label for="k_global">Coeff. du courant nominal global (Kglobal)</label>
+                                    <input type="number" id="k_global" class="modern-input" value="1.0" step="0.01"
+                                        min="0">
+                                </div>
+                                <div class="input-group">
+                                    <label for="kmono">Coeff. de correction AC Mono (Kmono)</label>
+                                    <input type="number" id="kmono" class="modern-input" value="1.0" step="0.01"
+                                        min="0" max="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="ktri">Coeff. de correction AC Tri (Ktri)</label>
+                                    <input type="number" id="ktri" class="modern-input" value="1.0" step="0.01" min="0" max="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="kdc">Coeff. de correction DC (Kdc)</label>
+                                    <input type="number" id="kdc" class="modern-input" value="1.0" step="0.01" min="0" max="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="cosphi_ac">Facteur de puissance AC (Cos(phi))</label>
+                                    <input type="number" id="cosphi_ac" class="modern-input" value="0.98" step="0.01"
+                                        min="0" max="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="cosphi_dc">Facteur de puissance DC (Cos(phi))</label>
+                                    <input type="number" id="cosphi_dc" class="modern-input" value="0.98" step="0.01"
+                                        min="0" max="1">
+                                </div>
+                                <div class="input-group">
+                                    <label for="puissance_aux">Puissance auxiliaire (kW)</label>
+                                    <input type="number" id="puissance_aux" class="modern-input" value="0.2" step="0.1"
+                                        min="0" max="10">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section" id="bilan-results" style="margin-top: 1.5rem;">
+                        <h3 class="capitalize-first">résultats du bilan de puissance</h3>
+
+                        <div class="bilan-results-container" id="bilan-results-container">
+                            <table class="results-table" id="bilan-summary-table">
+                                <thead>
+                                    <tr>
+                                        <th>Indicateur</th>
+                                        <th>Valeur</th>
+                                        <th>Unité</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Puissance active totale (P)</td>
+                                        <td id="res-Ptot">0.00</td>
+                                        <td>kW</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Puissance réactive totale (Q)</td>
+                                        <td id="res-Qtot">0.00</td>
+                                        <td>kVAR</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Puissance apparente totale (S)</strong></td>
+                                        <td id="res-Stot">0.00</td>
+                                        <td><strong>kVA</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Puissance de raccordement (Praccord)</td>
+                                        <td id="res-Praccord">0.00</td>
+                                        <td>kVA</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Courant nominal Ib total</td>
+                                        <td id="res-Ib">0.00</td>
+                                        <td>A</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <!-- CORRECTIF : masqué — le bilan de puissance se recalcule désormais
+                                 automatiquement à chaque ajout/modification de borne (cf. updateTotals()
+                                 dans calcul_irve.js), et une dernière fois avant "Calculer la consommation". -->
+                            <button id="bilan-calculate-btn-right"
+                                class="btn-base btn-calculate-irve capitalize-first-letter"
+                                    onclick="event.stopPropagation(); calculateBilanPuissance(this)"
+                                    style="display: none;">
+                                calculer le bilan de puissance
+                            </button>
+                        </div>
+                        </div>
+                    </div> <!-- fin #section3-content -->
+
+                    <div id="section4-header"
+                        style="display: flex; align-items: center; justify-content: space-between; margin-top: 3rem; border-top: 2px solid var(--border-color); padding-top: 1.5rem;">
+                        <h2 class="capitalize-first" style="margin: 0;">2. Résultats bilan énergétique annuel</h2>
+                        <button type="button" id="section4-toggle-btn" class="btn-base btn-secondary capitalize-first-letter"
+                            style="text-transform: none; white-space: nowrap;"
+                            onclick="toggleModalSection('section4-content', 'section4-toggle-btn')">masquer</button>
+                    </div>
+
+                    <div id="section4-content">
+                        <div class="energie-cards-container">
+                            <div class="energy-card">
+                                <h3 class="capitalize-first">paramètres de simulation de charge</h3>
+                                <div class="input-grid-2x">
+                                    <div class="input-group">
+                                        <label for="pas_temps">Pas de temps de recharge (minutes)</label>
+                                        <select id="pas_temps" class="modern-input" onchange="updateTimeSlider()">
+                                            <option value="10">10 minutes</option>
+                                            <option value="15">15 minutes</option>
+                                            <option value="30">30 minutes</option>
+                                            <option value="60" selected>60 minutes</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group">
+                                        <label for="nb_jours_non_ouvres">Nb jours non ouvrés/fermeture site par an
+                                            :</label>
+                                        <input type="number" id="nb_jours_non_ouvres" class="modern-input" value="52"
+                                            min="0" max="200">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="energy-card">
+                                <h3 class="capitalize-first">gestion des jours d'inactivité (agenda annuel)</h3>
+                                <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: -1rem;">Saisissez
+                                    les
+                                    jours de l'année (excluant les week-ends) où la charge doit être à 0. (Ex:
+                                    Jours/Mois ou
+                                    Plage JJ/MM-JJ/MM)</p>
+                                <div class="input-group">
+                                    <label for="jours_feries">Jours/Plages de l'année à mettre à 0 (Ex: 01/01, 01/05,
+                                        15/12-30/12) :</label>
+                                    <input type="text" id="jours_feries" class="modern-input" maxlength="200"
+                                        pattern="^\s*(\d{2}/\d{2}(-\d{2}/\d{2})?)(\s*,\s*\d{2}/\d{2}(-\d{2}/\d{2})?)*\s*$"
+                                        title="Format attendu : 01/01, 01/05, 15/12-30/12"
+                                        value="01/01, 01/05, 15/12-30/12">
+                                </div>
+                            </div>
+                        </div>
+
+                        <h3 class="capitalize-first" style="margin-top: 2rem;">planification de la recharge par
+                            borne/groupe
+                        </h3>
+
+                        <div id="planning-controls" style="display: none;">
+                            <!--<div id="planning-controls"></div>-->
+                            <div class="input-group">
+                                <label for="rendement_borne_ac" style="white-space: nowrap;">Rendement Borne AC:</label>
+                                <input type="number" id="rendement_borne_ac" class="modern-input" value="0.90"
+                                    step="0.01" min="0.01" max="1" style="width: 60px;">
+                            </div>
+                            <div class="input-group">
+                                <label for="rendement_borne_dc" style="white-space: nowrap;">Rendement Borne DC:</label>
+                                <input type="number" id="rendement_borne_dc" class="modern-input" value="0.95"
+                                    step="0.01" min="0.01" max="1" style="width: 60px;">
+                            </div>
+                            <button id="capacite-batterie-btn" class="capitalize-first-letter"
+                                onclick="showBatterieModal(this)">capacité batterie IRVE</button>
+                        </div>
+
+                        <table class="results-table" id="planning-detail-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 15%;">Groupe / Bornes</th>
+                                    <th style="width: 12%;">Puissance App. (kVA)</th>
+                                    <th style="width: 10%;">Bornes (Qté)</th>
+                                    <th style="width: 12%;">Charge & Éco</th>
+                                    <th style="width: 51%;">Stratégie & Planification de la Recharge</th>
+                                </tr>
+                            </thead>
+                            <tbody id="planning-detail-tbody">
+                                <tr>
+                                    <td colspan="5" style="text-align: center;">Aucune borne n'a été configurée.
+                                        Ajoutez d'abord une borne dans la section Matériels.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <button class="btn-base btn-calculate-irve capitalize-first-letter" style="width: 50%; margin-bottom: 1.5rem;"
+                                    onclick="event.stopPropagation(); calculateEnergie(this)">calculer la consommation</button>
+                        <!-- CORRECTIF : indique si la courbe IRVE a bien été transmise à l'autoconsommation
+                             individuelle (cf. calculateEnergie() dans calcul_irve.js) -->
+                        <div id="irve-aci-sync-status" style="margin-top: 0.5rem; margin-bottom: 1.5rem; font-size: 0.85rem; font-weight: 500;"></div>
+
+                        <div class="charts-section" id="charts-section" style="margin-top: 2rem; display: none;">
+                            <h3 class="capitalize-first">bilan énergétique annuel</h3>
+                            <div id="bilan-energetique-section"
+                                style="display: flex; flex-wrap: wrap; gap: 2rem; align-items: center; justify-content: center; max-width: 850px; margin: 0 auto 2rem auto; background: var(--bg-panel); padding: 1.5rem; border-radius: var(--border-radius-md); border: 1px solid var(--border-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+                                <div style="flex: 1 1 350px; max-width: 450px;">
+                                    <table class="results-table" id="bilan-energie-table" style="margin-top: 0;">
+                                        <thead>
+                                            <tr>
+                                                <th style="text-align: left;">Catégorie</th>
+                                                <th>Énergie (MWh/an)</th>
+                                                <th>Part (%)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody></tbody>
+                                    </table>
+                                </div>
+                                <div style="flex: 0 0 300px; height: 300px; margin: 0 auto;">
+                                    <canvas id="bilan-energie-pie-chart"></canvas>
+                                </div>
+                            </div>
+
+                            <h3 class="capitalize-first">courbes et consommation annuelles (simulées)</h3>
+                            <div class="charts-container-grid">
+                                <div style="height: 300px;"><canvas id="annual-load-chart"></canvas></div>
+                                <div style="height: 300px;"><canvas id="monthly-consumption-chart"></canvas></div>
+                            </div>
+
+                            <h3 class="capitalize-first" style="margin-top: 2rem;">exportation des données de
+                                consommation
+                            </h3>
+                            <div class="input-group">
+                                <label for="export_annee">Année de simulation (pour trame horaire) :</label>
+                                <input type="number" id="export_annee" class="modern-input" value="2024" min="2020"
+                                    max="2050">
+                            </div>
+                            <p style="font-size: 0.9rem; color: var(--text-primary); font-weight: 500;">Exporter les
+                                données
+                                simulées :</p>
+                            <div class="export-buttons-group">
+                                <button class="btn-base capitalize-first-letter"
+                                    onclick="exportEnergyData(10, this)">export
+                                    irve 10 min</button>
+                                <button class="btn-base capitalize-first-letter"
+                                    onclick="exportEnergyData(15, this)">export
+                                    irve 15 min</button>
+                                <button class="btn-base capitalize-first-letter"
+                                    onclick="exportEnergyData(30, this)">export
+                                    irve 30 min</button>
+                                <button class="btn-base capitalize-first-letter"
+                                    onclick="exportEnergyData(60, this)">export
+                                    irve 60 min</button>
+                                <button class="btn-base capitalize-first-letter"
+                                    style="background-color: var(--accent-primary); color: white;"
+                                    onclick="exportTotalConsumption(this)">export courbe totale 60 min</button>
+                            </div>
+                            <div style="margin-top: 1rem;">
+                                <button type="button" class="btn-base" style="background-color: #4f46e5; color: white;"
+                                    onclick="openHorosaisonnierModal()">📊 Analyse consommation horosaisonnière</button>
+                            </div>
+
+                            <!-- Section 3 Rentabilité IRVE (injectée par Irve/rentabilite_irve/rentabilite_irve_section.js) :
+                                 en-tête séparé par un trait gris, comme la section 2. -->
+                            <div id="rentabilite-irve-content" style="margin-top: 3rem;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Section Pompage solaire (injectée dynamiquement par pompage_solaire_section.js) -->
+                    <div id="pompage-section-content" class="energy-card" style="display:none; padding: 1rem; margin-bottom: 1.5rem;"></div>
+
+                    <!-- Section « Solaire thermique » : fonctionnalité pas encore disponible, simple message. -->
+                    <div id="solaire-thermique-section-content" class="energy-card" style="display:none; padding: 1rem; margin-bottom: 1.5rem;">
+                        <h2 class="capitalize-first" style="margin: 0 0 0.5rem 0; font-size: 1.5rem; font-weight: 700; color: var(--accent-primary);">Solaire thermique</h2>
+                        <p style="margin: 0;">Fonctionnalité en cours de développement</p>
+                    </div>
+
+                    <!-- Section Système hybride (injectée dynamiquement par systeme_hybride_section.js, projets Site autonome) -->
+                    <div id="hybride-section-content" class="energy-card" style="display:none; padding: 1rem; margin-bottom: 1.5rem;"></div>
+                    <!-- Section « PAC / Climatiseur » (Irve/pac_climatisation/pac_section.js) : construite à la première ouverture. -->
+                    <div id="pac-section-content" class="energy-card" style="display:none; padding: 1rem; margin-bottom: 1.5rem;"></div>
+
+                    <div id="resize-handle"></div>
+                    <div id="loader"></div>
+
+                    <div id="copy-modal-overlay" style="display:none;">
+                        <div id="copy-modal-content"></div>
+                    </div>
+
+                    <div id="batterie-modal-overlay"
+                        style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.4); z-index: 10000;">
+                        <div id="batterie-modal-content">
+                            <h4 style="margin-top: 0; text-align: center;">Paramètres Batterie (Simulation)</h4>
+                            <div class="input-group" style="flex-direction: row; align-items: center; gap: 5px;">
+                                <label for="etat_charge" style="white-space: nowrap;">État de charge de la batterie
+                                    (%):</label>
+                                <input type="number" id="etat_charge" class="modern-input" value="10" min="0" max="100"
+                                    style="width: 60px;">
+                            </div>
+                            <div class="input-group" style="flex-direction: row; align-items: center; gap: 5px;">
+                                <label for="capacite_batterie" style="white-space: nowrap;">Capacité de la batterie
+                                    (kWh):</label>
+                                <input type="number" id="capacite_batterie" class="modern-input" value="50" min="0"
+                                    style="width: 60px;">
+                            </div>
+                            <p
+                                style="font-size: 0.8rem; color: var(--danger-color); font-weight: 500; text-align: center;">
+                                Fonctionnalité en cours de développement.</p>
+                            <div style="display: flex; justify-content: flex-end;">
+                                <button class="btn-base btn-secondary capitalize-first-letter"
+                                    style="text-transform: none;"
+                                    onclick="document.getElementById('batterie-modal-overlay').style.display='none'">fermer</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Modale « Configuration Batterie & Éco » : contenu injecté par Irve/analyse_eco_irve.js
+                         (bouton « Config. charge et Éco » du tableau de planification). -->
+                    <div id="batterie-detail-modal-overlay" style="display:none;">
+                        <div id="batterie-detail-modal-content"></div>
+                    </div>
+
+                    <div id="recharge-modal-overlay" style="display:none;">
+                        <div id="recharge-modal-content">
+                            <h4 style="margin-top: 0; text-align: center;">Estimation Temps de Recharge</h4>
+
+                            <div class="input-group" style="flex-direction: row; align-items: center; gap: 5px;">
+                                <label for="est_capacite_batterie" style="white-space: nowrap;">Capacité batterie
+                                    (kWh):</label>
+                                <input type="number" id="est_capacite_batterie" class="modern-input" value="50" min="0"
+                                    style="width: 85px;">
+                            </div>
+                            <div class="input-group" style="flex-direction: row; align-items: center; gap: 5px;">
+                                <label for="est_soc_init" style="white-space: nowrap;">SoC Initial (%):</label>
+                                <input type="number" id="est_soc_init" class="modern-input" value="10" min="0" max="100"
+                                    style="width: 85px;">
+                            </div>
+                            <div class="input-group" style="flex-direction: row; align-items: center; gap: 5px;">
+                                <label for="est_soc_fin" style="white-space: nowrap;">SoC Final (%):</label>
+                                <input type="number" id="est_soc_fin" class="modern-input" value="100" min="0" max="100"
+                                    style="width: 85px;">
+                            </div>
+
+                            <hr style="width: 100%; border-top: 1px solid #e5e7eb;">
+
+                            <div class="input-group">
+                                <label for="est_borne_select">Choisir une borne (P Act. utilisée) :</label>
+                                <select id="est_borne_select" class="modern-input"
+                                    style="padding: 5px; width: 100%;"></select>
+                            </div>
+                            <div class="input-group" style="flex-direction: row; align-items: center; gap: 5px;">
+                                <label style="white-space: nowrap;">Rendement conversion AC (%):</label>
+                                <span id="est_rdt_ac_display">90%</span>
+                            </div>
+                            <div class="input-group" style="flex-direction: row; align-items: center; gap: 5px;">
+                                <label style="white-space: nowrap;">Rendement conversion DC (%):</label>
+                                <span id="est_rdt_dc_display">95%</span>
+                            </div>
+
+                            <hr style="width: 100%; border-top: 1px solid #e5e7eb;">
+
+                            <div style="font-size: 0.9rem;">
+                                <p>Capacité à recharger: <strong id="res-recharge-capacity">0.00 kWh</strong></p>
+                                <p>Puissance de charge utilisée: <strong id="res-charge-power">0.00 kW</strong></p>
+                                <p>Énergie fournie par la borne: <strong id="res-borne-energy">0.00 kWh</strong></p>
+                                <p>Temps de recharge estimé: <strong id="res-recharge-time">0h 0m</strong></p>
+                            </div>
+
+                            <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+                                <button class="btn-base btn-secondary" style="text-transform: none;"
+                                    onclick="document.getElementById('recharge-modal-overlay').style.display='none'">
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div id="message-area" style="position: absolute; display: none;"></div>
+
+
+                <!-- Scripts JavaScript -->
+
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/modalPositionMemoire.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/IrveStorageManager.js') }}?v=6"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/verification_irve.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/calcul_irve.js') }}?v=15"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/irveValidation.js') }}?v=6"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/equipmentData.js') }}?v=5"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/loadProfileCommon.js') }}?v=5"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/loadProfileBottomUp.js') }}?v=6"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/loadProfileTopDown.js') }}?v=5"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/loadProfileCharts.js') }}?v=5"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/autonomyCalculator.js') }}?v=8"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/irve_payload_builder.js') }}?v=7"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pompage_solaire/pompage_solaire_calculs.js') }}?v=11"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pompage_solaire/pompage_solaire_section.js') }}?v=30"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/systeme_hybride/systeme_hybride_calculs.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/systeme_hybride/systeme_hybride_section.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pac_climatisation/pac_modele_cop.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pac_climatisation/pac_dimensionnement.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pac_climatisation/pac_simulation.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pac_climatisation/pac_schema.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pac_climatisation/pac_rentabilite.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pac_climatisation/pac_verification.js') }}?v=1"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pac_climatisation/pac_section.js') }}?v=6"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/analyse_eco_irve.js') }}?v=4"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/rentabilite_irve/rentabilite_irve_calculs.js') }}?v=2"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/rentabilite_irve/horosaisonnier_irve.js') }}?v=2"></script>
+                <script
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/rentabilite_irve/rentabilite_irve_section.js') }}?v=4"></script>
+                <script type="module"
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/irve_nav_menu.js') }}?v=14"></script>
+                <script type="module"
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/switchgrid_workflow.js') }}?v=13"></script>
+                <script type="module"
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/switchgrid_data.js') }}?v=13"></script>
+                <script type="module"
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/irve_import_cdc.js') }}?v=14"></script>
+
+
+ <!-- Système de synchronisation et de persistance bidirectionnelle de la modale IRVE en Base de données -->
+    
+</body>
+
+</html>

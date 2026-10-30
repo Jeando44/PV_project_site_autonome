@@ -1,0 +1,614 @@
+/* Variables pour le modal Études Économiques */
+        :root {
+            --bg-page: #f0f2f5;
+            --bg-modal: #ffffff;
+            --bg-panel: #f8f9fa;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --accent-primary: #dc2626;
+            --accent-primary-hover: #991b1b;
+            --accent-green: #1E8449;
+            --accent-green-hover: #156d3a;
+            --accent-orange: #f97316;
+            --danger-color: #ef4444;
+            --warning-color: #ffc107;
+            --border-color: #e5e7eb;
+            --font-family: 'Inter', sans-serif;
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --border-radius-lg: 0.75rem;
+            --border-radius-md: 0.5rem;
+            --input-border-focus: #3b82f6;
+
+            /* Variables from Anaeco */
+            --primary-color: #005A9E;
+            --secondary-color: #E1000F;
+            --accent-yellow: #FFC107;
+            --background-color: #f8f9fa;
+            --text-color: #333;
+            /* --border-color is already defined, the one from App_site_trame_Extraction will be used */
+            --header-bg: #fff;
+            --input-bg: #fff;
+        }
+
+/* ─────────────────────────────────────────────
+   Container
+───────────────────────────────────────────── */
+/* Supprime la marge grise de la modale globale (définie dans menu_list.css) */
+#etudes-economique-modal .modal-body {
+    padding: 15px !important;
+    margin: 0 !important;
+    background-color: #ffffff !important;
+}
+
+#etudes-economique-modal .modal-content-eco {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #ffffff !important; /* Force le fond blanc au lieu du gris */
+    color: var(--text-color);
+    font-size: 14px;
+    /* Pas de défilement propre : seul le conteneur du modal (menu.html) défile. Une seconde zone
+       (max-height 90vh, barre masquée) dans la première coupait l'affichage à « Revenus & tarifs ». */
+    max-height: none;
+    overflow: visible;
+    padding: 0 !important;
+}
+
+#etudes-economique-modal .container-eco {
+    max-width: 100%; /* Prend toute la largeur disponible */
+    margin: auto;
+    background: #ffffff;
+    padding: 10px 50px !important; /* Espacement ajusté entre les labels et le bord */
+    border-radius: 8px;
+    box-shadow: none; /* Supprime l'ombre devenue inutile */
+    width: 100%;
+    box-sizing: border-box;
+}
+
+#etudes-economique-modal #Resultats.tab-content {
+    max-width: 95%;
+    margin: auto;
+}
+
+/* ─────────────────────────────────────────────
+   Titres
+   h1 → rouge (identité, une seule fois en haut)
+   h2 → gris foncé + liseré rouge à gauche (visible mais pas criant)
+   h3 → gris moyen, sobre
+───────────────────────────────────────────── */
+#etudes-economique-modal h1 {
+    color: #E1000F;
+    border-bottom: 2px solid #E1000F;
+    padding-bottom: 10px;
+    margin-top: 25px;
+    margin-bottom: 20px;
+    text-transform: lowercase;
+    width: auto;
+    max-width: 100%;
+}
+
+/* Masquer UNIQUEMENT le titre à l'intérieur du contenu (Simulateur d'études de rentabilité) sans affecter l'entête */
+#etudes-economique-content h1,
+#etudes-economique-modal .container-eco h1 {
+    display: none !important;
+}
+
+#etudes-economique-modal h2 {
+    color: #005A9E;
+    /* La bordure est maintenant gérée par le pseudo-élément ::after */
+    padding-bottom: 10px; /* Espace pour la ligne en dessous */
+    padding-left: 0;
+    margin-top: 25px;
+    margin-bottom: 20px;
+    text-transform: lowercase;
+    font-size: 1.5rem;
+    font-weight: 400;
+    text-align: left; /* Le texte est aligné à gauche */
+    position: relative; /* Nécessaire pour positionner le pseudo-élément */
+}
+
+#etudes-economique-modal h2::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0; /* La ligne commence à gauche */
+    width: 50%; /* Longueur de la ligne divisée par 2 */
+    height: 1px; /* Épaisseur réduite */
+    background-color: #E1000F;
+}
+
+#etudes-economique-modal h3 {
+    color: #555;
+    border-bottom: 1px solid #ffc107;
+    padding-bottom: 6px;
+    padding-left: 4px;
+    margin-top: 20px;
+    margin-bottom: 15px;
+    text-transform: lowercase;
+    font-size: 0.97em;
+    font-weight: 600;
+}
+
+#etudes-economique-modal h1::first-letter,
+#etudes-economique-modal h2::first-letter,
+#etudes-economique-modal h3::first-letter {
+    text-transform: uppercase;
+}
+
+#etudes-economique-modal .form-group label small {
+    font-weight: normal;
+    font-size: 0.85em;
+    color: #666;
+    display: inline;
+}
+
+/* ─────────────────────────────────────────────
+   Onglets
+   Avant : rouge + gras sur tous les tabs
+   Après : gris par défaut, rouge uniquement sur l'actif
+───────────────────────────────────────────── */
+#etudes-economique-modal .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid #005A9E;
+    margin-bottom: 20px;
+    gap: 2px;
+}
+
+#etudes-economique-modal .tab-link {
+    padding: 10px 20px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    font-size: 18px; /* Taille fortement augmentée pour les onglets */
+    font-weight: 600;
+    color: #666;
+    border-bottom: 3px solid transparent;
+    transition: color 0.15s, background-color 0.15s;
+}
+
+#etudes-economique-modal .tab-link:hover {
+    color: #E1000F;
+    background-color: #fff5f5;
+}
+
+#etudes-economique-modal .tab-link.active {
+    color: #E1000F;
+    font-weight: 700;
+    border-bottom-color: #E1000F;
+}
+
+/* ─────────────────────────────────────────────
+   Tab content
+───────────────────────────────────────────── */
+#etudes-economique-modal .tab-content {
+    display: none;
+}
+
+#etudes-economique-modal .tab-content.active {
+    display: block;
+}
+
+/* ─────────────────────────────────────────────
+   Grilles & formulaires
+───────────────────────────────────────────── */
+#etudes-economique-modal .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+}
+
+#etudes-economique-modal .form-group {
+    margin-bottom: 15px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Force le label principal à prendre toute la largeur pour s'assurer que les boutons tombent en dessous */
+#etudes-economique-modal .form-group > label:first-child {
+    display: block !important;
+    width: 100% !important;
+}
+
+#etudes-economique-modal .form-group label {
+    margin-bottom: 5px;
+    font-weight: 600;
+    color: #444;
+    font-size: 13px;
+}
+
+#etudes-economique-modal .form-group input,
+#etudes-economique-modal .form-group select {
+    padding: 8px;
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    background-color: var(--input-bg);
+    color: #313131;
+    font-size: 13px;
+    transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+/* focus : seul endroit où le rouge revient dans le formulaire */
+#etudes-economique-modal .form-group input:focus,
+#etudes-economique-modal .form-group select:focus {
+    border-color: #E1000F;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(225, 0, 15, 0.08);
+}
+
+
+/* #etudes-economique-modal .radio-group {
+    display: flex;
+    gap: 20px;
+    margin-top: 5px;
+} */
+/* --- CORRECTION BUG BOUTONS RADIO / CHECKBOX --- */
+        .form-group input[type="radio"],
+        .form-group input[type="checkbox"] {
+            width: auto !important;
+            margin: 0 !important; /* Supprime les marges par défaut qui éloignent le bouton */
+        }
+
+        .radio-group label {
+            display: flex !important;
+            flex-direction: row !important;
+            align-items: center !important; /* Centre parfaitement le bouton radio et son texte verticalement */
+            justify-content: flex-start !important;
+            gap: 5px !important; /* Espace très serré entre le cercle à cocher et le texte */
+            font-weight: 500 !important;
+            margin-bottom: 0 !important;
+            margin-right: 15px !important; /* Espace maîtrisé entre "Oui" et "Non" */
+            cursor: pointer;
+            width: auto !important;
+        }
+
+        .radio-group {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: wrap !important; /* Permet le retour à la ligne si l'écran est trop petit */
+            justify-content: flex-start !important; /* Plaque les boutons tout à gauche */
+            gap: 0 !important; /* Annule le gap global, géré par le margin-right des labels */
+            margin-top: 2px !important; /* Rapproche tout le groupe de boutons du titre de la question */
+            width: 100% !important; /* Force le groupe à prendre la largeur pour rester sous le label */
+        } 
+/* ─────────────────────────────────────────────
+   Boutons
+   btn-primary   → rouge  (action principale : lancer calcul)
+   btn-nav-next  → gris foncé (navigation, pas une action critique)
+   btn-secondary → gris (inchangé)
+   btn-export    → vert (inchangé)
+   btn-warning   → jaune avec texte sombre (était blanc = illisible)
+───────────────────────────────────────────── */
+#etudes-economique-modal .btn {
+    padding: 10px 22px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    margin-right: 10px;
+    transition: filter 0.15s;
+    white-space: nowrap;
+}
+
+#etudes-economique-modal .btn:hover {
+    filter: brightness(0.92);
+}
+
+#etudes-economique-modal .btn-primary {
+    background-color: #E1000F;
+    color: white;
+}
+
+#etudes-economique-modal .btn-secondary {
+    background-color: #E1000F;
+    color: white;
+    border: none;
+    ;
+     /* Assure que le bouton secondaire reste à gauche */
+}
+
+#etudes-economique-modal .btn-export {
+    background-color: var(--accent-green);
+    color: white;
+    padding: 10px 22px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    margin-right: 10px;
+    transition: filter 0.15s;
+    white-space: nowrap;
+}
+
+.btn-export:hover {
+    filter: brightness(0.8);
+}
+#etudes-economique-modal .btn-warning {
+    background-color: var(--accent-yellow);
+    color: var(--text-color);
+    padding: 10px 22px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    margin-right: 10px;
+    transition: filter 0.15s;
+    white-space: nowrap;
+}
+.btn-warning:hover {
+    filter: brightness(0.8);
+}
+
+/* Suivant / Précédent : gris neutre au lieu de rouge */
+#etudes-economique-modal .btn-nav-next {
+    background-color: #495057;
+    color: white;
+}
+
+/* Déplacement des 3 boutons vers la gauche pour éviter les débordements */
+#etudes-economique-modal #Resultats > div:first-of-type {
+    justify-content: flex-start !important;
+    gap: 30px;
+    align-items: center;
+    flex-wrap: nowrap !important;
+}
+
+#etudes-economique-modal #Resultats h2+div {
+    display: flex;
+    gap: 10px;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+#etudes-economique-modal #Resultats h2+div .btn {
+    margin-right: 0;
+}
+
+#etudes-economique-modal .results-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+#etudes-economique-modal .result-card {
+    /* background: #ffffff; */
+    border: 1px solid #e8e8e8;
+    /* padding: 13px 15px; */
+    border-radius: 5px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    align-items: center;
+    background: #f1f3f5;
+    padding: 15px;
+    border-radius: 5px;
+    text-align: center;
+}
+
+#etudes-economique-modal .result-card .label {
+    font-size: 14px;
+    color: #555;
+    font-weight: 700;
+    text-transform: lowercase;
+    letter-spacing: 0.04em;
+}
+
+#etudes-economique-modal .result-card .label span {
+    text-transform: none;
+}
+
+#etudes-economique-modal .result-card .label::first-letter {
+    text-transform: uppercase;
+}
+
+#etudes-economique-modal .result-card .value {
+    font-size: 1.35em;
+    font-weight: 700;
+    color: #313131;
+    line-height: 1.2;
+}
+
+/* Indicateurs financiers clés en tableau (Rési + Pro/Grand projet, demande explicite) — même
+   habillage que .resi-lines-table (vue Chiffrage CAPEX résidentielle) : en-tête bleu, cellules
+   bordées, plutôt que les anciennes cartes .result-card ci-dessus (désormais inutilisées). */
+#etudes-economique-modal .kpi-results-table {
+    width: 100%;
+    max-width: 650px;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+}
+#etudes-economique-modal .kpi-results-table th,
+#etudes-economique-modal .kpi-results-table td {
+    border: 1px solid var(--border-color, #ddd);
+    padding: 8px 14px;
+    text-align: left;
+}
+#etudes-economique-modal .kpi-results-table th {
+    background-color: #eaf3fb;
+    color: #005A9E;
+    font-weight: 600;
+}
+#etudes-economique-modal .kpi-results-table td:last-child {
+    text-align: right;
+    font-weight: 700;
+    color: #313131;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─────────────────────────────────────────────
+   Tableau
+   Avant : en-têtes rouges vifs → œil capturé par les en-têtes, pas les données
+   Après : en-têtes gris foncé neutres, rouge réservé aux valeurs importantes
+───────────────────────────────────────────── */
+#etudes-economique-modal table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    font-size: 0.88em;
+}
+
+#etudes-economique-modal th,
+#etudes-economique-modal td {
+    border: 1px solid #e0e0e0;
+    padding: 7px 9px;
+    text-align: center;
+}
+
+#etudes-economique-modal th {
+    background-color: #E1000F;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 0.9em;
+}
+
+#etudes-economique-modal tbody tr:nth-child(even) {
+    background-color: #fafafa;
+}
+
+#etudes-economique-modal tbody tr:hover {
+    background-color: #fff5f5;
+}
+
+#etudes-economique-modal tfoot {
+    font-weight: bold;
+    background-color: #f0f0f0;
+}
+
+/* ─────────────────────────────────────────────
+   Modal interne (sensibilité)
+───────────────────────────────────────────── */
+#etudes-economique-modal .modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+#etudes-economique-modal .modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 20px;
+    width: 90%;
+    max-width: 800px;
+    border-radius: 8px;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+/* Fond rouge allongé (bord à bord) pour l'en-tête de la modale Analyse de sensibilité */
+#etudes-economique-modal #sensiModal h2 {
+    background-color: #E1000F;
+    color: #ffffff;
+    margin: -20px -20px 20px -20px;
+    padding: 15px 25px;
+    border-left: none;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    max-width: none;
+}
+
+/* ─────────────────────────────────────────────
+   Graphiques
+───────────────────────────────────────────── */
+#etudes-economique-modal .chart-container-wrapper {
+    margin-top: 30px;
+}
+
+#etudes-economique-modal .chart-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* CORRECTIF (demande explicite : "les graphiques sont tout écrasés, augmenter la hauteur") : ces
+   charts (cumFlowChart/factureChart/fcfActChart, EtudesEconomiqueLogic.js) sont tous créés avec
+   maintainAspectRatio:false — sans hauteur explicite sur leur conteneur, Chart.js n'a aucune
+   référence de hauteur à respecter et les rend écrasés. Aucune règle de hauteur n'existait ici
+   auparavant, pour aucune vue (Pro/Grand-projet ou résidentiel) — corrigé pour les deux. */
+#etudes-economique-modal .chart-box-half {
+    flex: 1;
+    min-width: 0;
+    height: 340px;
+    position: relative;
+}
+
+#etudes-economique-modal .chart-box-full {
+    width: 80%;
+    margin: 0 auto;
+    height: 340px;
+    position: relative;
+}
+
+/* ─────────────────────────────────────────────
+   Listes & sensibilité
+───────────────────────────────────────────── */
+#etudes-economique-modal .dynamic-list {
+    margin-top: 10px;
+}
+
+#etudes-economique-modal .dynamic-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 5px;
+}
+
+#etudes-economique-modal .sensi-input-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+#etudes-economique-modal .sensi-input-row label {
+    flex: 1;
+    color: #444;
+    font-weight: 500;
+}
+
+#etudes-economique-modal .sensi-input-row input {
+    width: 80px;
+}
+
+/* ─────────────────────────────────────────────
+   Utilitaires
+───────────────────────────────────────────── */
+#etudes-economique-modal .hidden {
+    display: none !important;
+}
+
+#etudes-economique-modal .section-revenus {
+    border-left: 4px solid #E1000F;
+    padding-left: 15px;
+    background-color: #fff9f9;
+    border-radius: 0 4px 4px 0;
+}
+
+/* --- Tableau annuel des flux (Résultats) --- */
+#results-table {
+    table-layout: fixed !important; /* Force les colonnes à avoir la même largeur */
+    width: 100% !important;
+}
+
+#results-table th,
+#results-table td {
+    word-wrap: break-word !important; /* Force le texte à passer à la ligne */
+    overflow-wrap: break-word !important;
+}
+
+/* Grille pour Capex et Opex */
+.capex-opex-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 40px; /* Espace entre les deux colonnes */
+    align-items: start;
+}

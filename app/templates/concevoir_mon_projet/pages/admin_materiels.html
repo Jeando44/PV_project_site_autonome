@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration matériels — Solakvan</title>
+    <link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/modalHeaderCommon.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Même principe que schema_unifilaire.html : chargé dans une iframe plein écran ouverte
+           depuis menu_list.js::openAdminMaterielsModal (cf. menu.html) — le fond de la page reste
+           transparent, seul #app-modal porte le cadre visuel, pour rester cohérent avec les autres
+           modals de l'application (fermeture via modal_header_unified.html -> postMessage). */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
+            margin: 0;
+            position: relative;
+            background-color: transparent;
+        }
+
+        #modal-backdrop {
+            display: block;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1001;
+        }
+
+        #app-modal {
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 95vw;
+            height: 90vh;
+            max-width: 1400px;
+            background-color: #fff;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            z-index: 1002;
+            overflow: hidden;
+        }
+
+        #admin-materiels-body {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 20px 24px;
+            background: #f4f6f8;
+        }
+
+        p.subtitle { color: #6b7280; margin: 0 0 16px 0; }
+        .table-responsive { max-height: 55vh; }
+        table.table { font-size: 0.85rem; }
+        .badge-inactive { opacity: 0.55; }
+        .form-check { margin-top: 6px; }
+    </style>
+</head>
+<body>
+
+<div id="modal-backdrop"></div>
+
+<div id="app-modal">
+    {% set modal_title = "Administration des matériels (Panneaux / Onduleurs / Batteries)" %}
+    {% set show_toggle = false %}
+    {% include 'concevoir_mon_projet/components/modal_header_unified.html' %}
+
+    <div id="admin-materiels-body">
+
+    {# Formulaire générique réutilisé pour les 3 types (ajout ET édition) — piloté par les métadonnées
+       de champs passées depuis app/routes/admin_materiels.py (nom, libellé, type de saisie, obligatoire).
+       #}
+    {# NOUVEAU (demande explicite, ajout matériels BD) : kind == 'select' — liste fermée pilotée par
+       `field_options[name]` (app/routes/admin_materiels.py::FIELD_OPTIONS), pour les champs qui pilotent
+       le branchement du dimensionnement côté JS (technologie/type_connexion) — une faute de frappe en
+       texte libre les casserait silencieusement. #}
+    {% macro render_fields(fields, item=None) %}
+        {% for name, label, kind, required in fields %}
+            <div class="mb-2">
+                {% if kind == 'checkbox' %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" name="{{ name }}" id="f-{{ item.id if item else 'new' }}-{{ name }}"
+                            {% if item and item[name] %}checked{% endif %}>
+                        <label class="form-check-label" for="f-{{ item.id if item else 'new' }}-{{ name }}">{{ label }}</label>
+                    </div>
+                {% elif kind == 'select' %}
+                    <label class="form-label small mb-0">{{ label }}{% if required %} *{% endif %}</label>
+                    <select class="form-select form-select-sm" name="{{ name }}" {% if required %}required{% endif %}>
+                        <option value="">—</option>
+                        {% for opt in field_options.get(name, []) %}
+                            <option value="{{ opt }}" {% if item and item[name] == opt %}selected{% endif %}>{{ opt }}</option>
+                        {% endfor %}
+                    </select>
+                {% elif kind in ('textarea', 'json') %}
+                    {# Applications (une par ligne) et courbes de performance (JSON, validé à l'enregistrement). #}
+                    <label class="form-label small mb-0">{{ label }}{% if required %} *{% endif %}</label>
+                    <textarea class="form-control form-control-sm{% if kind == 'json' %} font-monospace{% endif %}" name="{{ name }}"
+                              rows="{{ 3 if kind == 'json' else 4 }}" {% if kind == 'json' %}spellcheck="false" style="font-size:0.7rem;"{% endif %}
+                              {% if required %}required{% endif %}>{{ (item[name] if item and item[name] is not none else '') }}</textarea>
+                {% else %}
+                    <label class="form-label small mb-0">{{ label }}{% if required %} *{% endif %}</label>
+                    <input type="{{ 'number' if kind == 'number' else 'text' }}"
+                           {% if kind == 'number' %}step="any"{% endif %}
+                           class="form-control form-control-sm" name="{{ name }}"
+                           value="{{ (item[name] if item and item[name] is not none else '') }}"
+                           {% if required %}required{% endif %}>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% endmacro %}
+
+    <p class="subtitle">Outil interne — panneaux, onduleurs, batteries (Résidentiel + Pro/Grand-projet).</p>
+
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 border rounded bg-light">
+        <strong class="me-2 small text-muted">Transfert local ↔ production :</strong>
+        <a href="{{ url_for('admin_materiels.export_json') }}" class="btn btn-outline-primary btn-sm">
+            ⬇ Exporter (JSON)
+        </a>
+        <form method="post" action="{{ url_for('admin_materiels.import_json') }}" enctype="multipart/form-data"
+              class="d-flex align-items-center gap-2"
+              onsubmit="return confirm('Importer ce fichier ? Les références déjà présentes en base seront mises à jour, les nouvelles seront créées. Cette action est irréversible.');">
+            <input type="file" name="file" accept="application/json,.json" required
+                   class="form-control form-control-sm" style="max-width: 260px;">
+            <button type="submit" class="btn btn-outline-success btn-sm">⬆ Importer (JSON)</button>
+        </form>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <ul class="nav nav-tabs" id="materielsTabs" role="tablist">
+        {% for key, info in types.items() %}
+        <li class="nav-item" role="presentation">
+            <button class="nav-link {% if loop.first %}active{% endif %}" id="tab-{{ key }}-btn" data-bs-toggle="tab"
+                    data-bs-target="#tab-{{ key }}" type="button" role="tab">{{ info.label }}
+                <span class="badge bg-secondary">{{ data[key]|length }}</span></button>
+        </li>
+        {% endfor %}
+    </ul>
+
+    <div class="tab-content border border-top-0 p-3 bg-white" id="materielsTabsContent">
+        {% for key, info in types.items() %}
+        <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="tab-{{ key }}" role="tabpanel">
+            <div class="d-flex justify-content-end mb-2">
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modal-{{ key }}-new">
+                    + Ajouter un(e) {{ info.label[:-1] if info.label.endswith('s') else info.label }}
+                </button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm table-striped table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fabricant</th>
+                            <th>Référence</th>
+                            <th>Actif</th>
+                            <th style="width:140px;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in data[key] %}
+                        <tr class="{% if not item.is_active %}badge-inactive{% endif %}">
+                            <td>{{ item.fabricant }}</td>
+                            <td>{{ item.reference }}</td>
+                            <td>{{ 'Oui' if item.is_active else 'Non' }}</td>
+                            <td>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#modal-{{ key }}-{{ item.id }}">Modifier</button>
+                                <form method="post" action="{{ url_for('admin_materiels.delete', type_key=key, item_id=item.id) }}"
+                                      style="display:inline" onsubmit="return confirm('Supprimer définitivement « ' + {{ item.reference|tojson }} + ' » ? Cette action est irréversible.');">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">Supprimer</button>
+                                </form>
+                            </td>
+                        </tr>
+
+                        {# Modal d'édition, un par ligne (plus simple/fiable qu'un modal unique repeuplé en JS
+                           pour un outil interne à faible volume de lignes). #}
+                        <div class="modal fade" id="modal-{{ key }}-{{ item.id }}" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <form method="post" action="{{ url_for('admin_materiels.update', type_key=key, item_id=item.id) }}">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Modifier — {{ item.fabricant }} {{ item.reference }}</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        <div class="modal-body row">
+                                            {{ render_fields(info.fields, item) }}
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                            <button type="submit" class="btn btn-primary">Enregistrer</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <tr><td colspan="4" class="text-muted text-center">Aucune référence enregistrée.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {# Modal d'ajout pour ce type #}
+        <div class="modal fade" id="modal-{{ key }}-new" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form method="post" action="{{ url_for('admin_materiels.create', type_key=key) }}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Ajouter — {{ info.label }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row">
+                            {{ render_fields(info.fields) }}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                            <button type="submit" class="btn btn-primary">Ajouter</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {# NOUVEAU (demande explicite : "tenir compte du type de batterie/optimiseur par modèle d'onduleur
+       hybride ou de chaîne, avec MIN_MAX par chaîne et puissance PV") : ces 2 relations ne sont pas des
+       matériels (pas de fabricant/référence propres), donc en dehors des onglets génériques ci-dessus. #}
+    <hr class="my-4">
+    <h5 class="mb-3">Compatibilités matériels</h5>
+
+    <div class="row">
+        <div class="col-md-6">
+            <h6>Optimiseur ↔ Onduleur <span class="text-muted small">(bornes de chaîne + puissance PV par paire)</span></h6>
+            <form method="post" action="{{ url_for('admin_materiels.compat_optimiseur_create') }}" class="d-flex flex-wrap gap-2 align-items-end mb-2 p-2 border rounded bg-light">
+                <div>
+                    <label class="form-label small mb-0">Optimiseur</label>
+                    <select name="optimiseur_id" class="form-select form-select-sm" required>
+                        <option value="">—</option>
+                        {% for o in optimiseurs %}<option value="{{ o.id }}">{{ o.fabricant }} — {{ o.reference }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label small mb-0">Onduleur</label>
+                    <select name="onduleur_id" class="form-select form-select-sm" required>
+                        <option value="">—</option>
+                        {% for o in onduleurs %}<option value="{{ o.id }}">{{ o.fabricant }} — {{ o.reference }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div><label class="form-label small mb-0">Chaîne min</label><input type="number" name="chaine_min" class="form-control form-control-sm" style="width:90px;"></div>
+                <div><label class="form-label small mb-0">Chaîne max</label><input type="number" name="chaine_max" class="form-control form-control-sm" style="width:90px;"></div>
+                <div><label class="form-label small mb-0">Puissance PV max (W)</label><input type="number" step="any" name="puissance_max_w" class="form-control form-control-sm" style="width:120px;"></div>
+                <button type="submit" class="btn btn-primary btn-sm">+ Ajouter</button>
+            </form>
+            <div class="table-responsive" style="max-height:35vh;">
+                <table class="table table-sm table-striped">
+                    <thead><tr><th>Optimiseur</th><th>Onduleur</th><th>Ch. min</th><th>Ch. max</th><th>P. max (W)</th><th></th></tr></thead>
+                    <tbody>
+                        {% for c in compat_optimiseur %}
+                        <tr>
+                            <td>{{ c.optimiseur.reference }}</td>
+                            <td>{{ c.onduleur.reference }}</td>
+                            <td>{{ c.chaine_min if c.chaine_min is not none else '—' }}</td>
+                            <td>{{ c.chaine_max if c.chaine_max is not none else '—' }}</td>
+                            <td>{{ c.puissance_max_w if c.puissance_max_w is not none else '—' }}</td>
+                            <td>
+                                <form method="post" action="{{ url_for('admin_materiels.compat_optimiseur_delete', compat_id=c.id) }}" onsubmit="return confirm('Supprimer cette compatibilité ?');">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-muted text-center">Aucune compatibilité enregistrée.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <h6>Batterie ↔ Onduleur <span class="text-muted small">(modèles d'onduleur hybride compatibles)</span></h6>
+            <form method="post" action="{{ url_for('admin_materiels.compat_batterie_create') }}" class="d-flex flex-wrap gap-2 align-items-end mb-2 p-2 border rounded bg-light">
+                <div>
+                    <label class="form-label small mb-0">Batterie</label>
+                    <select name="batterie_id" class="form-select form-select-sm" required>
+                        <option value="">—</option>
+                        {% for b in batteries %}<option value="{{ b.id }}">{{ b.fabricant }} — {{ b.reference }}</option>{% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="form-label small mb-0">Onduleur</label>
+                    <select name="onduleur_id" class="form-select form-select-sm" required>
+                        <option value="">—</option>
+                        {% for o in onduleurs %}<option value="{{ o.id }}">{{ o.fabricant }} — {{ o.reference }}</option>{% endfor %}
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary btn-sm">+ Ajouter</button>
+            </form>
+            <div class="table-responsive" style="max-height:35vh;">
+                <table class="table table-sm table-striped">
+                    <thead><tr><th>Batterie</th><th>Onduleur</th><th></th></tr></thead>
+                    <tbody>
+                        {% for c in compat_batterie %}
+                        <tr>
+                            <td>{{ c.batterie.reference }}</td>
+                            <td>{{ c.onduleur.reference }}</td>
+                            <td>
+                                <form method="post" action="{{ url_for('admin_materiels.compat_batterie_delete', compat_id=c.id) }}" onsubmit="return confirm('Supprimer cette compatibilité ?');">
+                                    <button type="submit" class="btn btn-outline-danger btn-sm">✕</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="text-muted text-center">Aucune compatibilité enregistrée.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    </div><!-- /#admin-materiels-body -->
+</div><!-- /#app-modal -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

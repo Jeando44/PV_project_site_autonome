@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    {% include 'concevoir_mon_projet/components/headLinks.html' %}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/Geometrie.css') }}">
+    <title>Géométrie - Gestion de Projet Photovoltaïque</title>
+</head>
+<body>
+    {% include 'concevoir_mon_projet/components/menu_list.html' %}
+    {% include 'concevoir_mon_projet/pages/parametre.html' %}
+
+    <div class="geometrie-page">
+        <div class="app-container">
+            <main id="main-content">
+                <div class="page-content">
+                    <h1>Géométrie du Projet</h1>
+
+                    <div class="content-wrapper">
+                        <p>Contenu de la page Géométrie à développer...</p>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Scripts JavaScript nécessaires pour les dépendances -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+        <!-- GOOGLE MAPS API (Requise pour les calculs géométriques de la Loi APER) -->
+        <script>
+            (g => { var h, a, k, p = "The Google Maps JavaScript API", c = "google", l = "importLibrary", q = "__ib__", m = document, b = window; b = b[c] || (b[c] = {}); var d = b.maps || (b.maps = {}), r = new Set, e = new URLSearchParams, u = () => h || (h = new Promise(async (f, n) => { await (a = m.createElement("script")); e.set("libraries", [...r] + ""); for (k in g) e.set(k.replace(/[A-Z]/g, t => "_" + t[0].toLowerCase()), g[k]); e.set("callback", c + ".maps." + q); a.src = `https://maps.${c}apis.com/maps/api/js?` + e; d[q] = f; a.onerror = () => h = n(Error(p + " could not load.")); a.nonce = m.querySelector("script[nonce]")?.nonce || ""; m.head.append(a) })); d[l] ? console.warn(p + " only loads once. Ignoring:", g) : d[l] = (f, ...n) => r.add(f) && u().then(() => dl) })({
+              key: "{{ google_maps_key }}",
+              v: "3.64",
+              language: "fr",
+              libraries: "drawing,geometry,marker,places"
+            });
+        </script>
+        <!-- Script d'initialisation de la carte pour le modal paramètres -->
+        <script type="module" src="{{ url_for('static', filename='concevoir_mon_projet/javascript/parametreProjetMap/initialisationMap.js') }}?v=33"></script>
+
+        <!-- MODAL GEOMETRIE -->
+   <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/shapes/polygone_aper.js') }}"></script>
+   <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/shapes/polygone_aper_persistence.js') }}?v=2"></script>
+   <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/calcul_APER.js') }}?v=7"></script>
+
+    </div> <!-- Fin de geometrie-page -->
+
+    {% include 'concevoir_mon_projet/components/page_navigation.html' %}
+</body>
+</html>

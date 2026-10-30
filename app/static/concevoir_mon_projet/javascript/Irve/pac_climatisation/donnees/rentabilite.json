@@ -1,0 +1,57 @@
+{
+  "_source": "Valeurs par défaut de l'étude de rentabilité PAC : ORDRES DE GRANDEUR à remplacer par les devis, les factures et les fiches techniques du projet. Rendements saisonniers de génération rapportés au PCI (pouvoir calorifique inférieur). Aucune valeur n'est tirée d'un tableau normatif.",
+  "systemes_chauffage": [
+    { "id": "convecteurs", "libelle": "Convecteurs / panneaux électriques", "energie": "elec", "rendement": 1.0, "entretien_eur_an": 0 },
+    { "id": "gaz", "libelle": "Chaudière gaz classique", "energie": "gaz", "rendement": 0.85, "entretien_eur_an": 120 },
+    { "id": "gaz_condensation", "libelle": "Chaudière gaz à condensation", "energie": "gaz", "rendement": 0.95, "entretien_eur_an": 130 },
+    { "id": "fioul", "libelle": "Chaudière fioul", "energie": "fioul", "rendement": 0.85, "entretien_eur_an": 200 }
+  ],
+  "systemes_ecs": [
+    { "id": "chaudiere", "libelle": "Produite par la chaudière de référence", "rendement": 0.75, "_note": "rendement de génération en production d'ECS seule (chaudière à faible charge) ; hypothèse. Sans chaudière de référence (convecteurs), un chauffe-eau électrique est retenu." },
+    { "id": "electrique", "libelle": "Chauffe-eau électrique (chauffé en heures creuses)", "rendement": 1.0 }
+  ],
+  "froid_reference": {
+    "seer_defaut": 3.5,
+    "_note": "Climatiseur existant remplacé : électricité = froid fourni / SEER, suivant le même profil horaire."
+  },
+  "conversions": {
+    "pcs_sur_pci_gaz_naturel": 1.11,
+    "fioul_kwh_pci_par_litre": 9.97,
+    "_source": "Rapport PCS/PCI du gaz naturel et PCI du fioul domestique : propriétés physiques publiques des combustibles (ordres de grandeur)."
+  },
+  "prix_defaut": {
+    "_note": "Prix TTC d'un particulier, ordres de grandeur 2025, à remplacer par la facture. Électricité : mêmes valeurs par défaut que la rentabilité IRVE.",
+    "elec": { "BASE": 0.20, "HP": 0.21, "HC": 0.17 },
+    "gaz_eur_kwh_pcs": 0.12,
+    "abonnement_gaz_eur_an": 250,
+    "fioul_eur_litre": 1.20
+  },
+  "investissement_defaut": {
+    "_note": "Ordres de grandeur indicatifs (matériel posé), à remplacer par le devis.",
+    "air_eau": 12000,
+    "air_air_premiere_unite": 2500,
+    "air_air_unite_supplementaire": 1500,
+    "clim_premiere_unite": 2000,
+    "clim_unite_supplementaire": 1300,
+    "entretien_pac_eur_an": 150
+  },
+  "hypotheses_financieres": {
+    "horizon_ans": 20,
+    "duree_vie_pac_ans": 17,
+    "remplacement_pct": 70,
+    "evol_elec_pct": 3,
+    "evol_gaz_pct": 4,
+    "evol_fioul_pct": 4,
+    "inflation_pct": 2,
+    "actualisation_pct": 4,
+    "degradation_pv_pct": 0.5
+  },
+  "emissions_kgco2_kwh": {
+    "_source": "Facteurs d'émission par énergie et par usage de l'électricité, repris de la méthode publique du diagnostic de performance énergétique (arrêté du 31 mars 2021) — à vérifier sur Légifrance. Combustibles en kWh PCI.",
+    "elec_chauffage": 0.079,
+    "elec_ecs": 0.065,
+    "elec_froid": 0.064,
+    "gaz": 0.227,
+    "fioul": 0.324
+  }
+}

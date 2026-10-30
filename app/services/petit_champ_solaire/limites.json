@@ -1,0 +1,73 @@
+{
+  "_commentaire": "Source UNIQUE des bornes du configurateur « Petit champ solaire » : lue par le serveur (validation.py) et injectée telle quelle dans le template (window.PETIT_CHAMP_LIMITES) pour la validation front. Modifier une borne ici la change des deux côtés ; tests/petit_champ_solaire/test_validation.py vérifie la cohérence.",
+  "version": 1,
+  "champs": {
+    "postSpacing":            { "min": 0,    "max": 30,   "libelle": "Entraxe double poteaux (m)" },
+    "postEccentricity":       { "min": 0,    "max": 30,   "libelle": "Excentrement (m)" },
+    "roofSlope":              { "min": 0,    "max": 20,   "libelle": "Pente des panneaux (°)" },
+    "lowPointHeight":         { "min": 0.3,  "max": 5,    "libelle": "Hauteur structure égout (m)" },
+    "heightUnderBrace":       { "min": 0,    "max": 2,    "libelle": "Hauteur sous renfort (m)" },
+    "anchorDepth":            { "min": 0.01, "max": 1,    "libelle": "Profondeur d'ancrage (m)" },
+    "nbPanelsRampant":        { "min": 1,    "max": 20,   "entier": true, "libelle": "Nb. de panneaux en rampant" },
+    "panelSpacingY":          { "min": 0,    "max": 500,  "libelle": "Espacement panneaux Y (mm)" },
+    "nbShed":                 { "min": 1,    "max": 50,   "entier": true, "libelle": "Nombre de shed" },
+    "shedSpacing":            { "min": 0.1,  "max": 20,   "libelle": "Espacement entre shed (m)" },
+    "petitPanelLengthMm":     { "min": 1000, "max": 2500, "libelle": "Longueur panneau (mm)" },
+    "petitPanelWidthMm":      { "min": 700,  "max": 1400, "libelle": "Largeur panneau (mm)" },
+    "petitPanelThicknessMm":  { "min": 20,   "max": 50,   "libelle": "Épaisseur panneau (mm)" },
+    "overhangSymValue":       { "min": 0,    "max": 49,   "libelle": "Porte-à-faux (%)" },
+    "overhangAsymHigh":       { "min": 0,    "max": 1,    "libelle": "Porte-à-faux haut (m)" },
+    "overhangAsymLow":        { "min": 0,    "max": 1,    "libelle": "Porte-à-faux bas (m)" },
+    "baseAltimetry":          { "min": 0,    "max": 1500, "libelle": "Altimétrie au point +0.00 m (m)" },
+    "groundSlopeFacade":      { "min": -3,   "max": 3,    "libelle": "Dénivelé du terrain (m)" },
+    "foundationLength":       { "min": 0,    "max": 3,    "libelle": "Longueur de fondation (m)" },
+    "foundationWidth":        { "min": 0,    "max": 3,    "libelle": "Largeur de fondation (m)" },
+    "foundationDepth":        { "min": 0,    "max": 2,    "libelle": "Hauteur de fondation (m)" },
+    "foundationOverhang":     { "min": 0,    "max": 1,    "libelle": "Débord de fondation (m)" },
+    "foundationBuryLevel":    { "min": 0,    "max": 3,    "libelle": "Niveau d'enfouissement (m)" },
+    "visDepth":               { "min": 0.5,  "max": 3,    "libelle": "Profondeur vis / micropieu (m)" },
+    "postWidth":              { "min": 0.01, "max": 1,    "libelle": "Largeur poteau (m)" },
+    "purlinHeight":           { "min": 0.01, "max": 1,    "libelle": "Hauteur des pannes (m)" },
+    "purlinWidth":            { "min": 0.01, "max": 1,    "libelle": "Largeur panne (m)" },
+    "panelThickness":         { "min": 0.01, "max": 1,    "libelle": "Épaisseur panneau (m)" },
+    "beamHeight":             { "min": 0.01, "max": 1,    "libelle": "Hauteur traverse (m)" },
+    "beamWidth":              { "min": 0.01, "max": 1,    "libelle": "Largeur traverse (m)" },
+    "braceWidth":             { "min": 0.01, "max": 1,    "libelle": "Largeur des bracons (m)" },
+    "purlinCount":            { "min": 2,    "max": 20,   "entier": true, "libelle": "Nombre de pannes" },
+    "braceFixPercentage":     { "min": 50,   "max": 80,   "libelle": "Fixation du bracon (%)" },
+    "parcelLimitLeftCoupe":   { "min": 0,    "max": 100,  "libelle": "Limite parcellaire gauche - coupe (m)" },
+    "parcelLimitRightCoupe":  { "min": 0,    "max": 100,  "libelle": "Limite parcellaire droite - coupe (m)" },
+    "panelSpacingX":          { "min": 0,    "max": 500,  "libelle": "Espacement panneaux X (mm)" },
+    "nbShedGroups":           { "min": 1,    "max": 50,   "entier": true, "libelle": "Nb. de groupes de shed en longueur" },
+    "shedGroupSpacing":       { "min": 0,    "max": 10,   "libelle": "Espacement entre groupes de shed (m)" },
+    "facadeEntraxe":          { "min": 1,    "max": 10,   "libelle": "Entraxe max. entre poteaux (m)" },
+    "facadeBaseAltimetry":    { "min": 0,    "max": 1500, "libelle": "Altimétrie au point +0.00 m - façade (m)" },
+    "facadeGroundSlope":      { "min": -3,   "max": 3,    "libelle": "Dénivelé du terrain - façade (m)" },
+    "parcelLimitLeftFacade":  { "min": 0,    "max": 100,  "libelle": "Limite parcellaire gauche - façade (m)" },
+    "parcelLimitRightFacade": { "min": 0,    "max": 100,  "libelle": "Limite parcellaire droite - façade (m)" }
+  },
+  "champsCalcules": {
+    "_commentaire": "Valeurs CALCULÉES par le configurateur (lecture seule) : jamais bloquantes à la saisie, mais contrôlées côté serveur comme bornes de cohérence.",
+    "passageHeight":   { "min": 0,    "max": 10,  "libelle": "Hauteur libre de passage (m)" },
+    "postHeight":      { "min": 0.3,  "max": 10,  "libelle": "Hauteur des poteaux (m)" },
+    "panelWidth":      { "min": 0.01, "max": 60,  "libelle": "Largeur champ PV (m)" },
+    "facadeLength":    { "min": 0.01, "max": 600, "libelle": "Longueur de façade (m)" },
+    "leftOverhang":    { "min": 0,    "max": 30,  "libelle": "Porte-à-faux gauche (m)" },
+    "rightOverhang":   { "min": 0,    "max": 30,  "libelle": "Porte-à-faux droit (m)" }
+  },
+  "formats": {
+    "pvLayout": { "lignesMin": 1, "lignesMax": 6, "colonnesMin": 1, "colonnesMax": 200, "libelle": "Disposition PV (L x C)" }
+  },
+  "reglementation": {
+    "sections": {
+      "urbanisme": { "libelle": "Urbanisme", "min": 20, "max": 3000, "lignesMax": 80 },
+      "sdis":      { "libelle": "Sécurité incendie (SDIS)", "min": 20, "max": 3000, "lignesMax": 80 },
+      "icpe":      { "libelle": "ICPE", "min": 20, "max": 3000, "lignesMax": 80 }
+    },
+    "titreMax": 120
+  },
+  "dossier": {
+    "indicePattern": "^[A-Z]{1,2}[0-9]?$",
+    "generationsParProjet": 5
+  }
+}

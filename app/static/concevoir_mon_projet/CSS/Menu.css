@@ -1,0 +1,288 @@
+/* Google Font Link 
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap');*/
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+.MenuMenu {
+  height: 600px;
+  width: 6%;
+  background-color: rgb(185, 187, 188);
+  color: rgb(150, 4, 4) lightblue;
+  float: left;
+  line-height: 50px;
+}
+
+.Menu {
+  width: 100%;
+  min-height: 40px;
+  text-align: center;
+}
+
+/* ============================
+   DIMENSIONS PARTAGÉES (menus fixes)
+   --skv-sidebar-w : largeur du menu vertical fermé ; --skv-topbar-h : hauteur réelle du menu
+   horizontal, mise à jour en JS (menu_list.html) quand ses titres passent sur 2 lignes.
+   La page Calepinage (Modele.css) se cale sur ces 2 valeurs.
+   ============================ */
+:root {
+  --skv-sidebar-w: 70px;
+  --skv-topbar-h: 50px;
+  /* Espacement vertical des icônes : proportionnel à la hauteur de l'écran, borné. */
+  --skv-sidebar-gap: clamp(4px, calc((100vh - 520px) / 14), 30px);
+  --skv-sidebar-item-h: clamp(30px, 4.6vh, 40px);
+}
+
+@media (max-width: 992px) {
+  :root { --skv-sidebar-w: 60px; }
+}
+
+@media (max-width: 768px) {
+  :root { --skv-sidebar-w: 50px; }
+}
+
+.sidebar {
+  position: fixed;
+  left: 0;
+  top: 0px;
+  height: 100%;
+  width: var(--skv-sidebar-w);
+  background-color: #de0000;
+  z-index: 10002;
+  transition: width 0.4s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Ouvert : assez large pour les libellés, qui passent à la ligne au lieu de déborder hors du
+   fond rouge (texte blanc devenu invisible sur la carte). */
+.sidebar.open {
+  width: min(240px, 80vw);
+}
+
+.sidebar .logo-details {
+  height: clamp(32px, 5.5vh, 50px);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.sidebar .logo-details .icon {
+  opacity: 0;
+  transition: all 0.5s ease;
+}
+
+.sidebar .logo-details .logo_name {
+  color: #fff;
+  font-size: 18px;
+  font-weight: 600;
+  opacity: 0;
+  transition: all 0.5s ease;
+}
+
+.sidebar.open .logo-details .icon,
+.sidebar.open .logo-details .logo_name {
+  opacity: 1;
+}
+
+.sidebar .logo-details #btn {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  left: 0;
+  transform: translateY(-50%);
+  font-size: 30px;
+  text-align: center;
+  cursor: pointer;
+  margin: 0;
+}
+
+.sidebar.open .logo-details #btn {
+  left: auto;
+  right: 10px;
+}
+
+.sidebar i {
+  color: #ffffff;
+  height: var(--skv-sidebar-item-h);
+  min-width: 30px;
+  font-size: 22px;
+  text-align: center;
+  line-height: var(--skv-sidebar-item-h);
+}
+
+/* padding-left : 0 en px (Bootstrap pose 2rem sur les <ul>, qui grossit avec la taille de police
+   du navigateur et poussait les icônes hors du menu sur certains postes). */
+.sidebar .nav-list {
+  margin: 6px 0 0 0;
+  padding: 0 0 8px 0;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: var(--skv-sidebar-gap);
+  direction: ltr;
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.sidebar .nav-list::-webkit-scrollbar {
+  display: none;
+}
+
+.sidebar li {
+  position: relative;
+  margin: 0;
+  list-style: none;
+  flex-shrink: 0;
+}
+
+/* Tooltip en position fixe (placé en JS au survol, menu.html) : n'est plus coupé par le
+   défilement vertical du menu sur les écrans de faible hauteur. */
+.sidebar li .tooltip {
+  position: fixed;
+  top: 0;
+  left: calc(var(--skv-sidebar-w) + 6px);
+  transform: translateY(-50%);
+  z-index: 10003;
+  background: #de0000;
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.25);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.3;
+  opacity: 0;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+
+.sidebar li:hover .tooltip {
+  opacity: 1;
+}
+
+.sidebar.open li .tooltip {
+  display: none;
+}
+
+.sidebar input {
+  font-size: 15px;
+  color: #FFF;
+  font-weight: 400;
+  outline: none;
+  height: var(--skv-sidebar-item-h);
+  width: 40px;
+  border: none;
+  border-radius: 12px;
+  transition: all 0.5s ease;
+}
+
+.sidebar.open input {
+  padding: 0 20px 0 50px;
+  width: 100%;
+}
+
+.sidebar li a {
+  display: flex;
+  height: 100%;
+  width: 100%;
+  min-height: var(--skv-sidebar-item-h);
+  border-radius: 12px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0;
+  text-decoration: none;
+  transition: background-color 0.3s ease;
+  color: #FFF;
+}
+
+.sidebar.open li a {
+  justify-content: flex-start;
+  padding: 0 10px;
+}
+
+.sidebar li a .links_name {
+  display: none;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.15;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  text-align: left;
+}
+
+.sidebar.open li a .links_name {
+  display: block;
+}
+
+.sidebar li a:hover .links_name,
+.sidebar li a:hover i {
+  transition: all 0.5s ease;
+  color: rgb(199, 203, 206);
+}
+
+.sidebar li i {
+  border-radius: 12px;
+}
+
+@media (max-width: 992px) {
+  .sidebar i { font-size: 20px; }
+}
+
+@media (max-width: 768px) {
+  .sidebar i { font-size: 18px; }
+  .sidebar .logo-details .logo_name { font-size: 15px; }
+}
+
+.navbar-brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0px;
+  width: 100%;
+}
+
+.navbar-brand {
+  flex-shrink: 0;
+}
+
+/* Logo réduit sur les écrans de faible hauteur pour laisser la place aux icônes. */
+.navbar-brand img {
+  width: 85%;
+  max-height: clamp(30px, 8vh, 64px);
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+
+
+/* Styles pour les titres de catégories Enedis */
+.enedis-category-title {
+  padding: 10px 12px 6px 12px !important;
+  font-weight: bold !important;
+  font-size: 11px !important;
+  color: #333 !important;
+  background-color: #f8f8f8 !important;
+  border-bottom: 1px solid #e0e0e0 !important;
+  cursor: default !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  user-select: none !important;
+  pointer-events: none !important;
+}
+
+.enedis-category-title:hover {
+  background-color: #f8f8f8 !important;
+  color: #333 !important;
+}

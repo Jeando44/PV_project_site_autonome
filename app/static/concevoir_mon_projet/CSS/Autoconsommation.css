@@ -1,0 +1,62 @@
+/* ==================================================
+   AUTOCONSOMMATION PAGE - Gestion de l'autoconsommation
+   Styles isolés pour éviter les conflits
+   ================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+.autoconsommation-page {
+    --primary-color: #005A9C;
+    --secondary-color: #343A40;
+    --accent-color: #FFC107;
+    --bg-color: #F8F9FA;
+    --border-color: #DEE2E6;
+    --text-color: #212529;
+    --text-muted: #6C757D;
+    --selected-bg: #FFF3CD;
+    --title-red-color: #C00000;
+
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* --- STRUCTURE APP CONTAINER --- */
+.autoconsommation-page .app-container {
+    display: flex;
+    height: 100vh;
+    margin-top: 50px;
+    padding: 1% 1% 1% 1.5%;
+}
+
+.autoconsommation-page #main-content {
+    flex: 1;
+    width: 100%;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.autoconsommation-page .page-content {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.autoconsommation-page h1 {
+    text-align: center;
+    color: var(--primary-color);
+    margin-bottom: 2rem;
+    font-weight: 700;
+}
+
+.autoconsommation-page .content-wrapper {
+    background-color: white;
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}

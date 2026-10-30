@@ -1,0 +1,418 @@
+/* ==================================================
+   SYSTEM PAGE - Schéma Unifilaire
+   Styles isolés pour éviter les conflits
+   ================================================== */
+
+.system-page {
+    --primary-color: #005A9C;
+    --secondary-color: #343A40;
+    --accent-color: #FFC107;
+    --bg-color: #F8F9FA;
+    --border-color: #DEE2E6;
+    --text-color: #212529;
+    --text-muted: #6C757D;
+    --selected-bg: #FFF3CD;
+    --title-red-color: #C00000;
+
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* --- STRUCTURE APP CONTAINER --- */
+.system-page .app-container {
+    display: flex;
+    height: 100vh;
+    margin-top: 50px;
+    padding: 1% 1% 1% 1.5%;
+}
+
+.system-page #main-content {
+    flex: 1;
+    width: 100%;
+    overflow-y: auto;
+    padding: 20px;
+}
+
+/* --- PAGE CONTENT --- */
+.system-page .page-content {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* --- TITRES --- */
+.system-page h3 {
+    font-size: 1.75em;
+    color: var(--title-red-color);
+    margin: 0 0 20px 0;
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--title-red-color);
+    font-weight: 700;
+}
+
+.system-page h4 {
+    font-size: 1.25em;
+    color: var(--secondary-color);
+    margin: 0;
+}
+
+.system-page .form-group-title {
+    font-size: 1.1em;
+    font-weight: 600;
+    color: var(--title-red-color);
+    border-left: 3px solid var(--title-red-color);
+    padding-left: 10px;
+    margin: 30px 0 20px 0;
+}
+
+/* --- LAYOUT --- */
+.system-page .split-layout {
+    display: flex;
+    gap: 25px;
+    min-height: calc(100vh - 40px);
+}
+
+.system-page .split-main {
+    flex: 1;
+    background: white;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.system-page .split-sidebar {
+    flex: 3;
+    background-color: white;
+    padding: 25px;
+    border-radius: 12px;
+    border: 1px solid var(--border-color);
+}
+
+/* --- FORM GROUPS --- */
+.system-page .form-group {
+    margin-bottom: 25px;
+}
+
+.system-page .form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 500;
+    color: var(--text-muted);
+    font-size: 0.9em;
+}
+
+.system-page .form-group input,
+.system-page .form-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    box-sizing: border-box;
+    background-color: #fff;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    font-size: 1em;
+}
+
+.system-page .form-group input:focus,
+.system-page .form-group select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 90, 156, 0.15);
+}
+
+.system-page .form-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 20px;
+}
+
+/* --- CHOICE BUTTONS --- */
+.system-page .choice-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.system-page .choice-btn {
+    background-color: #fff;
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: all 0.2s ease-in-out;
+}
+
+.system-page .choice-btn:hover {
+    background-color: #f1f3f5;
+    border-color: #adb5bd;
+}
+
+.system-page .choice-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+    font-weight: 500;
+}
+
+/* --- BUTTONS --- */
+.system-page .btn {
+    background-color: var(--primary-color);
+    color: white;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.95em;
+    font-weight: 500;
+    transition: background-color 0.2s, transform 0.1s;
+}
+
+.system-page .btn:hover {
+    background-color: #004a80;
+    transform: translateY(-1px);
+}
+
+.system-page .btn:active {
+    transform: translateY(0);
+}
+
+.system-page .btn-secondary {
+    background-color: var(--secondary-color);
+}
+
+.system-page .btn-secondary:hover {
+    background-color: #1d2124;
+}
+
+.system-page .btn-small {
+    padding: 5px 10px;
+    font-size: 0.85em;
+}
+
+.system-page .action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.3em;
+    padding: 2px 6px;
+    transition: color 0.2s;
+    color: var(--text-muted);
+}
+
+.system-page .action-btn:hover {
+    color: var(--primary-color);
+}
+
+/* --- TABLES --- */
+.system-page .table-container {
+    overflow-x: auto;
+}
+
+.system-page table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9em;
+}
+
+.system-page table th,
+.system-page table td {
+    padding: 10px 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: middle;
+}
+
+.system-page table th {
+    background-color: var(--bg-color);
+    font-size: 0.85em;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.system-page table tbody tr:nth-of-type(odd) {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+
+.system-page table tbody tr:hover {
+    background-color: var(--selected-bg);
+}
+
+.system-page table input[type="number"],
+.system-page table input[type="text"] {
+    width: 100%;
+    padding: 6px;
+    font-size: 0.95em;
+    text-align: center;
+}
+
+.system-page .string-config-cell {
+    min-width: 240px;
+}
+
+.system-page .nb-chaine-pv {
+    background-color: #e9ecef;
+    font-weight: 500;
+    color: var(--secondary-color);
+    border: 1px solid var(--border-color) !important;
+}
+
+/* --- PANEL TABLE --- */
+.system-page .panel-table-container {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.system-page #panelSelectionTable tbody tr.panel-row {
+    cursor: pointer;
+}
+
+.system-page #panelSelectionTable tbody tr.selected {
+    background-color: var(--selected-bg);
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.system-page #panelSelectionTable .manufacturer-header td {
+    font-weight: 700;
+    color: var(--primary-color);
+    background-color: var(--bg-color);
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+/* --- INVERTER SECTION --- */
+.system-page .inverter-toolbar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.system-page #calepinageError {
+    flex-grow: 1;
+    text-align: center;
+    color: var(--primary-color);
+    font-weight: 500;
+    font-size: 0.9em;
+    display: none;
+}
+
+.system-page .filter-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.system-page .filter-btn {
+    background-color: #fff;
+    border: 1px solid var(--border-color);
+    padding: 8px 15px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 0.85em;
+}
+
+.system-page .filter-btn.active {
+    background-color: var(--primary-color);
+    color: white;
+    border-color: var(--primary-color);
+}
+
+.system-page #inverterTable .inverter-name {
+    font-size: 1em;
+    font-weight: 600;
+}
+
+.system-page #inverterTable .inverter-ref {
+    font-size: 0.85em;
+    color: var(--text-muted);
+}
+
+.system-page #inverterTable .calculated-cell {
+    font-weight: 600;
+    color: var(--primary-color);
+}
+
+.system-page #inverterTable th,
+.system-page #inverterTable td {
+    text-align: center;
+}
+
+.system-page #inverterTable td:nth-child(2) {
+    text-align: left;
+}
+
+/* --- MODALS --- */
+.system-page .modal {
+    display: none;
+    position: fixed;
+    z-index: 1050;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(33, 37, 41, 0.6);
+    animation: fadeIn 0.3s;
+}
+
+.system-page .modal-content {
+    background-color: #fff;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 900px;
+    position: relative;
+    animation: slideIn 0.4s;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+@keyframes slideIn {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.system-page .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.system-page .modal-content .close-btn {
+    color: #6c757d;
+    font-size: 32px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.system-page .modal-content .close-btn:hover {
+    color: #212529;
+}
+
+.system-page .modal-body {
+    padding: 24px;
+}
+
+/* --- VALIDATION --- */
+.system-page .input-error {
+    border-color: #dc3545 !important;
+    background-color: #fff6f6 !important;
+}

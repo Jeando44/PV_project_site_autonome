@@ -1,0 +1,47 @@
+# robots.txt pour Solakvan.com
+User-agent: *
+Allow: /
+Allow: /A-propos
+Allow: /Nos-solutions
+Allow: /Nos-prestations
+Allow: /outils/calcampere
+Allow: /outils/socalts
+Allow: /Mentions-legales
+Allow: /Cgu
+
+# Interdire l'accès aux dossiers sensibles
+Disallow: /admin/
+Disallow: /includes/
+Disallow: /cgi-bin/
+Disallow: /tmp/
+Disallow: /private/
+Disallow: /backend/
+Disallow: /*.sql$
+Disallow: /*.sql.gz$
+Disallow: /*.log$
+Disallow: /*.env$
+Disallow: /*.config$
+Disallow: /error_log
+Disallow: /error.log
+
+# Interdire l'indexation des paramètres d'URL
+Disallow: /*?*
+
+# Optimisation pour les images
+User-agent: Googlebot-Image
+Allow: /images/
+Allow: /*.jpg$
+Allow: /*.jpeg$
+Allow: /*.gif$
+Allow: /*.png$
+Allow: /*.webp$
+
+# Ralentir le crawl pour les bots moins importants
+User-agent: *
+Crawl-delay: 10
+
+# Sitemap
+Sitemap: https://solakvan.com/sitemap.xml
+
+# Host
+Host: https://solakvan.com

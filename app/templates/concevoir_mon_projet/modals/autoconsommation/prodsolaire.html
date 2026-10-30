@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Ensoleillement – TMY, Production PV & Export Excel</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- SheetJS – génération Excel côté client -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+  <link rel="stylesheet"
+    href="{{ url_for('static', filename='concevoir_mon_projet/CSS/prodsolaire/style_prodsolaire.css') }}">
+
+</head>
+
+<body>
+
+  {% include 'concevoir_mon_projet/modals/autoconsommation/prodsolaire_body.html' %}
+
+  <script
+    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/prodsolaire/main_prodsolaire.js') }}?v=3"></script>
+
+</body>
+
+</html>

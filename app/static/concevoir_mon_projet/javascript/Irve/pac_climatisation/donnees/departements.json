@@ -1,0 +1,512 @@
+{
+ "_source": "Zones climatiques H1a à H3 des départements métropolitains : annexe de l'arrêté du 26 octobre 2010 (caractéristiques thermiques des bâtiments nouveaux), reprises par la réglementation environnementale 2020 — texte réglementaire public (Légifrance). Outre-mer : 'DOM' (réglementation thermique propre aux DOM).",
+ "_statut": "Répartition saisie de mémoire, À VÉRIFIER contre le texte publié sur Légifrance avant diffusion. La zone est indicative : aucun calcul ne l'utilise (la température de base vient de la météo du site).",
+ "_temperature_base": "Pas de tableau de températures de base par département : celui d'usage courant provient de l'annexe nationale d'une norme protégée. La température de base est calculée depuis la série météo du site, corrigée de l'altitude, et reste modifiable.",
+ "departements": [
+  {
+   "code": "01",
+   "nom": "Ain",
+   "zone": "H1c"
+  },
+  {
+   "code": "02",
+   "nom": "Aisne",
+   "zone": "H1a"
+  },
+  {
+   "code": "03",
+   "nom": "Allier",
+   "zone": "H1c"
+  },
+  {
+   "code": "04",
+   "nom": "Alpes-de-Haute-Provence",
+   "zone": "H2d"
+  },
+  {
+   "code": "05",
+   "nom": "Hautes-Alpes",
+   "zone": "H1c"
+  },
+  {
+   "code": "06",
+   "nom": "Alpes-Maritimes",
+   "zone": "H3"
+  },
+  {
+   "code": "07",
+   "nom": "Ardèche",
+   "zone": "H2d"
+  },
+  {
+   "code": "08",
+   "nom": "Ardennes",
+   "zone": "H1b"
+  },
+  {
+   "code": "09",
+   "nom": "Ariège",
+   "zone": "H2c"
+  },
+  {
+   "code": "10",
+   "nom": "Aube",
+   "zone": "H1b"
+  },
+  {
+   "code": "11",
+   "nom": "Aude",
+   "zone": "H3"
+  },
+  {
+   "code": "12",
+   "nom": "Aveyron",
+   "zone": "H2c"
+  },
+  {
+   "code": "13",
+   "nom": "Bouches-du-Rhône",
+   "zone": "H3"
+  },
+  {
+   "code": "14",
+   "nom": "Calvados",
+   "zone": "H1a"
+  },
+  {
+   "code": "15",
+   "nom": "Cantal",
+   "zone": "H1c"
+  },
+  {
+   "code": "16",
+   "nom": "Charente",
+   "zone": "H2b"
+  },
+  {
+   "code": "17",
+   "nom": "Charente-Maritime",
+   "zone": "H2b"
+  },
+  {
+   "code": "18",
+   "nom": "Cher",
+   "zone": "H2b"
+  },
+  {
+   "code": "19",
+   "nom": "Corrèze",
+   "zone": "H1c"
+  },
+  {
+   "code": "2A",
+   "nom": "Corse-du-Sud",
+   "zone": "H3"
+  },
+  {
+   "code": "2B",
+   "nom": "Haute-Corse",
+   "zone": "H3"
+  },
+  {
+   "code": "21",
+   "nom": "Côte-d'Or",
+   "zone": "H1b"
+  },
+  {
+   "code": "22",
+   "nom": "Côtes-d'Armor",
+   "zone": "H2a"
+  },
+  {
+   "code": "23",
+   "nom": "Creuse",
+   "zone": "H1c"
+  },
+  {
+   "code": "24",
+   "nom": "Dordogne",
+   "zone": "H2c"
+  },
+  {
+   "code": "25",
+   "nom": "Doubs",
+   "zone": "H1b"
+  },
+  {
+   "code": "26",
+   "nom": "Drôme",
+   "zone": "H2d"
+  },
+  {
+   "code": "27",
+   "nom": "Eure",
+   "zone": "H1a"
+  },
+  {
+   "code": "28",
+   "nom": "Eure-et-Loir",
+   "zone": "H1b"
+  },
+  {
+   "code": "29",
+   "nom": "Finistère",
+   "zone": "H2a"
+  },
+  {
+   "code": "30",
+   "nom": "Gard",
+   "zone": "H3"
+  },
+  {
+   "code": "31",
+   "nom": "Haute-Garonne",
+   "zone": "H2c"
+  },
+  {
+   "code": "32",
+   "nom": "Gers",
+   "zone": "H2c"
+  },
+  {
+   "code": "33",
+   "nom": "Gironde",
+   "zone": "H2c"
+  },
+  {
+   "code": "34",
+   "nom": "Hérault",
+   "zone": "H3"
+  },
+  {
+   "code": "35",
+   "nom": "Ille-et-Vilaine",
+   "zone": "H2a"
+  },
+  {
+   "code": "36",
+   "nom": "Indre",
+   "zone": "H2b"
+  },
+  {
+   "code": "37",
+   "nom": "Indre-et-Loire",
+   "zone": "H2b"
+  },
+  {
+   "code": "38",
+   "nom": "Isère",
+   "zone": "H1c"
+  },
+  {
+   "code": "39",
+   "nom": "Jura",
+   "zone": "H1b"
+  },
+  {
+   "code": "40",
+   "nom": "Landes",
+   "zone": "H2c"
+  },
+  {
+   "code": "41",
+   "nom": "Loir-et-Cher",
+   "zone": "H2b"
+  },
+  {
+   "code": "42",
+   "nom": "Loire",
+   "zone": "H1c"
+  },
+  {
+   "code": "43",
+   "nom": "Haute-Loire",
+   "zone": "H1c"
+  },
+  {
+   "code": "44",
+   "nom": "Loire-Atlantique",
+   "zone": "H2b"
+  },
+  {
+   "code": "45",
+   "nom": "Loiret",
+   "zone": "H1b"
+  },
+  {
+   "code": "46",
+   "nom": "Lot",
+   "zone": "H2c"
+  },
+  {
+   "code": "47",
+   "nom": "Lot-et-Garonne",
+   "zone": "H2c"
+  },
+  {
+   "code": "48",
+   "nom": "Lozère",
+   "zone": "H2d"
+  },
+  {
+   "code": "49",
+   "nom": "Maine-et-Loire",
+   "zone": "H2b"
+  },
+  {
+   "code": "50",
+   "nom": "Manche",
+   "zone": "H2a"
+  },
+  {
+   "code": "51",
+   "nom": "Marne",
+   "zone": "H1b"
+  },
+  {
+   "code": "52",
+   "nom": "Haute-Marne",
+   "zone": "H1b"
+  },
+  {
+   "code": "53",
+   "nom": "Mayenne",
+   "zone": "H2b"
+  },
+  {
+   "code": "54",
+   "nom": "Meurthe-et-Moselle",
+   "zone": "H1b"
+  },
+  {
+   "code": "55",
+   "nom": "Meuse",
+   "zone": "H1b"
+  },
+  {
+   "code": "56",
+   "nom": "Morbihan",
+   "zone": "H2a"
+  },
+  {
+   "code": "57",
+   "nom": "Moselle",
+   "zone": "H1b"
+  },
+  {
+   "code": "58",
+   "nom": "Nièvre",
+   "zone": "H1b"
+  },
+  {
+   "code": "59",
+   "nom": "Nord",
+   "zone": "H1a"
+  },
+  {
+   "code": "60",
+   "nom": "Oise",
+   "zone": "H1a"
+  },
+  {
+   "code": "61",
+   "nom": "Orne",
+   "zone": "H1a"
+  },
+  {
+   "code": "62",
+   "nom": "Pas-de-Calais",
+   "zone": "H1a"
+  },
+  {
+   "code": "63",
+   "nom": "Puy-de-Dôme",
+   "zone": "H1c"
+  },
+  {
+   "code": "64",
+   "nom": "Pyrénées-Atlantiques",
+   "zone": "H2c"
+  },
+  {
+   "code": "65",
+   "nom": "Hautes-Pyrénées",
+   "zone": "H2c"
+  },
+  {
+   "code": "66",
+   "nom": "Pyrénées-Orientales",
+   "zone": "H3"
+  },
+  {
+   "code": "67",
+   "nom": "Bas-Rhin",
+   "zone": "H1b"
+  },
+  {
+   "code": "68",
+   "nom": "Haut-Rhin",
+   "zone": "H1b"
+  },
+  {
+   "code": "69",
+   "nom": "Rhône",
+   "zone": "H1c"
+  },
+  {
+   "code": "70",
+   "nom": "Haute-Saône",
+   "zone": "H1b"
+  },
+  {
+   "code": "71",
+   "nom": "Saône-et-Loire",
+   "zone": "H1b"
+  },
+  {
+   "code": "72",
+   "nom": "Sarthe",
+   "zone": "H2b"
+  },
+  {
+   "code": "73",
+   "nom": "Savoie",
+   "zone": "H1c"
+  },
+  {
+   "code": "74",
+   "nom": "Haute-Savoie",
+   "zone": "H1c"
+  },
+  {
+   "code": "75",
+   "nom": "Paris",
+   "zone": "H1a"
+  },
+  {
+   "code": "76",
+   "nom": "Seine-Maritime",
+   "zone": "H1a"
+  },
+  {
+   "code": "77",
+   "nom": "Seine-et-Marne",
+   "zone": "H1a"
+  },
+  {
+   "code": "78",
+   "nom": "Yvelines",
+   "zone": "H1a"
+  },
+  {
+   "code": "79",
+   "nom": "Deux-Sèvres",
+   "zone": "H2b"
+  },
+  {
+   "code": "80",
+   "nom": "Somme",
+   "zone": "H1a"
+  },
+  {
+   "code": "81",
+   "nom": "Tarn",
+   "zone": "H2c"
+  },
+  {
+   "code": "82",
+   "nom": "Tarn-et-Garonne",
+   "zone": "H2c"
+  },
+  {
+   "code": "83",
+   "nom": "Var",
+   "zone": "H3"
+  },
+  {
+   "code": "84",
+   "nom": "Vaucluse",
+   "zone": "H2d"
+  },
+  {
+   "code": "85",
+   "nom": "Vendée",
+   "zone": "H2b"
+  },
+  {
+   "code": "86",
+   "nom": "Vienne",
+   "zone": "H2b"
+  },
+  {
+   "code": "87",
+   "nom": "Haute-Vienne",
+   "zone": "H1c"
+  },
+  {
+   "code": "88",
+   "nom": "Vosges",
+   "zone": "H1b"
+  },
+  {
+   "code": "89",
+   "nom": "Yonne",
+   "zone": "H1b"
+  },
+  {
+   "code": "90",
+   "nom": "Territoire de Belfort",
+   "zone": "H1b"
+  },
+  {
+   "code": "91",
+   "nom": "Essonne",
+   "zone": "H1a"
+  },
+  {
+   "code": "92",
+   "nom": "Hauts-de-Seine",
+   "zone": "H1a"
+  },
+  {
+   "code": "93",
+   "nom": "Seine-Saint-Denis",
+   "zone": "H1a"
+  },
+  {
+   "code": "94",
+   "nom": "Val-de-Marne",
+   "zone": "H1a"
+  },
+  {
+   "code": "95",
+   "nom": "Val-d'Oise",
+   "zone": "H1a"
+  },
+  {
+   "code": "971",
+   "nom": "Guadeloupe",
+   "zone": "DOM"
+  },
+  {
+   "code": "972",
+   "nom": "Martinique",
+   "zone": "DOM"
+  },
+  {
+   "code": "973",
+   "nom": "Guyane",
+   "zone": "DOM"
+  },
+  {
+   "code": "974",
+   "nom": "La Réunion",
+   "zone": "DOM"
+  },
+  {
+   "code": "976",
+   "nom": "Mayotte",
+   "zone": "DOM"
+  }
+ ]
+}

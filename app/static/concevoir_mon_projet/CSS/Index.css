@@ -1,0 +1,107 @@
+.FichierMenu {
+    height: 100%;
+    width: 100%;
+    padding-left: 0%;
+    padding-right: 30%;
+    padding-top: 5%;
+    padding-bottom: 20%;
+    background-image : url('/static/ombridesign/media/OmbriDesignBG.jpg');
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 100%;
+  }
+
+.B {
+    height: 40px;
+    text-align: center;
+    background-color: #de0000;
+    align-items: center;
+    justify-content: center;
+    border: none;
+    border-radius: 5px;
+  }
+
+.B:hover {
+    background: linear-gradient(270deg, #a50606, rgb(248, 8, 40), #a50606);
+    transition: 500ms;
+  }
+
+.dialog1 {
+    margin:  0 auto;
+    width: 400px;
+    border: 1px solid #de0000;
+    padding: 1%;
+    margin-top: 7%;
+    background: #f4f5fd;
+    box-shadow: 0px 0px 15px rgba(245, 29, 29, 0.5);
+    filter: drop-shadow(0px 0px 10px rgba(243, 38, 38, 0.5));
+  }
+
+.dialogT {
+    float: left;
+    width: 90%;
+  }
+
+.dialogGuide {
+    margin: auto;
+    width: 60%;
+    height: 85vh;
+    border: 1px solid rgb(253, 7, 19);
+    padding: 1%;
+    margin-top: 7%;
+    background: #f4f5fd;
+    box-shadow: 0px 0px 15px rgba(235, 4, 4, 0.5);
+    filter: drop-shadow(0px 0px 10px rgba(241, 14, 14, 0.5));
+  }
+
+.button2 {
+    float: left;
+    width: 10%;
+    text-align: center;
+    font-size: 1.4em;
+    border: none;
+    color: red;
+    font-weight: 500;
+    background: none;
+  }
+
+label {
+    width: 250px;
+    color: #630303;
+    font-weight: 600;
+  }
+
+.continuer2 {
+    width: 120%;
+    border: 1px solid #de0000;
+    height: 50%;
+    margin-bottom: 2%;
+  }
+
+select {
+    width: 250px;
+    border-radius: 5px;
+    padding: 1.5%;
+    outline: #630303;
+  }
+
+option {
+    color: #630303;
+  }
+
+  option:disabled {
+    color: gray;
+  }
+
+  .btn-appliquer:hover {
+    background: linear-gradient(270deg, #a50606, rgb(248, 8, 40), #a50606);
+  }
+  .right {
+    background-image : url('/static/images/ombriere.png');
+  }
+  #LSelectProjet{
+    width: 300px;
+  }
+  #LDeleteProjet{
+    width: 300px;
+  }

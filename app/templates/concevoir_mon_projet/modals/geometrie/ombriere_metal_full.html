@@ -1,0 +1,2756 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurateur d'Ombrière Solaire v4.1 (Finalisé)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    {% include 'concevoir_mon_projet/components/mention_essai.html' %}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- CSS Modulaires -->
+    <link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/modalHeaderCommon.css">
+    <link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/geometrieModal.css">
+
+    <!-- Logger (doit être chargé en premier) -->
+    <script src="/static/concevoir_mon_projet/javascript/logger.js"></script>
+
+    <style>
+            .grid { display: block !important; }
+        
+    </style>
+</head>
+<body>
+    <div id="modal-overlay"></div>
+    <div id="app-modal">
+        <div id="modal-header">
+            <h2>Ombridesign 2.1</h2>
+            <div class="flex items-center space-x-2">
+                <button id="toggle-form-btn" class="modal-header-btn" title="Afficher/Masquer le formulaire">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5l-7.5-7.5 7.5-7.5" /></svg>
+                </button>
+                <button id="reset-modal-btn" class="modal-header-btn" title="Réinitialiser la position et la taille">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m4.5 11.25h-4.5m4.5 0v-4.5m0 .001L15 15" /></svg>
+                </button>
+                <button id="close-modal-btn" class="modal-header-btn" title="Fermer">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="modal-body">
+            <div class="container mx-auto flex-1 flex flex-col">
+                <header class="text-center mb-6 flex-shrink-0">
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Configurateur d'ombrières solaires 223</h1>
+                    </header>
+
+                <div class="flex flex-row gap-4 flex-1 min-h-0">
+
+                    <div id="canvas-column" class="flex flex-col gap-4 min-h-0" style="flex: 0 0 75%;">
+                        
+                        <div id="coupe-container" class="flex flex-col min-h-0" style="flex: 1 1 50%; height: 50%;">
+                            <div class="flex border-b border-gray-200 mb-2 flex-shrink-0">
+                                <button id="tabCoupe" class="tab-button tab-group-1 active">Plan de coupe</button>
+                                <button id="tabCalepinage" class="tab-button tab-group-1">Plan de calepinage</button>
+                            </div>
+
+                            <div id="viewCoupe" class="tab-content-1 canvas-container flex-1">
+                                <div class="absolute top-2 left-2 z-10 flex flex-wrap gap-2">
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="zoomInCoupe" class="tool-button icon-only" title="Zoom avant">+</button>
+                                        <button id="zoomOutCoupe" class="tool-button icon-only" title="Zoom arrière">-</button>
+                                        <button id="panCoupe" class="tool-button icon-only" title="Déplacer (Panoramique)">🖐</button>
+                                        <button id="resetCoupe" class="tool-button icon-only" title="Tout voir">⛶</button>
+                                    </div>
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="toolInvertSlope" class="tool-button icon-only" title="Inverser la pente">⇅</button>
+                                        <div class="border-l border-gray-300 h-6 mx-1 self-center"></div>
+                                        <button id="toolPosTraverseTop" class="tool-button" title="Position Traverse: Dessus">Dessus</button>
+                                        <button id="toolPosTraverseSide" class="tool-button" title="Position Traverse: Côté">Côté</button>
+                                    </div>
+                                    <div id="offsetBraceControls" class="hidden flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="toggleBraceLeft" class="tool-button" title="Afficher/Masquer Renfort Gauche">Renfort G.</button>
+                                        <button id="toggleBraceRight" class="tool-button" title="Afficher/Masquer Renfort Droit">Renfort D.</button>
+                                    </div>
+                                    <div id="inclinedPostCanvasControls" class="hidden flex gap-2 bg-white p-1.5 rounded-lg shadow-md items-center">
+                                        <input type="checkbox" id="showInclinedGroundBarCanvas" class="h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500">
+                                        <label for="showInclinedGroundBarCanvas" class="text-sm text-gray-700 select-none cursor-pointer">Barre au sol</label>
+                                    </div>
+                                    <div id="toolDimColors" class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button class="tool-button dim-color-btn" data-color="#0000FF" style="background-color: #0000FF;" title="Bleu"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#FF0000" style="background-color: #FF0000;" title="Rouge"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#000000" style="background-color: #000000;" title="Noir"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#FF00FF" style="background-color: #FF00FF;" title="Magenta"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#4169E1" style="background-color: #4169E1;" title="Bleu Foncé"></button>
+                                    </div>
+                                </div>
+                                <h3 class="view-title">Plan de coupe</h3>
+                                <canvas id="coupeCanvas"></canvas>
+                            </div>
+
+                            <div id="viewCalepinage" class="tab-content-1 hidden canvas-container p-2 flex-1">
+                                <h3 class="view-title">Plan de calepinage</h3>
+                                <div id="mapContainer" class="z-10"></div>
+                            </div>
+                        </div>
+                        
+                        <div id="facade-block-container" class="flex flex-col min-h-0" style="flex: 1 1 50%; height: 50%;">
+                             <div class="flex border-b border-gray-200 mb-2 flex-shrink-0">
+                                <button id="tabFacade" class="tab-button tab-group-2 active">Plan de façade</button>
+                                <button id="tabImplantation" class="tab-button tab-group-2">Plan d'implantation</button>
+                             </div>
+
+                            <div id="viewFacade" class="tab-content-2 canvas-container flex-1">
+                                <div class="absolute top-2 left-2 z-10 flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                    <button id="zoomInFacade" class="tool-button icon-only" title="Zoom avant">+</button>
+                                    <button id="zoomOutFacade" class="tool-button icon-only" title="Zoom arrière">-</button>
+                                    <button id="panFacade" class="tool-button icon-only" title="Déplacer (Panoramique)">🖐</button>
+                                    <button id="resetFacade" class="tool-button icon-only" title="Tout voir">⛶</button>
+                                </div>
+                                <h3 class="view-title">Plan de façade</h3>
+                                <canvas id="facadeCanvas"></canvas>
+                            </div>
+                            
+                            <div id="viewImplantation" class="tab-content-2 hidden canvas-container flex-1">
+                                <div class="absolute top-2 left-2 z-10 flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                    <button id="zoomInImplantation" class="tool-button icon-only" title="Zoom avant">+</button>
+                                    <button id="zoomOutImplantation" class="tool-button icon-only" title="Zoom arrière">-</button>
+                                    <button id="panImplantation" class="tool-button icon-only" title="Déplacer (Panoramique)">🖐</button>
+                                    <button id="resetImplantation" class="tool-button icon-only" title="Tout voir">⛶</button>
+                                </div>
+                                <h3 class="view-title">Plan d’implantation des axes de poteaux</h3>
+                                <canvas id="implantationCanvas"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div id="controls-container" class="controls-container p-4 rounded-lg shadow-md" style="flex: 0 0 25%; min-width: 280px;">
+                        <div class="input-grid">
+                            <h2 class="input-group-title">Données des coupes</h2>
+                            <div class="span-2"><label class="block text-sm font-medium text-gray-700">Modèle de poteaux</label>
+                                <div id="model-btn-group" class="mt-1 flex flex-wrap gap-1 rounded-md shadow-sm">
+                                    <button id="modelSinglePost" class="flex-1 relative inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-l-md">Centrés</button>
+                                    <button id="modelOffsetPost" class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Excentrés</button>
+                                    <button id="modelDoublePost" class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Double Poteaux</button>
+                                    <button id="modelInclinedPost" class="flex-1 relative inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Poteaux Inclinés</button>
+                                    <button id="modelYShape" class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Toiture Y</button>
+                                </div>
+                            </div>
+                             <div class="span-2 flex items-center"><label class="block text-sm font-medium text-gray-700 mr-4">Type de renfort</label>
+                                <div class="flex rounded-md shadow-sm toggle-btn-group equal-width flex-grow">
+                                    <button id="reinforceBracons" class="relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Bracons</button>
+                                    <button id="reinforceJarrets" class="relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Jarrets</button>
+                                </div>
+                            </div>
+                            <div id="doublePostControls" class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                                <div><label for="postSpacing" class="block text-sm font-medium text-gray-700">Entraxe (m)</label><input type="number" id="postSpacing" value="2.0" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"></div>
+                                <div class="span-2"><label class="block text-sm font-medium text-gray-700">Variante Contreventement</label>
+                                    <div class="mt-1 grid grid-cols-3 rounded-md shadow-sm toggle-btn-group" id="bracing-variant-group">
+                                        <button id="bracingV1" class="text-xs px-2 py-1 border border-gray-300 rounded-l-md active">V1</button>
+                                        <button id="bracingV2" class="text-xs px-2 py-1 -ml-px border border-gray-300">V2</button>
+                                        <button id="bracingV3" class="text-xs px-2 py-1 -ml-px border border-gray-300">V3</button>
+                                        <button id="bracingV4" class="text-xs px-2 py-1 border-l border-b border-r border-gray-300 rounded-bl-md">V4</button>
+                                        <button id="bracingV5" class="text-xs px-2 py-1 -ml-px border-b border-r border-gray-300">V5</button>
+                                        <button id="bracingV6" class="text-xs px-2 py-1 -ml-px border-b border-r border-gray-300 rounded-br-md">V6</button>
+                                    </div>
+                                </div>
+                                <div class="span-2 flex items-center"><input type="checkbox" id="showDoubleBracing" class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500" checked><label for="showDoubleBracing" class="ml-2 block text-sm text-gray-900">Afficher contreventement</label></div>
+                            </div>
+                            <div id="inclinedPostControls" class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                                <div><label for="postSpacingInclined" class="block text-sm font-medium text-gray-700">Entraxe (m)</label><input type="number" id="postSpacingInclined" value="2.0" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"></div>
+                                <div><label for="postInclinationInclined" class="block text-sm font-medium text-gray-700">Inclinaison (°)</label><input type="number" id="postInclinationInclined" value="65" step="1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"></div>
+                                <div class="span-2 flex items-center">
+                                    <input type="checkbox" id="showInclinedGroundBar" class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500" checked>
+                                    <label for="showInclinedGroundBar" class="ml-2 block text-sm text-gray-900">Afficher barre au sol</label>
+                                </div>
+                            </div>
+                            <div id="offsetPostControls" class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                                <div class="span-2"><label class="block text-sm font-medium text-gray-700">Position Poteau</label>
+                                    <div class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width">
+                                        <button id="offsetPosLow" class="text-sm px-2 py-2 border border-gray-300 rounded-l-md">Côté Bas</button>
+                                        <button id="offsetPosCenter" class="text-sm px-2 py-2 -ml-px border border-gray-300 active">Centré</button>
+                                        <button id="offsetPosHigh" class="text-sm px-2 py-2 -ml-px border border-gray-300 rounded-r-md">Côté Haut</button>
+                                    </div>
+                                </div>
+                                <div><label for="postEccentricity" class="block text-sm font-medium text-gray-700">Excentrement (m)</label><input type="number" id="postEccentricity" value="2.0" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm"></div>
+                                <p id="postEccentricityError" class="text-red-600 text-sm span-2"></p>
+                            </div>
+
+                            <div><label for="passageHeight" class="block text-sm font-medium text-gray-700">Hauteur libre de passage (m)</label><input type="number" id="passageHeight" value="2.8" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            <div><label for="lowPointHeight" class="block text-sm font-medium text-gray-700">Hauteur bas structure (calc.)</label><input type="number" id="lowPointHeight" value="3.38" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100" readonly></div>
+                            <p id="heightError" class="text-red-600 text-sm span-2"></p>
+
+                            <div><label for="postHeight" class="block text-sm font-medium text-gray-700">Hauteur Poteau (calc.)</label><input type="number" id="postHeight" value="3.50" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100" readonly></div>
+                            <div id="braceHeightControl"><label for="heightUnderBrace" class="block text-sm font-medium text-gray-700">Hauteur sous renfort (m)</label><input type="number" id="heightUnderBrace" value="2.0" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+
+                            <div><label for="anchorDepth" class="block text-sm font-medium text-gray-700">Profondeur d'ancrage (m)</label><input type="number" id="anchorDepth" value="0.3" step="0.05" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            <div><label for="panelWidth" class="block text-sm font-medium text-gray-700">Largeur champ PV (m)</label><input type="number" id="panelWidth" value="12.40" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            <div><label for="roofSlope" class="block text-sm font-medium text-gray-700">Pente de la toiture (°)</label><input type="number" id="roofSlope" value="8" step="1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            
+                            <div class="span-2"><label class="block text-sm font-medium text-gray-700">Type de porte-à-faux</label><div class="mt-1 flex rounded-md shadow-sm toggle-btn-group"><button id="overhangSym" class="w-full relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Symétrique</button><button id="overhangAsym" class="w-full relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Asymétrique</button></div></div>
+                            <div id="overhangSymContainer" class="span-2"><label for="overhangSymValue" class="block text-sm font-medium text-gray-700">Porte-à-faux (m)</label><input type="number" id="overhangSymValue" value="0.5" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            <div id="overhangAsymContainer" class="hidden span-2"><label for="overhangAsymHigh" class="block text-sm font-medium text-gray-700">Porte-à-faux Haut / Bas (m)</label><div class="flex gap-2"><input type="number" id="overhangAsymHigh" value="0.5" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"><input type="number" id="overhangAsymLow" value="1.0" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div></div>
+
+                            <h2 id="geometry-title" class="input-group-title cursor-pointer flex justify-between items-center">
+                                <span>Géométrie matériels</span>
+                                <svg id="geometry-chevron" class="w-5 h-5 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </h2>
+                            <div id="geometry-inputs" class="span-2 input-grid">
+                                <div><label for="postWidth" class="block text-sm font-medium text-gray-700">Épaisseur Poteau (m)</label><input type="number" id="postWidth" value="0.30" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                                <div><label for="purlinHeight" class="block text-sm font-medium text-gray-700">Épaisseur pannes (m)</label><input type="number" id="purlinHeight" value="0.30" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                                <div><label for="panelThickness" class="block text-sm font-medium text-gray-700">Épaisseur panneaux (m)</label><input type="number" id="panelThickness" value="0.03" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                                <div><label for="integrationSystemHeight" class="block text-sm font-medium text-gray-700">Hauteur système d’intégration (m)</label><input type="number" id="integrationSystemHeight" value="0.1" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                                <div><label for="beamHeight" class="block text-sm font-medium text-gray-700">Épaisseur Traverse (m)</label><input type="number" id="beamHeight" value="0.15" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                                <div><label for="beamWidth" class="block text-sm font-medium text-gray-700">Largeur Traverse (m)</label><input type="number" id="beamWidth" value="0.15" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                                <div><label for="braceWidth" class="block text-sm font-medium text-gray-700">Épaisseur des bracons (m)</label><input type="number" id="braceWidth" value="0.10" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            
+                                <div class="span-2"><label for="purlinCount" class="block text-sm font-medium text-gray-700">Nombre de pannes</label><input type="number" id="purlinCount" value="6" step="1" min="2" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                                <div id="braceFixControl"><label for="braceFixPercentage" class="block text-sm font-medium text-gray-700">Fixation renfort (%)</label><input type="number" id="braceFixPercentage" value="70" step="1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            </div>
+
+                            <h2 id="facade-data-title" class="input-group-title">Données de Façade</h2>
+                            <div><label for="facadeLength" class="block text-sm font-medium text-gray-700">Longueur totale (m)</label><input type="number" id="facadeLength" value="39" step="1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            <div><label for="leftOverhang" class="block text-sm font-medium text-gray-700">Porte-à-faux Gauche (m)</label><input type="number" id="leftOverhang" value="1" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            <div><label for="rightOverhang" class="block text-sm font-medium text-gray-700">Porte-à-faux Droit (m)</label><input type="number" id="rightOverhang" value="2" step="0.1" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            <div><label for="groundSlopeFacade" class="block text-sm font-medium text-gray-700">Dénivelé du terrain (m)</label><input type="number" id="groundSlopeFacade" value="-0.50" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+                            <div><label for="baseAltimetry" class="block text-sm font-medium text-gray-700">Altimétrie au point +0.00m (m)</label><input type="number" id="baseAltimetry" value="44.00" step="0.01" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"></div>
+
+                            <div class="span-2"><label for="pvLayout" class="block text-sm font-medium text-gray-700">Nbre de PV Calepinage (LxC)</label><input type="text" id="pvLayout" value="10L x 30C" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm" placeholder="ex: 10L x 30C"></div>
+                            <div class="flex items-center span-2"><input type="checkbox" id="alignRoof" class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"><label for="alignRoof" class="ml-2 block text-sm text-gray-900">Alignement toiture</label></div>
+                            <div class="span-2"><label for="postDistances" class="block text-sm font-medium text-gray-700">Entraxes poteaux (ex: 4*10.5 + 2*8)</label><input type="text" id="postDistances" value="3*10 + 6" class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"><div id="postDistancesError" class="text-red-600 text-sm mt-1"></div></div>
+
+                            <h2 id="actions-title" class="input-group-title">Actions</h2>
+                            <div class="span-2 space-y-2">
+                                <button id="savePlansBtn" class="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-md hover:bg-blue-700">💾 Sauvegarder les plans pour export PDF</button>
+                                <button id="exportCoupeBtn" class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Exporter Plan de Coupe en PNG</button>
+                                <button id="exportFacadeBtn" class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Exporter Plan de Façade en PNG</button>
+                                <div class="border-t pt-2">
+                                <button id="exportPdfBtn" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Exporter tous les plans en PDF</button>
+                                <button id="printBtn" class="w-full mt-2 bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Imprimer</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- JavaScript Core (doit être chargé après le logger) -->
+<script src="/static/concevoir_mon_projet/javascript/geometrieModalCore.js"></script>
+
+<script>
+// Initialiser le logger pour cette page
+const pageLogger = window.logger ? new window.GeometrieLogger('OmbriereMetal') : console;
+pageLogger.info('☀️ Page Ombrière Métal chargée');
+
+// Initialiser le modal core
+const modalCore = new GeometrieModalCore();
+pageLogger.info('✅ Modal Core initialisé', { embedded: modalCore.isEmbedded });
+
+document.addEventListener('DOMContentLoaded', () => {
+    pageLogger.info('📄 DOMContentLoaded - Initialisation du configurateur');
+    // --- GLOBAL VARIABLES & APP STATE ---
+    let map;
+    let appState = {
+        postModel: 'single', // MOD 1.1: Sera réglé sur 'single' au lancement
+        traversePosition: 'top',
+        overhangType: 'sym', 
+        dimensionColor: '#0000FF',
+        invertSlope: false,
+        parsedDistances: [],
+        reinforcementType: 'bracons',
+        offsetPostSide: 'center',
+        showBraceLeft: true,
+        showBraceRight: true,
+        doublePostBracing: 'v1',
+        showDoubleBracing: true,
+    };
+    let isUpdateScheduled = false;
+    let lastValidPostDistances = document.getElementById('postDistances').value;
+
+
+    // --- MODAL MANAGEMENT ---
+    const modal = document.getElementById('app-modal');
+    const modalOverlay = document.getElementById('modal-overlay');
+    const modalHeader = document.getElementById('modal-header');
+
+    // Initialisation automatique du modal au chargement de la page
+    function initModal() {
+        // MOD 1.1: Vue par défaut "poteaux centrés"
+        // Le clic active le bouton ET lance le scheduleUpdate via son listener
+        document.getElementById('modelSinglePost').click();
+
+        // Active l'onglet "Plan de coupe" par défaut
+        switchTab('.tab-group-1', '.tab-content-1', document.getElementById('tabCoupe'));
+
+        // Lancement initial avec un délai pour permettre au navigateur de calculer les layouts
+        setTimeout(() => {
+            scheduleUpdate().then(() => {
+                // MOD 1.3: Invalider la taille de la map après l'ouverture
+                if (map) map.invalidateSize();
+                // MOD 1.0: Lancer l'ajustement de hauteur
+                adjustCanvasHeights();
+            });
+        }, 100);
+    }
+
+    // Appeler l'initialisation au chargement
+    initModal();
+
+    // Fonction pour charger les dimensions du champ PV depuis localStorage
+    function loadPanelWidthFromLocalStorage() {
+        try {
+            const savedData = localStorage.getItem('solarProjectData');
+            if (!savedData) {
+                console.log('Aucune donnée de projet trouvée dans localStorage');
+                return;
+            }
+
+            const data = JSON.parse(savedData);
+            if (!data || !data.formData || !data.shapes) {
+                console.log('Données de projet invalides');
+                return;
+            }
+
+            // Préférer le pvId depuis l'URL, sinon prendre le premier PV disponible
+            const pvId = new URLSearchParams(window.location.search).get('pvId') || Object.keys(data.formData)[0];
+            if (!pvId) {
+                console.log('Aucun PV trouvé dans les données');
+                return;
+            }
+
+            const formValues = data.formData[pvId];
+            const shapeInfo = data.shapes[pvId];
+
+            if (!formValues) return;
+
+            // Récupérer la largeur totale du champ PV depuis gridInfo → panelWidth
+            if (shapeInfo && shapeInfo.gridInfo && shapeInfo.gridInfo.totalPanelLength) {
+                const panelWidthMeters = Number(shapeInfo.gridInfo.totalPanelLength);
+                if (panelWidthMeters > 0) {
+                    const panelWidthInput = document.getElementById('panelWidth');
+                    if (panelWidthInput) {
+                        panelWidthInput.value = panelWidthMeters.toFixed(2);
+                        console.log('Largeur du champ PV mise à jour:', panelWidthMeters.toFixed(2), 'm');
+                        panelWidthInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    }
+                }
+            }
+
+            // Longueur de façade ← longueur du rectangle PV dessiné
+            const longueur = Number(formValues.longueur);
+            if (longueur > 0) {
+                const facadeLengthInput = document.getElementById('facadeLength');
+                if (facadeLengthInput) {
+                    facadeLengthInput.value = longueur.toFixed(2);
+                    console.log('Longueur totale mise à jour:', longueur.toFixed(2), 'm');
+                    facadeLengthInput.dispatchEvent(new Event('input', { bubbles: true }));
+                }
+            }
+
+        } catch (error) {
+            console.error('Erreur lors du chargement des dimensions depuis localStorage:', error);
+        }
+    }
+
+    // Charger les dimensions après l'initialisation
+    setTimeout(() => {
+        loadPanelWidthFromLocalStorage();
+    }, 500);
+
+    // MOD 1.6 & 1.7: Logique de fermeture du modal principal corrigée
+    document.getElementById('close-modal-btn').addEventListener('click', (e) => {
+        // Fermer simplement le modal sans réafficher l'écran d'accueil
+        // Si c'est dans un iframe, on peut envoyer un message au parent pour fermer
+        if (window.parent !== window) {
+            // On est dans un iframe, informer le parent
+            window.parent.postMessage({ action: 'closeModal' }, '*');
+        } else {
+            // Fallback si on est en standalone
+            modal.style.display = 'none';
+            modalOverlay.style.display = 'none';
+        }
+    });
+    
+    // MOD 1.5: Logique pour masquer/afficher le formulaire
+    document.getElementById('toggle-form-btn').addEventListener('click', () => {
+        const appModal = document.getElementById('app-modal');
+        appModal.classList.toggle('form-hidden');
+        // Nous devons déclencher une redimension/redessin après la transition
+        setTimeout(() => {
+            scheduleUpdate();
+            if (map) map.invalidateSize();
+            adjustCanvasHeights(); // Ajuster la hauteur après la transition
+        }, 350); // 300ms transition + 50ms buffer
+    });
+
+    let isDragging = false,
+        offsetX, offsetY;
+    modalHeader.addEventListener('mousedown', (e) => {
+        // Ne pas glisser si on clique sur un bouton
+        if (e.target.closest('button')) return;
+        
+        isDragging = true;
+        offsetX = e.clientX - modal.offsetLeft;
+        offsetY = e.clientY - modal.offsetTop;
+        modal.style.cursor = 'grabbing';
+        e.preventDefault();
+    });
+    document.addEventListener('mousemove', (e) => {
+        if (isDragging) {
+            modal.style.left = `${e.clientX - offsetX}px`;
+            modal.style.top = `${e.clientY - offsetY}px`;
+        }
+    });
+    document.addEventListener('mouseup', () => {
+        isDragging = false;
+        modal.style.cursor = 'default';
+    });
+    
+    document.getElementById('reset-modal-btn').addEventListener('click', () => {
+        modal.style.width = '';
+        modal.style.height = '';
+        modal.style.top = '';
+        modal.style.left = '';
+        modal.offsetHeight; // Force reflow
+        adjustCanvasHeights(); // Recalculer les hauteurs
+        scheduleUpdate();
+    });
+    
+    // --- VIEW MANAGER CLASS (ZOOM/PAN) ---
+    class ViewManager {
+        constructor(canvas, drawFunction) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d');
+            this.drawFunction = drawFunction;
+            this.zoom = 1;
+            this.panX = 0;
+            this.panY = 0;
+            this.isPanning = false;
+            this.lastX = 0;
+            this.lastY = 0;
+            this.panMode = false;
+            this.addEventListeners();
+        }
+        addEventListeners() {
+            this.canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const scaleAmount = 1.1;
+                const mouseX = e.clientX - this.canvas.getBoundingClientRect().left;
+                const mouseY = e.clientY - this.canvas.getBoundingClientRect().top;
+                const zoomFactor = (e.deltaY < 0 ? scaleAmount : 1 / scaleAmount);
+                this.panX = mouseX - (mouseX - this.panX) * zoomFactor;
+                this.panY = mouseY - (mouseY - this.panY) * zoomFactor;
+                this.zoom *= zoomFactor;
+                this.draw();
+            });
+            this.canvas.addEventListener('mousedown', (e) => {
+                if (this.panMode) {
+                    this.isPanning = true;
+                    this.lastX = e.clientX;
+                    this.lastY = e.clientY;
+                    this.canvas.classList.add('grabbing');
+                }
+            });
+            this.canvas.addEventListener('mousemove', (e) => {
+                if (this.isPanning && this.panMode) {
+                    const dx = e.clientX - this.lastX;
+                    const dy = e.clientY - this.lastY;
+                    this.panX += dx;
+                    this.panY += dy;
+                    this.lastX = e.clientX;
+                    this.lastY = e.clientY;
+                    this.draw();
+                }
+            });
+            this.canvas.addEventListener('mouseup', () => {
+                this.isPanning = false;
+                this.canvas.classList.remove('grabbing');
+            });
+            this.canvas.addEventListener('mouseleave', () => this.isPanning = false);
+        }
+        zoomIn() { this.zoom *= 1.25; this.draw(); }
+        zoomOut() { this.zoom /= 1.25; this.draw(); }
+        reset() { this.zoom = 1; this.panX = 0; this.panY = 0; this.draw(); }
+        togglePanMode(button) {
+            this.panMode = !this.panMode;
+            button.classList.toggle('active', this.panMode);
+            this.canvas.style.cursor = this.panMode ? 'grab' : 'default';
+        }
+        draw(calculatedValues = null) {
+            const valuesToUse = calculatedValues || updateAppLogic();
+            this.drawFunction(this.canvas, this.ctx, this, valuesToUse);
+        }
+    }
+
+    // --- UTILITY FUNCTIONS ---
+    function setupCanvas(canvasEl) {
+        let dpr = window.devicePixelRatio || 1;
+        const rect = canvasEl.getBoundingClientRect();
+        if (rect.width === 0 || rect.height === 0) {
+             // Si le conteneur n'a pas de hauteur, ne pas redimensionner le canvas
+             // ce qui arrive si le JS n'a pas encore défini la hauteur
+            return { width: 0, height: 0, dpr };
+        }
+
+        // Limiter les dimensions du canvas pour éviter l'erreur "Canvas exceeds max size"
+        // La plupart des navigateurs limitent à ~32767px, on utilise 16384 pour être sûr
+        const MAX_CANVAS_DIMENSION = 16384;
+        let canvasWidth = rect.width * dpr;
+        let canvasHeight = rect.height * dpr;
+
+        // Si les dimensions dépassent la limite, ajuster le dpr et recalculer
+        if (canvasWidth > MAX_CANVAS_DIMENSION || canvasHeight > MAX_CANVAS_DIMENSION) {
+            const scale = Math.min(MAX_CANVAS_DIMENSION / canvasWidth, MAX_CANVAS_DIMENSION / canvasHeight);
+            dpr = dpr * scale;
+            canvasWidth = Math.floor(rect.width * dpr);
+            canvasHeight = Math.floor(rect.height * dpr);
+            console.warn(`Canvas dimensions trop grandes. Ajustement du DPR de ${window.devicePixelRatio} à ${dpr.toFixed(2)}`);
+        }
+
+        canvasEl.width = canvasWidth;
+        canvasEl.height = canvasHeight;
+        const ctx = canvasEl.getContext('2d');
+        ctx.scale(dpr, dpr);
+        return { width: rect.width, height: rect.height, dpr };
+    }
+
+    function drawDimensionLine(context, x1, y1, x2, y2, text, offset = 0, isVertical = false) {
+        context.save();
+        context.strokeStyle = appState.dimensionColor;
+        context.fillStyle = appState.dimensionColor;
+        context.lineWidth = 1;
+        context.font = '12px Arial';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        const angle = Math.atan2(y2 - y1, x2 - x1);
+        const perpAngle = angle + Math.PI / 2;
+        const offsetX = offset * Math.cos(perpAngle);
+        const offsetY = offset * Math.sin(perpAngle);
+        const p1 = { x: x1 + offsetX, y: y1 + offsetY };
+        const p2 = { x: x2 + offsetX, y: y2 + offsetY };
+        context.beginPath(); context.moveTo(p1.x, p1.y); context.lineTo(p2.x, p2.y); context.stroke();
+        const midX = (p1.x + p2.x) / 2; const midY = (p1.y + p2.y) / 2;
+        const tickSize = 5;
+        context.beginPath(); context.moveTo(p1.x - tickSize * Math.cos(perpAngle), p1.y - tickSize * Math.sin(perpAngle)); context.lineTo(p1.x + tickSize * Math.cos(perpAngle), p1.y + tickSize * Math.sin(perpAngle)); context.stroke();
+        context.beginPath(); context.moveTo(p2.x - tickSize * Math.cos(perpAngle), p2.y - tickSize * Math.sin(perpAngle)); context.lineTo(p2.x + tickSize * Math.cos(perpAngle), p2.y + tickSize * Math.sin(perpAngle)); context.stroke();
+        context.save();
+        context.translate(midX, midY);
+        let textAngle = isVertical ? -Math.PI / 2 : (angle > Math.PI / 2 || angle < -Math.PI / 2) ? angle - Math.PI : angle;
+        context.rotate(textAngle);
+        const textMetrics = context.measureText(text); const textWidth = textMetrics.width; const textHeight = 14;
+        context.fillStyle = '#FFFFFF'; context.fillRect(-(textWidth / 2) - 2, -(textHeight / 2), textWidth + 4, textHeight);
+        context.fillStyle = appState.dimensionColor; context.fillText(text, 0, 0);
+        context.restore(); context.restore();
+    }
+
+    function drawVerticalDimensionWithLeader(context, x_target, y_target, x_dim_line, text, groundY = 0) {
+        context.save();
+        context.strokeStyle = appState.dimensionColor; context.fillStyle = appState.dimensionColor; context.lineWidth = 1; context.font = '12px Arial';
+        context.beginPath(); context.setLineDash([2, 3]); context.moveTo(x_target, y_target); context.lineTo(x_dim_line, y_target); context.stroke();
+        context.setLineDash([]); drawDimensionLine(context, x_dim_line, groundY, x_dim_line, y_target, text, 0, true);
+        context.restore();
+    }
+
+    const intersect = (p1, p2, p3, p4) => {
+        const den = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
+        if (den === 0) return null;
+        const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / den;
+        // const u = -((p1.x - p2.x) * (p1.y - p3.y) - (p1.y - p2.y) * (p1.x - p3.x)) / den;
+        
+        return { x: p1.x + t * (p2.x - p1.x), y: p1.y + t * (p2.y - p1.y) };
+    };
+
+    // --- CORE DRAWING FUNCTIONS ---
+    function drawCoupe(canvas, ctx, viewManager, values) {
+        const { width, height } = setupCanvas(canvas);
+        if (width === 0) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(viewManager.panX, viewManager.panY);
+        ctx.scale(viewManager.zoom, viewManager.zoom);
+        
+        // Récupération de toutes les valeurs
+        const { postHeight, lowPointHeight, passageHeight, roofSlope, purlinCount, postWidth, beamHeight, panelWidth, panelThickness, purlinHeight, integrationSystemHeight, overhangSymValue, overhangAsymHigh, overhangAsymLow, heightUnderBrace, braceFixPercentage, postSpacing, postEccentricity, postSpacingInclined, postInclinationInclined, braceWidth, beamLength } = values;
+        
+        let localInvertSlope = appState.invertSlope;
+        
+        const roofSlopeRadians = roofSlope * Math.PI / 180;
+        const angle = roofSlopeRadians * (localInvertSlope ? 1 : -1);
+        const cosA = Math.cos(angle);
+        const sinA = Math.sin(angle);
+
+        // La logique du porte-à-faux (overhang) est gérée dans updateAppLogic
+        // beamLength est maintenant la longueur calculée de la traverse (MOD 6.5)
+        
+        // Logique de beamOffset (MOD 7) est correcte, elle n'impacte pas le poteau
+        const beamOffset = (appState.postModel === 'y_shape' || appState.overhangType === 'sym') ? 0 : (overhangL - overhangH) / 2;
+        
+        // panelWidth est la largeur totale du champ PV (ex: 12.40 ou 5.85)
+        const highPointHeightValue = lowPointHeight + Math.abs(values.panelWidth * Math.sin(roofSlopeRadians));
+        const totalDrawingHeight = highPointHeightValue + 2; 
+        
+        const scale = Math.min(width / (values.panelWidth + 4), height / totalDrawingHeight) * 0.8;
+        
+        const groundYView = height * 0.8;
+        ctx.translate(width / 2, groundYView);
+
+        const postWidthScaled = postWidth * scale;
+        const beamHeightScaled = beamHeight * scale;
+        const beamLengthScaled = beamLength * scale; // beamLength est la longueur de la traverse
+        const beamOffsetScaled = beamOffset * scale;
+        let postHeightScaled = postHeight * scale;
+        const panelWidthScaled = values.panelWidth * scale; // panelWidth est la largeur du champ PV
+
+        let beamCenterY;
+        
+        if (appState.postModel === 'y_shape') {
+             const cosA_Y = Math.cos(Math.abs(roofSlopeRadians)); // Angle for Y
+             // MOD 6.1: postHeightScaled est maintenant calculé pour s'aligner sur le HAUT de la traverse
+             // beamCenterY est la coord Y du centre de la traverse
+             beamCenterY = -postHeightScaled + (beamHeightScaled / 2) * cosA_Y;
+        } else if (appState.traversePosition === 'top') {
+            beamCenterY = -postHeightScaled - beamHeightScaled / 2;
+        } else {
+            // Traverse 'side'
+            beamCenterY = -postHeightScaled;
+        }
+
+        const purlinHeightScaled = purlinHeight * scale;
+        const integrationSystemHeightScaled = integrationSystemHeight * scale;
+        const panelThicknessScaled = panelThickness * scale;
+        
+        // CORRECTION Y-SHAPE & Général: Panneaux/intégration commencent au-dessus des pannes.
+        const structureTopY = -beamHeightScaled / 2 - purlinHeightScaled;
+        const integrationSystemY = structureTopY - integrationSystemHeightScaled;
+        const panelY = integrationSystemY - panelThicknessScaled;
+
+        const lineLength = (width + height) * 4 / viewManager.zoom;
+        const getBeamLine = (y_offset, localAngle = angle, localBeamOffset = beamOffsetScaled, localCenterY = beamCenterY) => {
+            const localCos = Math.cos(localAngle);
+            const localSin = Math.sin(localAngle);
+            const p1_rot = { x: -lineLength, y: y_offset };
+            const p2_rot = { x: lineLength, y: y_offset };
+            return {
+                p1: { x: localBeamOffset + p1_rot.x * localCos - p1_rot.y * localSin, y: localCenterY + p1_rot.x * localSin + p1_rot.y * localCos },
+                p2: { x: localBeamOffset + p2_rot.x * localCos - p2_rot.y * localSin, y: localCenterY + p2_rot.x * localSin + p2_rot.y * localCos }
+            };
+        };
+        
+        // Lignes de la traverse (dans le système de coordonnées du dessin)
+        const beamTopLine = getBeamLine(-beamHeightScaled / 2);
+        const beamBottomLine = getBeamLine(beamHeightScaled / 2);
+        
+        // Ligne de référence pour l'intersection poteau/traverse
+        const beamIntersectLine = (appState.traversePosition === 'side' && appState.postModel !== 'y_shape') ? beamTopLine : beamBottomLine;
+        
+        const drawTheReinforcements = () => {
+             // Seuls les modèles 'single', 'offset', 'y_shape' et 'double' gèrent les renforts ici.
+             // 'inclinedPost' n'a plus de jarrets, juste l'option barre au sol (dessinée plus bas).
+             if ((appState.postModel === 'single' || appState.postModel === 'offset' || appState.postModel === 'y_shape') && appState.reinforcementType !== 'none') {
+                let basePostX = 0;
+                if (appState.postModel === 'offset' && appState.offsetPostSide !== 'center') {
+                    const halfPanelHorizontal = (panelWidthScaled / 2) * Math.cos(roofSlopeRadians);
+                    if (appState.offsetPostSide === 'low') basePostX = localInvertSlope ? halfPanelHorizontal : -halfPanelHorizontal;
+                    if (appState.offsetPostSide === 'high') basePostX = localInvertSlope ? -halfPanelHorizontal : halfPanelHorizontal;
+                }
+                const postCenterX = (basePostX + values.postEccentricity) * scale; 
+                
+                const shouldDrawSinglePostBrace = postHeight > heightUnderBrace;
+                
+                if (shouldDrawSinglePostBrace) {
+                    if (appState.showBraceLeft || appState.postModel === 'y_shape') drawReinforcement('left', postCenterX, values);
+                    if (appState.showBraceRight || appState.postModel === 'y_shape') drawReinforcement('right', postCenterX, values);
+                }
+             } else if (appState.postModel === 'double' && appState.showDoubleBracing) {
+                 drawDoublePostReinforcementSet(postWidthScaled, values);
+             }
+        }
+
+        const drawThePosts = () => {
+            ctx.fillStyle = '#f3f4f6';
+            ctx.strokeStyle = '#374151';
+            
+            let isPostInFront = (appState.traversePosition === 'side' && appState.postModel !== 'y_shape') || 
+                                (appState.traversePosition === 'top' && appState.postModel === 'inclinedPost');
+            ctx.lineWidth = isPostInFront ? 2.5 : 1.5;
+            
+            if (appState.postModel === 'single' || appState.postModel === 'offset' || appState.postModel === 'y_shape') {
+                let basePostX = 0;
+                if (appState.postModel === 'offset' && appState.offsetPostSide !== 'center') {
+                    const halfPanelHorizontal = (panelWidthScaled / 2) * Math.cos(roofSlopeRadians);
+                    if (appState.offsetPostSide === 'low') basePostX = localInvertSlope ? halfPanelHorizontal : -halfPanelHorizontal;
+                    if (appState.offsetPostSide === 'high') basePostX = localInvertSlope ? -halfPanelHorizontal : halfPanelHorizontal;
+                }
+                const postCenterX = (basePostX + values.postEccentricity) * scale;
+                
+                let postTopY;
+                if (appState.postModel === 'y_shape') {
+                     postTopY = -postHeightScaled;
+                } else {
+                    const postLine = { p1: { x: postCenterX, y: lineLength }, p2: { x: postCenterX, y: -lineLength } };
+                    const intersectionPoint = intersect(postLine.p1, postLine.p2, beamIntersectLine.p1, beamIntersectLine.p2);
+                    postTopY = intersectionPoint ? intersectionPoint.y : beamCenterY;
+                }
+
+                ctx.fillRect(postCenterX - postWidthScaled / 2, postTopY, postWidthScaled, -postTopY);
+                ctx.strokeRect(postCenterX - postWidthScaled / 2, postTopY, postWidthScaled, -postTopY);
+
+            } else { 
+                const isInclined = appState.postModel === 'inclinedPost';
+                const spacing = (isInclined ? postSpacingInclined : postSpacing) * scale / 2;
+                
+                [-1, 1].forEach(sign => {
+                    const postX = sign * spacing;
+                    if (isInclined) {
+                        const inclination = postInclinationInclined;
+                        const angleFromVertical = (90 - inclination) * Math.PI / 180;
+                        const vx = sign * Math.sin(angleFromVertical);
+                        const vy = -Math.cos(angleFromVertical); // Négatif car monte
+
+                        const postAxisLine = {
+                            p1: { x: postX, y: 0 },
+                            p2: { x: postX + vx * lineLength, y: vy * lineLength }
+                        };
+                        
+                        // Jonction Poteau Incliné / Traverse
+                        const intersectTop = intersect(postAxisLine.p1, postAxisLine.p2, beamTopLine.p1, beamTopLine.p2);
+                        const intersectBottom = intersect(postAxisLine.p1, postAxisLine.p2, beamBottomLine.p1, beamBottomLine.p2);
+
+                        const topCenter = (appState.traversePosition === 'top') ? intersectBottom : intersectTop;
+                        if (!topCenter || !intersectBottom || !intersectTop) return;
+
+                        const perpAngle = Math.atan2(vy, vx) + Math.PI / 2;
+                        const dx_perp = Math.cos(perpAngle) * (postWidthScaled / 2);
+                        const dy_perp = Math.sin(perpAngle) * (postWidthScaled / 2);
+                        
+                        const leftSideLine = {
+                            p1: { x: topCenter.x - dx_perp, y: topCenter.y - dy_perp },
+                            p2: { x: (topCenter.x - dx_perp) + vx * lineLength, y: (topCenter.y - dy_perp) + vy * lineLength }
+                        };
+                        const rightSideLine = {
+                            p1: { x: topCenter.x + dx_perp, y: topCenter.y + dy_perp },
+                            p2: { x: (topCenter.x + dx_perp) + vx * lineLength, y: (topCenter.y + dy_perp) + vy * lineLength }
+                        };
+
+                        const groundLine = { p1: { x: -lineLength, y: 0 }, p2: { x: lineLength, y: 0 } };
+                        const bottomLeft = intersect(leftSideLine.p1, leftSideLine.p2, groundLine.p1, groundLine.p2);
+                        const bottomRight = intersect(rightSideLine.p1, rightSideLine.p2, groundLine.p1, groundLine.p2);
+
+                        const traverseAngle = angle;
+                        const cosT = Math.cos(traverseAngle);
+                        const sinT = Math.sin(traverseAngle);
+                        const topCutLine = {
+                            p1: { x: topCenter.x - cosT * lineLength, y: topCenter.y - sinT * lineLength },
+                            p2: { x: topCenter.x + cosT * lineLength, y: topCenter.y + sinT * lineLength }
+                        };
+                        
+                        const topLeft = intersect(topCutLine.p1, topCutLine.p2, leftSideLine.p1, leftSideLine.p2);
+                        const topRight = intersect(topCutLine.p1, topCutLine.p2, rightSideLine.p1, rightSideLine.p2);
+
+                        if (!topLeft || !topRight || !bottomLeft || !bottomRight) {
+                            console.error("Échec du calcul de la coupe du poteau incliné.");
+                        } else {
+                            // Dessin précis par intersection
+                            ctx.beginPath();
+                            ctx.moveTo(bottomLeft.x, bottomLeft.y); 
+                            ctx.lineTo(topLeft.x, topLeft.y);
+                            ctx.lineTo(topRight.x, topRight.y);
+                            ctx.lineTo(bottomRight.x, bottomRight.y); 
+                            ctx.closePath();
+                        }
+                        
+                        ctx.fill();
+                        ctx.stroke();
+                        
+                    } else { // Vertical Double Post
+                        const postLine = { p1: { x: postX, y: 0 }, p2: { x: postX, y: -lineLength } };
+                        let postTopY;
+                        
+                        // Intersection de la ligne du poteau avec la ligne de la traverse
+                        const intersectionPoint = intersect(postLine.p1, postLine.p2, beamIntersectLine.p1, beamIntersectLine.p2);
+                        if(!intersectionPoint) return;
+                        postTopY = intersectionPoint.y;
+
+                        // CORRECTIONS V3, V4, V5 et V6
+                        if (appState.reinforcementType === 'bracons') {
+                            
+                            // V3: Les deux poteaux vont jusqu'à la traverse (selon demande)
+                            if (appState.doublePostBracing === 'v3') {
+                                // postTopY est déjà l'intersection avec beamIntersectLine
+                            }
+                            
+                            // V4/V5: Les deux poteaux doivent aller jusqu'à la traverse (MODIFICATION DEMANDÉE)
+                            else if (appState.doublePostBracing === 'v4' || appState.doublePostBracing === 'v5') {
+                                // Les deux poteaux (sign=-1 et sign=1) vont jusqu'à la traverse
+                                // postTopY est déjà l'intersection avec beamIntersectLine
+                            }
+                            
+                            // V6: Les deux poteaux sont limités à l'intersection avec le bracon.
+                            else if (appState.doublePostBracing === 'v6') {
+                                const braceHeight = -heightUnderBrace * scale;
+                                postTopY = braceHeight;
+                            }
+                        }
+                        
+                        ctx.fillRect(postX - postWidthScaled / 2, postTopY, postWidthScaled, -postTopY);
+                        ctx.strokeRect(postX - postWidthScaled / 2, postTopY, postWidthScaled, -postTopY);
+                    }
+                });
+
+                if (isInclined && values.showInclinedGroundBar) {
+                    const innerSpacing = postSpacingInclined * scale - postWidthScaled;
+                    const startX = -spacing + postWidthScaled / 2;
+                    ctx.fillRect(startX, -postWidthScaled / 2, innerSpacing, postWidthScaled);
+                    ctx.strokeRect(startX, -postWidthScaled / 2, innerSpacing, postWidthScaled);
+                }
+            }
+        };
+
+        const drawDoublePostBracingBar = (p1, p2, postWidthScaled, values) => {
+            if(!p1 || !p2) return;
+
+            if (appState.reinforcementType === 'jarrets') {
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.stroke();
+                return; // Ne pas dessiner le rectangle
+            }
+
+            const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+            const perpAngle = angle + Math.PI / 2;
+            
+            let halfW = (values.braceWidth * scale) / 2;
+            
+            // CORRECTION V6: La barre horizontale remonte au niveau de la jonction des poteaux
+            if (appState.doublePostBracing === 'v6') {
+                 const braceHeight = -heightUnderBrace * scale;
+                 p1 = { x: p1.x, y: braceHeight };
+                 p2 = { x: p2.x, y: braceHeight };
+            }
+
+            const c1 = { x: p1.x + halfW * Math.cos(perpAngle), y: p1.y + halfW * Math.sin(perpAngle) };
+            const c2 = { x: p2.x + halfW * Math.cos(perpAngle), y: p2.y + halfW * Math.sin(perpAngle) };
+            const c3 = { x: p2.x - halfW * Math.cos(perpAngle), y: p2.y - halfW * Math.sin(perpAngle) };
+            const c4 = { x: p1.x - halfW * Math.cos(perpAngle), y: p1.y - halfW * Math.sin(perpAngle) };
+            
+            // Dessin précis
+            ctx.beginPath();
+            ctx.moveTo(c1.x, c1.y); ctx.lineTo(c2.x, c2.y); ctx.lineTo(c3.x, c3.y); ctx.lineTo(c4.x, c4.y);
+            ctx.closePath(); ctx.fill(); ctx.stroke();
+        };
+
+        const drawDoublePostReinforcementSet = (postWidthScaled, values) => {
+            ctx.fillStyle = '#f3f4f6'; ctx.strokeStyle = '#374151'; ctx.lineWidth = 1;
+            const spacing = postSpacing * scale / 2;
+            const braceHeight = -heightUnderBrace * scale;
+            const inclinationRad = 0;
+            const tanAngle = Math.tan(inclinationRad);
+            const x_offset_at_brace_height = -braceHeight * tanAngle; 
+
+            // Points de départ sur le bord intérieur des poteaux
+            const p_start_left = { x: (-spacing + postWidthScaled / 2) + x_offset_at_brace_height, y: braceHeight };
+            const p_start_right = { x: (spacing - postWidthScaled / 2) - x_offset_at_brace_height, y: braceHeight };
+            // Points de départ sur le bord extérieur des poteaux
+            const p_outer_start_left = { x: -spacing - postWidthScaled / 2, y: braceHeight }; 
+            const p_outer_start_right = { x: spacing + postWidthScaled / 2, y: braceHeight }; 
+            
+            // Barre Horizontale (V1, V2, V5, V6)
+            if (appState.doublePostBracing === 'v1' || appState.doublePostBracing === 'v2' || appState.doublePostBracing === 'v5' || appState.doublePostBracing === 'v6') {
+                // Pour V6, les points sont ajustés dans drawDoublePostBracingBar
+                drawDoublePostBracingBar(p_start_left, p_start_right, postWidthScaled, values);
+            }
+           
+            // Bracon Diagonal Intérieur V2 (CORRECTION)
+            if (appState.doublePostBracing === 'v2') {
+                // Le bracon part du coin supérieur/intérieur de la barre horizontale gauche
+                const p_start_diag = { x: p_start_left.x, y: p_start_left.y - (values.braceWidth * scale) / 2 }; 
+                
+                // Il se termine sur le bord intérieur du poteau droit au niveau de la barre horizontale
+                const p_end_diag = { x: p_start_right.x, y: p_start_right.y };
+
+                // Dessine en utilisant les points ajustés (le bracon est horizontal si on utilise start_right comme point de fin, mais doit être diagonal)
+                // Point d'arrivée: Jonction du poteau Droit avec la traverse inférieure (intersectionPoint.y de drawThePosts)
+                const postLineRight = { p1: { x: spacing, y: 0 }, p2: { x: spacing, y: -lineLength } };
+                const beamBottomCenter_untrimmed = { x: beamOffsetScaled, y: beamCenterY + beamHeightScaled / 2 * cosA };
+                const top_right_post_on_beam = intersect(postLineRight.p1, postLineRight.p2, beamBottomLine.p1, beamBottomLine.p2);
+
+                drawDoublePostReinforcement(p_start_diag, top_right_post_on_beam, postWidthScaled, values, true);
+            }
+            
+            // Bracons Extérieurs (V1, V2, V3, V6, V4, V5)
+            if (appState.doublePostBracing === 'v1' || appState.doublePostBracing === 'v2' || appState.doublePostBracing === 'v3' || appState.doublePostBracing === 'v6' || appState.doublePostBracing === 'v4' || appState.doublePostBracing === 'v5') {
+                
+                const braceAttachDist = (beamLengthScaled / 2) * (braceFixPercentage / 100);
+                const p_end_left_rot = { x: -braceAttachDist, y: beamHeightScaled / 2 };
+                const p_end_right_rot = { x: braceAttachDist, y: beamHeightScaled / 2 };
+                
+                const p_end_left_untrimmed = { x: beamOffsetScaled + p_end_left_rot.x * cosA - p_end_left_rot.y * sinA, y: beamCenterY + p_end_left_rot.x * sinA + p_end_left_rot.y * cosA };
+                const p_end_right_untrimmed = { x: beamOffsetScaled + p_end_right_rot.x * cosA - p_end_right_rot.y * sinA, y: beamCenterY + p_end_right_rot.x * sinA + p_end_right_rot.y * cosA };
+                
+                // Correction V6: Le point d'attache sur le poteau est le centre du bracon (post-width)
+                let start_left = p_outer_start_left;
+                let start_right = p_outer_start_right;
+                if (appState.doublePostBracing === 'v6') {
+                    start_left = { x: -spacing, y: braceHeight };
+                    start_right = { x: spacing, y: braceHeight };
+                }
+
+                const p_end_left = intersect(start_left, p_end_left_untrimmed, beamBottomLine.p1, beamBottomLine.p2);
+                const p_end_right = intersect(start_right, p_end_right_untrimmed, beamBottomLine.p1, beamBottomLine.p2);
+
+                drawDoublePostReinforcement(p_outer_start_left, p_end_left, postWidthScaled, values);
+                drawDoublePostReinforcement(p_outer_start_right, p_end_right, postWidthScaled, values);
+            }
+            
+            // Bracons Intérieurs (V4 et V5 - va du poteau au centre de la traverse)
+            if (appState.doublePostBracing === 'v4' || appState.doublePostBracing === 'v5') {
+                const beamBottomCenter_untrimmed = { x: beamOffsetScaled, y: beamCenterY + beamHeightScaled / 2 * cosA };
+                
+                const beamBottomCenter_left = intersect(p_start_left, beamBottomCenter_untrimmed, beamBottomLine.p1, beamBottomLine.p2);
+                const beamBottomCenter_right = intersect(p_start_right, beamBottomCenter_untrimmed, beamBottomLine.p1, beamBottomLine.p2);
+                
+                drawDoublePostReinforcement(p_start_left, beamBottomCenter_left, postWidthScaled, values);
+                drawDoublePostReinforcement(p_start_right, beamBottomCenter_right, postWidthScaled, values);
+            }
+        };
+
+        const drawDoublePostReinforcement = (start, end, postWidthScaled, values, isV2Inner = false) => {
+            if(!start || !end) return;
+
+            if (appState.reinforcementType === 'jarrets') {
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(end.x, end.y);
+                ctx.stroke();
+                return; // Ne pas dessiner le rectangle
+            }
+            
+            let braceWidthScaled;
+            if (appState.doublePostBracing === 'v6') {
+                 braceWidthScaled = values.postWidth * scale; // Épaisseur poteau
+            } else {
+                 braceWidthScaled = values.braceWidth * scale; // Épaisseur bracon par défaut
+            }
+
+            const angle = Math.atan2(end.y - start.y, end.x - start.x);
+            const perpAngle = angle + Math.PI / 2;
+            const halfW = braceWidthScaled / 2;
+            
+            // Lignes directrices du bracon (haut et bas)
+            const lineTop = {
+                p1: { x: start.x + halfW * Math.cos(perpAngle), y: start.y + halfW * Math.sin(perpAngle) },
+                p2: { x: end.x + halfW * Math.cos(perpAngle), y: end.y + halfW * Math.sin(perpAngle) }
+            };
+            const lineBottom = {
+                p1: { x: start.x - halfW * Math.cos(perpAngle), y: start.y - halfW * Math.sin(perpAngle) },
+                p2: { x: end.x - halfW * Math.cos(perpAngle), y: end.y - halfW * Math.sin(perpAngle) }
+            };
+            
+            // Ligne de bord du poteau
+            const spacing = values.postSpacing * scale / 2;
+            let postEdgeX;
+            let isLeftPost = start.x < 0;
+
+            if (appState.doublePostBracing === 'v6') {
+                // V6: Bracon centré sur le poteau
+                 postEdgeX = isLeftPost ? -spacing : spacing;
+            } else if (isV2Inner) {
+                // V2 Inner: Bracon part du bord intérieur de la barre horizontale (à la position x du poteau gauche)
+                // Le point de départ "start" a déjà été ajusté en Y pour V2
+                postEdgeX = isLeftPost ? -spacing + postWidthScaled / 2 : spacing - postWidthScaled / 2;
+            } else if (appState.doublePostBracing === 'v4' || appState.doublePostBracing === 'v5') {
+                 // V4/V5 intérieur: Bracon part du bord intérieur du poteau
+                 postEdgeX = isLeftPost ? -spacing + postWidthScaled / 2 : spacing - postWidthScaled / 2;
+            } else if (isLeftPost) {
+                // Bracon extérieur gauche: part du bord extérieur gauche
+                postEdgeX = -spacing - postWidthScaled / 2;
+            } else {
+                // Bracon extérieur droit: part du bord extérieur droit
+                postEdgeX = spacing + postWidthScaled / 2;
+            }
+            const postEdgeLine = { p1: { x: postEdgeX, y: -lineLength }, p2: { x: postEdgeX, y: lineLength } };
+
+            // p1 et p4 sont sur le poteau
+            const p1 = intersect(lineTop.p1, lineTop.p2, postEdgeLine.p1, postEdgeLine.p2);
+            const p4 = intersect(lineBottom.p1, lineBottom.p2, postEdgeLine.p1, postEdgeLine.p2);
+
+            // p2 et p3 sont sur la traverse (beamBottomLine)
+            const p2 = intersect(lineTop.p1, lineTop.p2, beamBottomLine.p1, beamBottomLine.p2);
+            const p3 = intersect(lineBottom.p1, lineBottom.p2, beamBottomLine.p1, beamBottomLine.p2);
+            
+            if(p1 && p2 && p3 && p4) {
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.lineTo(p3.x, p3.y); ctx.lineTo(p4.x, p4.y);
+                ctx.closePath(); ctx.fill(); ctx.stroke();
+            }
+        };
+
+        const drawReinforcement = (side, postCenterX, values) => {
+            const sign = (side === 'right') ? 1 : -1;
+            const postEdgeX = postCenterX + sign * postWidthScaled / 2;
+            const braceAttachOnPostY = -heightUnderBrace * scale;
+
+            let currentBeamBottomLine = beamBottomLine;
+            let currentBeamOffset = beamOffsetScaled;
+            let currentAngle = angle;
+            let currentBeamLength = beamLengthScaled;
+
+            if (appState.postModel === 'y_shape') {
+                currentBeamLength = beamLengthScaled; 
+                currentAngle = (side === 'left' ? 1 : -1) * Math.abs(roofSlopeRadians); 
+                if(localInvertSlope) currentAngle *= -1; 
+                currentBeamBottomLine = getBeamLine(beamHeightScaled / 2, currentAngle, 0, beamCenterY);
+            }
+            const currentCosA = Math.cos(currentAngle);
+            const currentSinA = Math.sin(currentAngle);
+
+            ctx.fillStyle = '#f3f4f6';
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 1;
+            
+            let braceLineP1;
+            if (appState.postModel === 'inclinedPost') {
+                // Pas de renforts dans le modèle actuel pour poteaux inclinés
+                return;
+            } else {
+                 braceLineP1 = { x: postEdgeX, y: braceAttachOnPostY };
+            }
+
+            let braceAttachDist;
+            if (appState.postModel === 'single' || appState.postModel === 'offset') {
+                 braceAttachDist = (currentBeamLength / 2) * (braceFixPercentage / 100);
+            } else { // Y-Shape
+                braceAttachDist = currentBeamLength * (braceFixPercentage / 100);
+            }
+            
+            const braceEndRotated = {
+                x: sign * braceAttachDist,
+                y: beamHeightScaled / 2
+            };
+            
+            let finalBeamOffset = (appState.postModel === 'y_shape') ? 0 : currentBeamOffset;
+            
+            const braceEndOnBeamBottom = {
+                x: finalBeamOffset + braceEndRotated.x * currentCosA - braceEndRotated.y * currentSinA,
+                y: beamCenterY + braceEndRotated.x * currentSinA + braceEndRotated.y * currentCosA
+            };
+
+            if (appState.reinforcementType === 'bracons') {
+                const braceWidthScaled = values.braceWidth * scale;
+                
+                const braceAngle = Math.atan2(braceEndOnBeamBottom.y - braceLineP1.y, braceEndOnBeamBottom.x - braceLineP1.x);
+                const perpAngle = braceAngle + Math.PI / 2;
+                const halfW = braceWidthScaled / 2;
+
+                // Jonctions parfaites Bracons
+                const lineTop = {
+                    p1: { x: braceLineP1.x + halfW * Math.cos(perpAngle), y: braceLineP1.y + halfW * Math.sin(perpAngle) },
+                    p2: { x: braceEndOnBeamBottom.x + halfW * Math.cos(perpAngle), y: braceEndOnBeamBottom.y + halfW * Math.sin(perpAngle) }
+                };
+                const lineBottom = {
+                    p1: { x: braceLineP1.x - halfW * Math.cos(perpAngle), y: braceLineP1.y - halfW * Math.sin(perpAngle) },
+                    p2: { x: braceEndOnBeamBottom.x - halfW * Math.cos(perpAngle), y: braceEndOnBeamBottom.y - halfW * Math.sin(perpAngle) }
+                };
+
+                const postEdgeLine = { p1: { x: postEdgeX, y: -lineLength }, p2: { x: postEdgeX, y: lineLength } };
+                
+                const p1 = intersect(lineTop.p1, lineTop.p2, postEdgeLine.p1, postEdgeLine.p2);
+                const p2 = intersect(lineTop.p1, lineTop.p2, currentBeamBottomLine.p1, currentBeamBottomLine.p2);
+                const p3 = intersect(lineBottom.p1, lineBottom.p2, currentBeamBottomLine.p1, currentBeamBottomLine.p2);
+                const p4 = intersect(lineBottom.p1, lineBottom.p2, postEdgeLine.p1, postEdgeLine.p2);
+
+                if (p1 && p2 && p3 && p4) {
+                    ctx.beginPath();
+                    ctx.moveTo(p1.x, p1.y);
+                    ctx.lineTo(p2.x, p2.y);
+                    ctx.lineTo(p3.x, p3.y);
+                    ctx.lineTo(p4.x, p4.y);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+            } else { // Jarrets
+                
+                const jarretHeight = 0.35 * scale;
+                let postOnBeamBottom; 
+                let jarretAttachY;
+                
+                if (appState.postModel === 'y_shape') {
+                    postOnBeamBottom = intersect(braceLineP1, {x:braceLineP1.x, y:-lineLength}, currentBeamBottomLine.p1, currentBeamBottomLine.p2);
+                    jarretAttachY = -postHeightScaled + jarretHeight;
+                } else {
+                    postOnBeamBottom = intersect(braceLineP1, {x:braceLineP1.x, y:-lineLength}, currentBeamBottomLine.p1, currentBeamBottomLine.p2);
+                    jarretAttachY = postOnBeamBottom.y + jarretHeight;
+                }
+                
+                const postEdgeLine = { p1: { x: postEdgeX, y: lineLength }, p2: { x: postEdgeX, y: -lineLength } };
+                
+                if (postOnBeamBottom) {
+                    ctx.beginPath();
+                    ctx.moveTo(postEdgeX, jarretAttachY);
+                    ctx.lineTo(braceEndOnBeamBottom.x, braceEndOnBeamBottom.y);
+                    ctx.lineTo(postOnBeamBottom.x, postOnBeamBottom.y);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.stroke();
+                }
+            }
+        };
+
+        const drawRoofStructure = (localAngle, localBeamOffset, localCenterY, half = false) => {
+            ctx.save();
+            ctx.translate(localBeamOffset, localCenterY); 
+            ctx.rotate(localAngle);
+            
+            const isYShapeArm = appState.postModel === 'y_shape' && half;
+            
+            // Calcul de la position de la traverse
+            let startX;
+            if (isYShapeArm) {
+                startX = (localAngle > 0 ? -postWidthScaled / 2 : postWidthScaled / 2);
+            } else {
+                startX = -beamLengthScaled / 2;
+            }
+            
+            const currentBeamLength = isYShapeArm ? (localAngle > 0 ? -beamLengthScaled : beamLengthScaled) : beamLengthScaled;
+
+            ctx.fillStyle = '#f3f4f6'; ctx.strokeStyle = '#374151'; ctx.lineWidth=1.5;
+            
+            let beamDrawX = isYShapeArm ? (localAngle > 0 ? startX + currentBeamLength : startX) : startX;
+            let beamDrawWidth = isYShapeArm ? Math.abs(currentBeamLength) : currentBeamLength;
+            
+            ctx.fillRect(beamDrawX, -beamHeightScaled / 2, beamDrawWidth, beamHeightScaled); 
+            ctx.strokeRect(beamDrawX, -beamHeightScaled / 2, beamDrawWidth, beamHeightScaled);
+            
+            ctx.fillStyle = '#e5e7eb';
+            const purlinSize = 0.08 * scale;
+            const purlinEffectiveLength = Math.abs(currentBeamLength) - purlinSize;
+            const purlinCountSide = isYShapeArm ? Math.ceil(purlinCount / 2) : purlinCount;
+            const purlinSpacing = purlinCountSide > 1 ? purlinEffectiveLength / (purlinCountSide - 1) : 0;
+            
+            for (let i = 0; i < purlinCountSide; i++) {
+                const xPos = purlinCountSide === 1 ? startX + currentBeamLength / 2 : startX + (currentBeamLength > 0 ? (purlinSize/2 + i * purlinSpacing) : (-purlinSize/2 - i * purlinSpacing));
+                ctx.fillRect(xPos - purlinSize / 2, -beamHeightScaled/2 - purlinHeightScaled, purlinSize, purlinHeightScaled);
+                ctx.strokeRect(xPos - purlinSize / 2, -beamHeightScaled/2 - purlinHeightScaled, purlinSize, purlinHeightScaled);
+            }
+            
+            const overhangScaled = values.overhangSymValue * scale;
+            
+            let panelStartX, panelDrawWidth;
+            
+            if (isYShapeArm) {
+                // CORRECTION Y-SHAPE: Début sur la panne sablière (bord de la traverse) et fin au porte-à-faux (côté haut)
+                
+                // La panne sablière est au bord de la traverse.
+                panelStartX = currentBeamLength < 0 ? (beamDrawX - overhangScaled) : beamDrawX; 
+                panelDrawWidth = Math.abs(currentBeamLength) + overhangScaled;
+
+            } else {
+                // Cas général (Single, Double, Offset, Inclined)
+                panelStartX = -panelWidthScaled / 2;
+                panelDrawWidth = panelWidthScaled; 
+            }
+            
+            const integrationSystemY = -beamHeightScaled / 2 - purlinHeightScaled - integrationSystemHeightScaled;
+            const panelY = integrationSystemY - panelThicknessScaled;
+            
+            // Dessin de l'intégration et des panneaux
+            ctx.fillStyle = '#a5b4fc';
+            ctx.fillRect(panelStartX, integrationSystemY, panelDrawWidth, integrationSystemHeightScaled);
+            ctx.strokeRect(panelStartX, integrationSystemY, panelDrawWidth, integrationSystemHeightScaled);
+            
+            ctx.fillStyle = 'rgba(67, 56, 202, 0.8)';
+            ctx.fillRect(panelStartX, panelY, panelDrawWidth, panelThicknessScaled);
+            ctx.strokeRect(panelStartX, panelY, panelDrawWidth, panelThicknessScaled);
+
+            if (isYShapeArm) {
+                ctx.fillStyle = '#000'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+                ctx.fillText(`Pente = ${values.roofSlope}°`, panelStartX + panelDrawWidth / 2, panelY - 20);
+
+                const p_panel_inner = { x: panelStartX, y: panelY };
+                const p_panel_outer_x = panelStartX + panelDrawWidth; 
+                const p_panel_outer = { x: p_panel_outer_x, y: panelY };
+
+                drawDimensionLine(ctx, p_panel_inner.x, p_panel_inner.y, p_panel_outer.x, p_panel_outer.y, `${(Math.abs(panelDrawWidth)/scale).toFixed(2)}m`, -45, false);
+            }
+            
+            ctx.restore();
+        };
+
+        // --- DRAWING ORDER ---
+        drawTheReinforcements();
+
+        if (appState.postModel === 'y_shape') {
+            drawThePosts();
+            drawRoofStructure(roofSlopeRadians * (localInvertSlope ? -1 : 1), 0, beamCenterY, true); // Bras 1
+            drawRoofStructure(-roofSlopeRadians * (localInvertSlope ? -1 : 1), 0, beamCenterY, true); // Bras 2
+        } else {
+            // Ordre de dessin Poteaux Inclinés
+            let isPostInFront = (appState.traversePosition === 'side' && appState.postModel !== 'y_shape') || 
+                                (appState.traversePosition === 'top' && appState.postModel === 'inclinedPost');
+
+            if (isPostInFront) {
+                drawRoofStructure(angle, beamOffsetScaled, beamCenterY);
+                drawThePosts();
+            } else { // 'top' position for 'single', 'offset', 'double'
+                drawThePosts();
+                drawRoofStructure(angle, beamOffsetScaled, beamCenterY);
+            }
+        }
+
+        const groundRectDepth = 2 * scale;
+        ctx.save();
+        ctx.fillStyle = "#f0f0f0"; ctx.fillRect(-width * 4 / viewManager.zoom, 0, width * 8 / viewManager.zoom, groundRectDepth);
+        ctx.strokeStyle = '#374151'; ctx.lineWidth = 2; ctx.strokeRect(-width * 4 / viewManager.zoom, 0, width * 8 / viewManager.zoom, groundRectDepth);
+        ctx.strokeStyle = '#cccccc'; ctx.lineWidth = 1;
+        for (let i = -width * 4 / viewManager.zoom - groundRectDepth; i < width * 4 / viewManager.zoom; i += 10) {
+            ctx.beginPath(); ctx.moveTo(i, groundRectDepth); ctx.lineTo(i + groundRectDepth, 0); ctx.stroke();
+        }
+        ctx.restore();
+
+        // --- Dimensions ---
+        // panelWidthScaled est la largeur totale du champ PV (ex: 12.40)
+        const panelCorners = [ {x: -panelWidthScaled/2, y: panelY}, {x: panelWidthScaled/2, y: panelY} ]
+            .map(p => ({ x: p.x * cosA - p.y * sinA + beamOffsetScaled, y: beamCenterY + p.x * sinA + p.y * cosA }));
+        const panelLowest = panelCorners.reduce((max, p) => p.y > max.y ? p : max, panelCorners[1]);
+        const panelHighest = panelCorners.reduce((min, p) => p.y < min.y ? p : min, panelCorners[0]);
+
+        // beamLengthScaled est la longueur de la traverse (ex: 11.40)
+        const beamCorners = [ {x: -beamLengthScaled/2, y: beamHeightScaled/2}, {x: beamLengthScaled/2, y: beamHeightScaled/2} ].map(p => ({ x: p.x + beamOffsetScaled, y: p.y})).map(p => ({ x: p.x * cosA - p.y * sinA, y: beamCenterY + p.x * sinA + p.y * cosA }));
+        const structureLowestY = beamCorners.reduce((max, p) => p.y > max.y ? p : max, beamCorners[0]).y;
+        
+        const dimOffsetLeft = -5.5 * scale;
+        const dimOffsetRight = postWidthScaled / 2 + (3*scale);
+        const structureMinX = Math.min(...panelCorners.map(p => p.x), -postWidthScaled / 2, ...beamCorners.map(p => p.x));
+
+
+        // --- DEBUT BLOC COTATIONS VERTICALES ---
+
+        if (appState.postModel === 'y_shape') {
+            const angle_L = roofSlopeRadians * (localInvertSlope ? -1 : 1);
+            const angle_R = -roofSlopeRadians * (localInvertSlope ? -1 : 1);
+            const cos_L = Math.cos(angle_L); const sin_L = Math.sin(angle_L);
+            const cos_R = Math.cos(angle_R); const sin_R = Math.sin(angle_R);
+
+            const panelWidthForY = panelWidthScaled; 
+            
+            const panelTop_L_rel = {
+                x: (-postWidthScaled / 2) + (-panelWidthForY) * cos_L - panelY * sin_L,
+                y: beamCenterY + (-panelWidthForY) * sin_L + panelY * cos_L
+            };
+            const panelTop_R_rel = {
+                x: (+postWidthScaled / 2) + (panelWidthForY) * cos_R - panelY * sin_R,
+                y: beamCenterY + (panelWidthForY) * sin_R + panelY * cos_R
+            };
+            
+            const panelHighestY = Math.min(panelTop_L_rel.y, panelTop_R_rel.y);
+            const structureHighestY = panelHighestY;
+            const structureHighestHeight = -structureHighestY / scale;
+
+            let braceLowestY;
+            if (appState.reinforcementType === 'jarrets') {
+                 braceLowestY = -values.heightUnderBrace * scale; // Jarret hauteur
+            } else {
+                 braceLowestY = -values.heightUnderBrace * scale; // Bracon hauteur
+            }
+            
+            const structureLowestHeight = -braceLowestY / scale;
+
+            const dimLineX_L = panelTop_L_rel.x -0.1 * scale;
+            const dimLineX_R = panelTop_R_rel.x + 0.1 * scale;
+            
+            drawVerticalDimensionWithLeader(ctx, panelTop_L_rel.x, structureHighestY, dimLineX_L, `${structureHighestHeight.toFixed(2)}m`, 0);
+            drawVerticalDimensionWithLeader(ctx, panelTop_R_rel.x, structureHighestY, dimLineX_R, `${structureHighestHeight.toFixed(2)}m`, 0);
+
+            const leaderStartX_L = -postWidthScaled / 2;
+            drawVerticalDimensionWithLeader(ctx, leaderStartX_L, braceLowestY, dimLineX_L+5*scale, `${structureLowestHeight.toFixed(2)}m`, 0);
+            const leaderStartX_R = postWidthScaled / 2;
+            drawVerticalDimensionWithLeader(ctx, leaderStartX_R, braceLowestY, dimLineX_R-5*scale, `${structureLowestHeight.toFixed(2)}m`, 0);
+
+        } else {
+            // Cotations verticales pour les autres modèles
+            drawVerticalDimensionWithLeader(ctx, beamCorners[0].x, structureLowestY, dimOffsetLeft, `${passageHeight.toFixed(2)}m`, 0);
+            drawVerticalDimensionWithLeader(ctx, panelLowest.x, panelLowest.y, structureMinX - 1.0 * scale, `${lowPointHeight.toFixed(2)}m`, 0);
+            
+            if (appState.postModel !== 'double' && appState.postModel !== 'inclinedPost') {
+                let basePostX = 0;
+                if (appState.offsetPostSide !== 'center') {
+                    const halfPanelHorizontal = (panelWidthScaled / 2) * Math.cos(roofSlopeRadians);
+                    if (appState.offsetPostSide === 'low') basePostX = localInvertSlope ? halfPanelHorizontal : -halfPanelHorizontal;
+                    if (appState.offsetPostSide === 'high') basePostX = localInvertSlope ? -halfPanelHorizontal : halfPanelHorizontal;
+                }
+                const postCenterX = (basePostX + values.postEccentricity) * scale;
+                drawVerticalDimensionWithLeader(ctx, postCenterX, -postHeightScaled, postCenterX + dimOffsetRight, `${postHeight.toFixed(2)}m`, 0);
+            }
+            
+            drawVerticalDimensionWithLeader(ctx, panelHighest.x, panelHighest.y, Math.max(...panelCorners.map(p=>p.x)) + 1.0 * scale, `${highPointHeightValue.toFixed(2)}m`, 0);
+        }
+
+        // --- FIN BLOC COTATIONS VERTICALES ---
+
+
+        // Cotation "Hauteur sous renfort" (pour modèles non-Y et non-inclined)
+        const braceAttachOnPostY = -heightUnderBrace * scale;
+        
+        if (appState.postModel !== 'y_shape' && appState.postModel !== 'inclinedPost' && (appState.reinforcementType === 'bracons' || (appState.postModel === 'double' && appState.showDoubleBracing))) {
+            let dimLineX = -2 * scale;
+            let leaderStartX = 0;
+            
+            if (appState.postModel === 'single') {
+                leaderStartX = postWidthScaled / 2;
+                dimLineX = -postWidthScaled/2 - 2 * scale;
+                drawVerticalDimensionWithLeader(ctx, leaderStartX, braceAttachOnPostY, dimLineX, `${heightUnderBrace.toFixed(2)}m`, 0);
+            
+            } else if (appState.postModel === 'offset') {
+                let basePostX = 0;
+                if (appState.offsetPostSide !== 'center') {
+                    const halfPanelHorizontal = (panelWidthScaled / 2) * Math.cos(roofSlopeRadians);
+                    if (appState.offsetPostSide === 'low') basePostX = localInvertSlope ? halfPanelHorizontal : -halfPanelHorizontal;
+                    if (appState.offsetPostSide === 'high') basePostX = localInvertSlope ? -halfPanelHorizontal : halfPanelHorizontal;
+                }
+                const postCenterX = (basePostX + values.postEccentricity) * scale;
+                leaderStartX = postCenterX + (appState.showBraceRight ? postWidthScaled / 2 : -postWidthScaled / 2);
+                dimLineX = postCenterX - postWidthScaled/2 - 2 * scale;
+                drawVerticalDimensionWithLeader(ctx, leaderStartX, braceAttachOnPostY, dimLineX, `${heightUnderBrace.toFixed(2)}m`, 0);
+            
+            } else if (appState.postModel === 'double') {
+                const spacing = postSpacing * scale / 2;
+                leaderStartX = -spacing - postWidthScaled / 2; // Bord extérieur du poteau gauche
+                dimLineX = leaderStartX - 2 * scale; // 2m à gauche
+                drawVerticalDimensionWithLeader(ctx, leaderStartX, braceAttachOnPostY, dimLineX, `${heightUnderBrace.toFixed(2)}m`, 0);
+            }
+        
+        }
+        
+        // --- DEBUT BLOC COTATIONS HORIZONTALES ---
+
+        if (appState.postModel === 'y_shape') {
+            const angle_L = roofSlopeRadians * (localInvertSlope ? -1 : 1);
+            const angle_R = -roofSlopeRadians * (localInvertSlope ? -1 : 1);
+            const cos_L = Math.cos(angle_L); const sin_L = Math.sin(angle_L);
+            const cos_R = Math.cos(angle_R); const sin_R = Math.sin(angle_R);
+
+            const panelWidthForY = panelWidthScaled; 
+            
+            const p_left_end = {
+                x: (-postWidthScaled / 2) + (-panelWidthForY) * cos_L - panelY * sin_L,
+                y: beamCenterY + (-panelWidthForY) * sin_L + panelY * cos_L
+            };
+            
+            const p_right_end = {
+                x: (+postWidthScaled / 2) + (panelWidthForY) * cos_R - panelY * sin_R,
+                y: beamCenterY + (panelWidthForY) * sin_R + panelY * cos_R
+            };
+            
+            const totalProjWidth = values.totalProjectionWidth;
+            
+            const projY = 0.5 * scale;
+            drawDimensionLine(ctx, p_left_end.x, projY, p_right_end.x, projY, `${totalProjWidth.toFixed(2)}m`, 0, false);
+
+        } else {
+            // Cotations horizontales pour les autres modèles
+            const projectionHorizontale = values.totalProjectionWidth;
+            const projMinX = Math.min(...panelCorners.map(p=>p.x));
+            const projMaxX = Math.max(...panelCorners.map(p=>p.x));
+            
+            let projDimY = 0.8 * scale; 
+            if (appState.postModel === 'double' || appState.postModel === 'inclinedPost' || appState.postModel === 'offset') {
+                projDimY = 1.1 * scale; 
+            }
+
+            if (appState.postModel === 'offset' && (appState.offsetPostSide !== 'center' || postEccentricity !== 0)) {
+                let basePostX = 0;
+                if (appState.offsetPostSide !== 'center') {
+                    const halfPanelHorizontal = (panelWidthScaled / 2) * Math.cos(roofSlopeRadians);
+                    if (appState.offsetPostSide === 'low') basePostX = localInvertSlope ? halfPanelHorizontal : -halfPanelHorizontal;
+                    if (appState.offsetPostSide === 'high') basePostX = localInvertSlope ? -halfPanelHorizontal : halfPanelHorizontal;
+                }
+                const postCenterX = (basePostX + values.postEccentricity) * scale;
+                const totalProj = (projMaxX - projMinX) / scale;
+                
+                const dimY_L1 = projDimY - 0.5 * scale;
+                const val1 = (postCenterX - projMinX) / scale;
+                const val2 = (projMaxX - postCenterX) / scale;
+                
+                drawDimensionLine(ctx, projMinX, dimY_L1, postCenterX, dimY_L1, `${Math.abs(val1).toFixed(2)}m`, 0, false);
+                drawDimensionLine(ctx, postCenterX, dimY_L1, projMaxX, dimY_L1, `${Math.abs(val2).toFixed(2)}m`, 0, false);
+
+                drawDimensionLine(ctx, projMinX, projDimY, projMaxX, projDimY, `${totalProj.toFixed(2)}m`, 0, false);
+                
+                const structuralCenterX = (projMinX + projMaxX) / 2;
+                if (Math.abs(postCenterX - structuralCenterX) > 0.01 * scale) { 
+                    const dimY_L3 = projDimY + 0.3 * scale; 
+                    drawDimensionLine(ctx, structuralCenterX, dimY_L3, postCenterX, dimY_L3, `${Math.abs(values.postEccentricity).toFixed(2)}m`, 0, false);
+                }
+
+            } else if (appState.postModel === 'single') {
+                projDimY += 0.2 * scale;
+                const dimY_L1 = projDimY - 0.6 * scale; 
+                const postCenterX = 0;
+
+                const halfProj = projectionHorizontale / 2;
+                drawDimensionLine(ctx, projMinX, dimY_L1, postCenterX, dimY_L1, `${halfProj.toFixed(2)}m`, 0, false);
+                drawDimensionLine(ctx, postCenterX, dimY_L1, projMaxX, dimY_L1, `${halfProj.toFixed(2)}m`, 0, false);
+                
+                drawDimensionLine(ctx, projMinX, projDimY, projMaxX, projDimY, `${projectionHorizontale.toFixed(2)}m`, 0, false);
+
+            } else { // Pour double, inclined
+                 drawDimensionLine(ctx, projMinX, projDimY, projMaxX, projDimY, `${projectionHorizontale.toFixed(2)}m`, 0, false);
+            }
+            
+            drawDimensionLine(ctx, panelCorners[0].x, panelCorners[0].y, panelCorners[1].x, panelCorners[1].y, `${values.panelWidth.toFixed(2)}m`, -30, false);
+        }
+
+        // --- FIN BLOC COTATIONS HORIZONTALES ---
+
+
+        if (appState.postModel === 'double' || appState.postModel === 'inclinedPost') {
+            const spacingValue = (appState.postModel === 'double') ? postSpacing : postSpacingInclined;
+            const spacing = spacingValue * scale / 2;
+            const dimY = 0.5 * scale;
+            drawDimensionLine(ctx, -spacing, dimY, spacing, dimY, `${spacingValue.toFixed(2)}m`, 0, false);
+        }
+
+        ctx.save();
+        ctx.fillStyle = '#000'; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        if (appState.postModel !== 'y_shape') {
+             ctx.translate(beamOffsetScaled, beamCenterY); ctx.rotate(angle);
+             ctx.fillText(`Pente = ${roofSlope}°`, 0, panelY - 10);
+        }
+        ctx.restore();
+        ctx.restore();
+        
+        // Return boundary box for PDF cropping (in meters/drawing units)
+        // We define the drawing units relative to the scale (1 unit = 1m in real life)
+        const marginMeters = 1.0;
+        return {
+            minX: -(values.panelWidth / 2) - marginMeters,
+            maxX: values.panelWidth / 2 + marginMeters,
+            minY: -values.postHeight - marginMeters,
+            maxY: marginMeters // Just above the ground line (Y=0)
+        };
+    }
+
+    function drawFacade(canvas, ctx, viewManager, values) {
+        // Logique de dessin de la façade (conservée intégralement)
+        const { postHeight, facadeLength, leftOverhang, rightOverhang, groundSlopeFacade, postWidth, panelWidth, roofSlope, invertSlope, lowPointHeight, alignRoof, pvLayout, baseAltimetry, purlinHeight } = values;
+        const { width, height } = setupCanvas(canvas);
+        if (width === 0 || height === 0) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(viewManager.panX, viewManager.panY); ctx.scale(viewManager.zoom, viewManager.zoom);
+        ctx.translate(width / 2, height / 2);
+        const distances = appState.parsedDistances;
+        if (!distances) { ctx.restore(); return; }
+        const roofApparentHeight = Math.abs(panelWidth * Math.sin(roofSlope * Math.PI / 180 * (invertSlope ? -1 : 1)));
+
+        const totalDrawingWidth = facadeLength;
+        const totalDrawingHeight = postHeight + Math.abs(groundSlopeFacade) + roofApparentHeight + 5;
+        const scale = Math.min(width / (totalDrawingWidth + 4), height / (totalDrawingHeight + 4)) * 0.9;
+        
+        const originX = -totalDrawingWidth * scale / 2;
+        const groundYAtOrigin = (postHeight*scale + roofApparentHeight*scale)/2;
+        ctx.translate(originX, groundYAtOrigin);
+
+        const getScaledGroundY = (x) => (facadeLength > 0 ? (x / (facadeLength * scale)) * (-groundSlopeFacade * scale) : 0);
+        const groundPath = new Path2D();
+        const groundDepth = 4 * scale;
+        const startX = -width*2/viewManager.zoom; const endX = width*2/viewManager.zoom;
+        groundPath.moveTo(startX, getScaledGroundY(startX)); groundPath.lineTo(endX, getScaledGroundY(endX));
+        groundPath.lineTo(endX, getScaledGroundY(endX) + groundDepth); groundPath.lineTo(startX, getScaledGroundY(startX) + groundDepth);
+        groundPath.closePath();
+        ctx.fillStyle = "#f9f9f9"; ctx.fill(groundPath);
+        const patternCanvas = document.createElement('canvas'); const patternCtx = patternCanvas.getContext('2d');
+        patternCanvas.width = 10; patternCanvas.height = 10;
+        patternCtx.strokeStyle = '#cccccc'; patternCtx.lineWidth = 1;
+        patternCtx.beginPath(); patternCtx.moveTo(0, 10); patternCtx.lineTo(10, 0); patternCtx.stroke();
+        const pattern = ctx.createPattern(patternCanvas, 'repeat');
+        ctx.fillStyle = pattern; ctx.fill(groundPath);
+        ctx.strokeStyle = '#374151'; ctx.lineWidth = 2; ctx.stroke(groundPath);
+
+        const postPositions = [leftOverhang];
+        let currentPos = leftOverhang;
+        distances.forEach(d => { currentPos += d; postPositions.push(currentPos); });
+        const postWidthScaled = Math.max(postWidth * scale, 2);
+        ctx.fillStyle = '#f3f4f6'; ctx.strokeStyle = '#374151'; ctx.lineWidth = 1;
+
+        const useRoofAlignment = alignRoof;
+        const postTopY_at_0 = getScaledGroundY(0) - postHeight * scale;
+        postPositions.forEach(xPos => {
+            const groundY = getScaledGroundY(xPos * scale);
+            let postTopY, postH;
+            if (useRoofAlignment) {
+                postTopY = postTopY_at_0;
+                postH = groundY - postTopY;
+            } else {
+                postTopY = groundY - postHeight * scale;
+                postH = postHeight * scale;
+            }
+            ctx.fillRect(xPos * scale - postWidthScaled / 2, postTopY, postWidthScaled, postH);
+            ctx.strokeRect(xPos * scale - postWidthScaled / 2, postTopY, postWidthScaled, postH);
+        });
+
+        const roofThicknessScaled = roofApparentHeight * scale;
+        const structureBottomY_at_0 = getScaledGroundY(0) - lowPointHeight * scale;
+        let roofBottomStartY, roofBottomEndY, roofTopStartY, roofTopEndY;
+        roofBottomStartY = structureBottomY_at_0;
+        if (useRoofAlignment) {
+            roofBottomEndY = roofBottomStartY;
+        } else {
+            roofBottomEndY = getScaledGroundY(facadeLength * scale) - lowPointHeight * scale;
+        }
+        roofTopStartY = roofBottomStartY - roofThicknessScaled;
+        roofTopEndY = roofBottomEndY - roofThicknessScaled;
+
+        // Dessin "façade/panneaux"
+        const roofPath = new Path2D();
+        roofPath.moveTo(0, roofBottomStartY); roofPath.lineTo(facadeLength * scale, roofBottomEndY);
+        roofPath.lineTo(facadeLength * scale, roofTopEndY); roofPath.lineTo(0, roofTopStartY);
+        roofPath.closePath();
+        ctx.fillStyle = 'rgba(67, 56, 202, 0.7)'; ctx.fill(roofPath); ctx.stroke(roofPath);
+        
+        const slopeRad = roofSlope * Math.PI / 180;
+        const panneFacadeHeight = purlinHeight - (Math.sin(slopeRad) * purlinHeight);
+        const panneFacadeHeightScaled = panneFacadeHeight * scale;
+
+        const pannePath = new Path2D();
+        pannePath.moveTo(0, roofBottomStartY); // Haut-gauche
+        pannePath.lineTo(facadeLength * scale, roofBottomEndY); // Haut-droit
+        pannePath.lineTo(facadeLength * scale, roofBottomEndY + panneFacadeHeightScaled); // Bas-droit
+        pannePath.lineTo(0, roofBottomStartY + panneFacadeHeightScaled); // Bas-gauche
+        pannePath.closePath();
+        
+        ctx.fillStyle = '#e5e7eb'; // Gris clair (comme pannes en coupe)
+        ctx.fill(pannePath);
+        ctx.strokeStyle = '#a0aec0'; // Bordure grise
+        ctx.lineWidth = 1;
+        ctx.stroke(pannePath);
+
+        try {
+            let rows = NaN, cols = NaN;
+            const cleanedLayout = pvLayout.toLowerCase().replace(/\s/g, '');
+            const parts = cleanedLayout.split('x');
+            if (parts.length === 2) {
+                const part1 = parts[0]; const part2 = parts[1];
+                if (part1.includes('l') && part2.includes('c')) { rows = parseInt(part1); cols = parseInt(part2); } 
+                else if (part1.includes('c') && part2.includes('l')) { cols = parseInt(part1); rows = parseInt(part2); } 
+                else { [rows, cols] = parts.map(Number); } 
+            }
+            if (!isNaN(rows) && !isNaN(cols) && rows > 0 && cols > 0) {
+                const p1 = { x: 0, y: roofBottomStartY };
+                const p2 = { x: facadeLength * scale, y: roofBottomEndY };
+                const p4 = { x: 0, y: roofTopStartY };
+                const v_width = { x: p2.x - p1.x, y: p2.y - p1.y };
+                const v_height = { x: p4.x - p1.x, y: p4.y - p1.y };
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)'; ctx.lineWidth = 0.5;
+                for (let i = 0; i < rows; i++) { 
+                    for (let j = 0; j < cols; j++) {
+                        const c1x = p1.x + (j/cols)*v_width.x + (i/rows)*v_height.x; 
+                        const c1y = p1.y + (j/cols)*v_width.y + (i/rows)*v_height.y;
+                        const c2x = p1.x + ((j+1)/cols)*v_width.x + (i/rows)*v_height.x; 
+                        const c2y = p1.y + ((j+1)/cols)*v_width.y + (i/rows)*v_height.y;
+                        const c3x = p1.x + ((j+1)/cols)*v_width.x + ((i+1)/rows)*v_height.x; 
+                        const c3y = p1.y + ((j+1)/cols)*v_width.y + ((i+1)/rows)*v_height.y;
+                        const c4x = p1.x + (j/cols)*v_width.x + ((i+1)/rows)*v_height.x; 
+                        const c4y = p1.y + (j/cols)*v_width.y + ((i+1)/rows)*v_height.y;
+                        ctx.beginPath(); 
+                        ctx.moveTo(c1x, c1y); ctx.lineTo(c2x, c2y); ctx.lineTo(c3x, c3y); ctx.lineTo(c4x, c4y); 
+                        ctx.closePath(); ctx.stroke(); 
+                    } 
+                } 
+            } 
+        } catch(e) { console.error("Format de calepinage PV invalide.", e); }
+
+        const highestRoofPointY = Math.min(roofTopStartY, roofTopEndY);
+        const dimLineY1 = highestRoofPointY - 30; const dimLineY2 = highestRoofPointY - 60;
+        drawDimensionLine(ctx, 0, dimLineY1, postPositions[0] * scale, dimLineY1, `${leftOverhang.toFixed(1)}m`, 0, false);
+        for (let i = 0; i < distances.length; i++) {
+            drawDimensionLine(ctx, postPositions[i] * scale, dimLineY1, postPositions[i + 1] * scale, dimLineY1, `${distances[i].toFixed(2)}m`);
+        }
+        drawDimensionLine(ctx, postPositions[postPositions.length - 1] * scale, dimLineY1, facadeLength * scale, dimLineY1, `${rightOverhang.toFixed(1)}m`, 0, false);
+        drawDimensionLine(ctx, 0, dimLineY2, facadeLength * scale, dimLineY2, `${facadeLength.toFixed(2)}m`, 0, false);
+
+        const highPointHeightValue_Left = lowPointHeight + roofApparentHeight;
+        let highPointHeightValue_Right = useRoofAlignment ? highPointHeightValue_Left - groundSlopeFacade : highPointHeightValue_Left;
+
+        const dimOffsetLeft = (-2) * scale;
+        const dimOffsetRight = facadeLength * scale + (2) * scale;
+
+        drawVerticalDimensionWithLeader(ctx, 0, roofTopStartY, dimOffsetLeft, `${highPointHeightValue_Left.toFixed(2)}m`, getScaledGroundY(0));
+        drawVerticalDimensionWithLeader(ctx, facadeLength * scale, roofTopEndY, dimOffsetRight, `${highPointHeightValue_Right.toFixed(2)}m`, getScaledGroundY(facadeLength * scale));
+
+        const altimetryLeft = baseAltimetry;
+        const altimetryRight = baseAltimetry + groundSlopeFacade;
+        const groundRefPoints = [{ x: 0, refText: `+0.00m`, altText: `${altimetryLeft.toFixed(2)}m (NGF)`}, { x: facadeLength * scale, refText: `${groundSlopeFacade.toFixed(2)}m`, altText: `${altimetryRight.toFixed(2)}m (NGF)`}];
+        groundRefPoints.forEach(point => {
+            const y = getScaledGroundY(point.x);
+            ctx.save(); ctx.fillStyle = appState.dimensionColor; ctx.font = 'bold 12px Arial'; ctx.textAlign = 'center';
+            ctx.textBaseline = 'bottom'; ctx.fillText(point.refText, point.x, y - 4);
+            ctx.textBaseline = 'top'; ctx.font = '12px Arial'; ctx.fillText(point.altText, point.x, y + 4);
+            ctx.strokeStyle = appState.dimensionColor; ctx.lineWidth = 1.5; const crossSize = 4;
+            ctx.beginPath(); ctx.moveTo(point.x - crossSize, y); ctx.lineTo(point.x + crossSize, y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(point.x, y - crossSize); ctx.lineTo(point.x, y + crossSize); ctx.stroke();
+            ctx.restore();
+        });
+        ctx.restore();
+        
+        // Return boundary box for PDF cropping (in meters/drawing units)
+        const marginMeters = 1.0;
+        const postMinX = -leftOverhang - postWidth/2;
+        const postMaxX = facadeLength + rightOverhang + postWidth/2;
+        const maxHeight = values.postHeight + roofApparentHeight + 1.0;
+        const minHeight = -postHeight - Math.abs(groundSlopeFacade) - 1.0; 
+        
+        return {
+            minX: postMinX - marginMeters,
+            maxX: postMaxX + marginMeters,
+            minY: -maxHeight - marginMeters, // Max Y (haut du dessin)
+            maxY: 1.0 + Math.abs(groundSlopeFacade) + marginMeters // Min Y (bas du dessin)
+        };
+    }
+
+    function drawImplantation(canvas, ctx, viewManager, values) {
+        // MOD 6.5: Récupération de totalProjectionWidth
+        const { facadeLength, panelWidth, roofSlope, leftOverhang, rightOverhang, postWidth, postEccentricity, totalProjectionWidth } = values;
+        const distances = appState.parsedDistances;
+        if (!distances) return;
+
+        const { width, height } = setupCanvas(canvas);
+        if (width === 0 || height === 0) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        ctx.translate(viewManager.panX, viewManager.panY); ctx.scale(viewManager.zoom, viewManager.zoom);
+        ctx.translate(width / 2, height / 2);
+
+        // MOD 6.5: Utilisation de totalProjectionWidth
+        const projectionWidth = totalProjectionWidth;
+        const absRoofSlopeRad = Math.abs(roofSlope * Math.PI / 180);
+        
+        const scale = Math.min(width / (facadeLength+2), height / (projectionWidth+2)) * 0.9;
+        
+        ctx.translate(-facadeLength * scale / 2, -projectionWidth * scale / 2);
+
+        // MOD 6.5: Dessin de l'implantation pour Y
+        if (appState.postModel === 'y_shape') {
+            const projWidthOneSide = (values.panelWidth * Math.cos(absRoofSlopeRad)) * scale;
+            const postWidthScaled = values.postWidth * scale;
+            
+            ctx.strokeStyle = '#374151'; ctx.lineWidth = 3;
+            // Dessiner la section de gauche (haut)
+            ctx.strokeRect(0, 0, facadeLength * scale, projWidthOneSide);
+            // Dessiner la section de droite (bas)
+            ctx.strokeRect(0, projWidthOneSide + postWidthScaled, facadeLength * scale, projWidthOneSide);
+
+        } else {
+            // Dessin standard pour les autres modèles
+            ctx.strokeStyle = '#374151';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(0, 0, facadeLength * scale, projectionWidth * scale);
+        }
+        
+        const midY = projectionWidth * scale / 2;
+        const postPositions = [leftOverhang];
+        let currentPos = leftOverhang;
+        distances.forEach(d => { currentPos += d; postPositions.push(currentPos); });
+
+        ctx.save(); ctx.strokeStyle = '#888'; ctx.lineWidth = 1.5; ctx.setLineDash([5, 5]);
+        const axisExtension = 80;
+
+        if (appState.postModel === 'double' || appState.postModel === 'inclinedPost') {
+            const spacing = (appState.postModel === 'double' ? values.postSpacing : values.postSpacingInclined) * scale / 2;
+            ctx.beginPath(); ctx.moveTo(-axisExtension, midY - spacing); ctx.lineTo(facadeLength * scale + axisExtension, midY - spacing); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(-axisExtension, midY + spacing); ctx.lineTo(facadeLength * scale + axisExtension, midY + spacing); ctx.stroke();
+        } else if (appState.postModel === 'offset') {
+            const eccentricityScaled = values.postEccentricity * scale; // Utilise valeur clampée
+            ctx.beginPath(); ctx.moveTo(-axisExtension, midY + eccentricityScaled); ctx.lineTo(facadeLength * scale + axisExtension, midY + eccentricityScaled); ctx.stroke();
+        } else { // Single et Y
+            ctx.beginPath(); ctx.moveTo(-axisExtension, midY); ctx.lineTo(facadeLength * scale + axisExtension, midY); ctx.stroke();
+        }
+
+        postPositions.forEach(xPos => { ctx.beginPath(); ctx.moveTo(xPos * scale, -axisExtension); ctx.lineTo(xPos * scale, projectionWidth * scale + axisExtension); ctx.stroke(); });
+        ctx.restore();
+
+        const postSize = postWidth * scale; ctx.fillStyle = '#6b7280';
+        postPositions.forEach(xPos => {
+            if (appState.postModel === 'double' || appState.postModel === 'inclinedPost') {
+                const spacing = (appState.postModel === 'double' ? values.postSpacing : values.postSpacingInclined) * scale / 2;
+                ctx.fillRect(xPos * scale - postSize / 2, midY - spacing - postSize / 2, postSize, postSize);
+                ctx.fillRect(xPos * scale - postSize / 2, midY + spacing - postSize / 2, postSize, postSize);
+            } else if (appState.postModel === 'offset') {
+                const eccentricityScaled = values.postEccentricity * scale; // Utilise valeur clampée
+                ctx.fillRect(xPos * scale - postSize / 2, midY + eccentricityScaled - postSize / 2, postSize, postSize);
+            } else { // Single et Y
+                 ctx.fillRect(xPos * scale - postSize/2, midY - postSize/2, postSize, postSize);
+            }
+        });
+        if (appState.postModel === 'double' || appState.postModel === 'inclinedPost' || (appState.postModel === 'offset' && postEccentricity !== 0)) {
+            const firstPostX = postPositions[0] * scale;
+            const dimOffset = -30 - postSize;
+            if (appState.postModel === 'double' || appState.postModel === 'inclinedPost') {
+                const spacingValue = (appState.postModel === 'double' ? values.postSpacing : values.postSpacingInclined);
+                const spacing = spacingValue * scale;
+                drawDimensionLine(ctx, firstPostX, midY - spacing / 2, firstPostX, midY + spacing / 2, `${spacingValue.toFixed(2)}m`, dimOffset, true);
+            }
+            if (appState.postModel === 'offset' && postEccentricity !== 0) {
+                const eccentricityScaled = values.postEccentricity * scale; // Utilise valeur clampée
+                drawDimensionLine(ctx, firstPostX, midY, firstPostX, midY + eccentricityScaled, `${values.postEccentricity.toFixed(2)}m`, dimOffset, true);
+            }
+        }
+        drawDimensionLine(ctx, 0, 0, facadeLength * scale, 0, `${facadeLength.toFixed(2)}m`, -30, false);
+        const interPostDimY = projectionWidth * scale + 30;
+        drawDimensionLine(ctx, 0, interPostDimY, leftOverhang * scale, interPostDimY, `${leftOverhang.toFixed(2)}m`, 0, false);
+        drawDimensionLine(ctx, (facadeLength - rightOverhang) * scale, interPostDimY, facadeLength * scale, interPostDimY, `${rightOverhang.toFixed(2)}m`, 0, false);
+        for (let i = 0; i < postPositions.length - 1; i++) { drawDimensionLine(ctx, postPositions[i] * scale, interPostDimY, postPositions[i+1] * scale, interPostDimY, `${distances[i].toFixed(2)}m`); }
+        
+        // MOD 6.5: Cotation de la projection horizontale totale (11.75m ou similaire)
+        drawDimensionLine(ctx, facadeLength * scale, 0, facadeLength * scale, projectionWidth * scale, `${projectionWidth.toFixed(2)}m`, 30, true); 
+        ctx.restore();
+        
+        // Return boundary box for PDF cropping (in meters/drawing units)
+        const marginMeters = 1.0;
+        return {
+            minX: -marginMeters,
+            maxX: facadeLength + marginMeters,
+            minY: -marginMeters,
+            maxY: projectionWidth + marginMeters
+        };
+    }
+
+    // --- LOGIC & EVENT HANDLERS ---
+    function getFormValues() {
+        const values = {};
+        document.querySelectorAll('.all-inputs').forEach(el => {
+            if (!el.id) return;
+            let val = (el.type === 'checkbox') ? el.checked : el.value;
+            if (el.type === 'number' && !el.readOnly) val = parseFloat(val) || 0;
+            values[el.id] = val;
+        });
+        return values;
+    }
+
+    function validateAndSetEccentricity(overhangH, overhangL, values) {
+        const errorEl = document.getElementById('postEccentricityError');
+        
+        const maxEccentricity = (values.panelWidth / 2) * Math.cos(values.roofSlope * Math.PI / 180);
+        
+        errorEl.textContent = `(Limite auto: ±${maxEccentricity.toFixed(2)}m)`;
+        
+        const beamLength = (appState.postModel === 'y_shape') 
+            ? values.panelWidth - values.overhangSymValue
+            : values.panelWidth - (overhangH + overhangL);
+            
+        return { maxEccentricity, beamLength };
+    }
+
+
+    function updateAppLogic() {
+        let values = getFormValues(); 
+        
+        let overhangH, overhangL;
+        const symValue = values.overhangSymValue;
+        const asymHigh = values.overhangAsymHigh;
+        const asymLow = values.overhangAsymLow;
+        
+        if (appState.overhangType === 'sym' || appState.postModel === 'y_shape') { 
+            // Pour Y, le porte-à-faux est du côté "haut structure"
+            overhangH = overhangL = symValue;
+        } else {
+            // Pour Asymétrique, H est le côté Haut (opposite to low point)
+            const sideLow = appState.invertSlope ? asymHigh : asymLow; // côté où la toiture est basse
+            const sideHigh = appState.invertSlope ? asymLow : asymHigh; // côté où la toiture est haute
+            
+            // Le côté bas de la toiture est toujours le côté L. Le côté haut de la toiture est toujours le côté H.
+            // On conserve ici la définition initiale des inputs pour les calculs.
+            overhangH = asymHigh; 
+            overhangL = asymLow;
+        }
+        
+        const { beamLength, maxEccentricity } = validateAndSetEccentricity(overhangH, overhangL, values);
+        values.beamLength = beamLength;
+
+        if (appState.postModel === 'offset') {
+            const currentEccentricity = values.postEccentricity; 
+            if (Math.abs(currentEccentricity) > maxEccentricity) {
+                values.postEccentricity = Math.sign(currentEccentricity) * maxEccentricity;
+            }
+        }
+
+        const { passageHeight, beamHeight, purlinHeight, integrationSystemHeight, panelThickness } = values;
+        const newLowPointHeight = passageHeight + beamHeight + purlinHeight + integrationSystemHeight + panelThickness;
+        document.getElementById('lowPointHeight').value = newLowPointHeight.toFixed(2);
+        values.lowPointHeight = newLowPointHeight;
+        
+        const roofSlopeRadians = values.roofSlope * Math.PI / 180 * (appState.invertSlope ? -1 : 1);
+        
+        let newPostHeight;
+        if (appState.postModel === 'y_shape') {
+            const cosA_Y = Math.cos(Math.abs(roofSlopeRadians));
+            const beamLengthForY = values.beamLength; 
+            const y_lowest_beam_absolute = -passageHeight;
+            const y_lowest_beam_point_relative_to_center = (beamLengthForY / 2) * Math.abs(Math.sin(roofSlopeRadians)) + (beamHeight / 2) * Math.cos(roofSlopeRadians);
+            
+            const beamCenterY_m_orig = y_lowest_beam_absolute - y_lowest_beam_point_relative_to_center;
+            
+            const beamCenterY_m = beamCenterY_m_orig - 0.03; 
+            
+            const topOfBeamY_m = beamCenterY_m - (beamHeight / 2) * Math.cos(roofSlopeRadians);
+            newPostHeight = -topOfBeamY_m;
+            
+        } else {
+            const y_lowest_beam_absolute = -passageHeight;
+            const y_lowest_beam_point_relative_to_center = (values.beamLength / 2) * Math.abs(Math.sin(roofSlopeRadians)) + (beamHeight / 2) * Math.cos(roofSlopeRadians);
+            const beamCenterY_m = y_lowest_beam_absolute - y_lowest_beam_point_relative_to_center;
+            
+            if (appState.traversePosition === 'top') {
+                newPostHeight = -(beamCenterY_m + beamHeight / 2);
+            } else {
+                newPostHeight = -beamCenterY_m;
+            }
+        }
+
+        document.getElementById('postHeight').value = newPostHeight.toFixed(2);
+        values.postHeight = newPostHeight;
+        
+        const absRoofSlopeRad = Math.abs(values.roofSlope * Math.PI / 180);
+        if (appState.postModel === 'y_shape') {
+            values.totalProjectionWidth = (values.panelWidth * Math.cos(absRoofSlopeRad) * 2) + values.postWidth;
+        } else {
+            values.totalProjectionWidth = values.panelWidth * Math.cos(absRoofSlopeRad);
+        }
+        
+        values.heightUnderBrace = parseFloat(document.getElementById('heightUnderBrace').value);
+        appState.parsedDistances = parsePostDistances();
+        
+        return values;
+    }
+
+    function parsePostDistances() {
+        const input = document.getElementById('postDistances'); const errorDiv = document.getElementById('postDistancesError'); const expression = input.value.trim();
+        errorDiv.innerHTML = ""; if (expression === "") return [];
+        const getFallback = () => { try { return parseExpression(lastValidPostDistances); } catch { return null; } };
+        const parseExpression = (expr) => {
+            const distances = []; const segments = expr.replace(/,/g, '+').split('+');
+            for (const segment of segments) {
+                const cleanedSegment = segment.trim(); if (cleanedSegment === '') continue;
+                if (cleanedSegment.includes('*')) {
+                    const parts = cleanedSegment.split('*'); if (parts.length !== 2 || parts.some(p => p.trim() === '')) throw new Error(`Format invalide: "${segment}"`);
+                    const count = parseInt(parts[0].trim(), 10); const value = parseFloat(parts[1].trim());
+                    if (isNaN(count) || isNaN(value) || count < 0) throw new Error(`Valeurs invalides: "${segment}"`);
+                    for (let i = 0; i < count; i++) distances.push(value);
+                } else {
+                    const value = parseFloat(cleanedSegment); if (isNaN(value)) throw new Error(`Valeur non numérique: "${segment}"`);
+                    distances.push(value);
+                }
+            }
+            return distances;
+        };
+        let distances;
+        try { distances = parseExpression(expression); } catch (e) { errorDiv.textContent = e.message; return getFallback(); }
+        const values = getFormValues(); const totalDistance = distances.reduce((a, b) => a + b, 0);
+        const calculatedLength = values.leftOverhang + totalDistance + values.rightOverhang;
+        if (Math.abs(calculatedLength - values.facadeLength) > 0.01) { errorDiv.innerHTML = `Attention : Somme entraxes (${totalDistance.toFixed(2)}m) + p-à-f (${(values.leftOverhang + values.rightOverhang).toFixed(2)}m) = ${calculatedLength.toFixed(2)}m ≠ longueur totale (${values.facadeLength.toFixed(2)}m).`; }
+        lastValidPostDistances = expression; return distances;
+    }
+
+    function runAllDrawings() {
+        const calculatedValues = updateAppLogic();
+        coupeViewManager.draw(calculatedValues);
+        facadeViewManager.draw(calculatedValues);
+        implantationViewManager.draw(calculatedValues);
+    }
+    
+    function adjustCanvasHeights() {
+        // Avec la nouvelle disposition, les conteneurs canvas utilisent des hauteurs fixes (50% chacun)
+        // Cette fonction n'est plus nécessaire mais est conservée pour compatibilité
+        const coupeContainer = document.getElementById('coupe-container');
+        const facadeContainer = document.getElementById('facade-block-container');
+
+        if (coupeContainer) {
+            coupeContainer.style.height = '50%';
+            coupeContainer.style.flex = '1 1 50%';
+        }
+        if (facadeContainer) {
+            facadeContainer.style.height = '50%';
+            facadeContainer.style.flex = '1 1 50%';
+        }
+    }
+
+
+    function scheduleUpdate() {
+        return new Promise(resolve => {
+            if (isUpdateScheduled) { resolve(); return; }
+            isUpdateScheduled = true;
+            requestAnimationFrame(() => {
+                try { 
+                    runAllDrawings(); 
+                    adjustCanvasHeights();
+                } catch (e) { console.error("Drawing error:", e); }
+                isUpdateScheduled = false; resolve();
+            });
+        });
+    }
+
+    function setupToggleButton(activeBtn, buttonGroupNodeList, containerToShow, containersToHide) {
+        buttonGroupNodeList.forEach(btn => btn.classList.remove('active'));
+        if (activeBtn) activeBtn.classList.add('active');
+        if (containerToShow) { (Array.isArray(containerToShow) ? containerToShow : [containerToShow]).forEach(c => { if (c) c.classList.remove('hidden'); }); }
+        if (containersToHide) { (Array.isArray(containersToHide) ? containersToHide : [containersToHide]).forEach(c => { if (c) c.classList.add('hidden'); }); }
+    }
+
+    const heightUnderBraceInput = document.getElementById('heightUnderBrace');
+    
+    const coupeViewManager = new ViewManager(document.getElementById('coupeCanvas'), drawCoupe);
+    const facadeViewManager = new ViewManager(document.getElementById('facadeCanvas'), drawFacade);
+    const implantationViewManager = new ViewManager(document.getElementById('implantationCanvas'), drawImplantation);
+    const managers = {
+        Coupe: coupeViewManager,
+        Facade: facadeViewManager,
+        Implantation: implantationViewManager
+    };
+    
+    document.querySelectorAll('.all-inputs').forEach(input => input.addEventListener('input', () => {
+        scheduleUpdate();
+        setTimeout(adjustCanvasHeights, 50);
+    }));
+
+    document.getElementById('toolInvertSlope').addEventListener('click', (e) => { appState.invertSlope = !appState.invertSlope; e.currentTarget.classList.toggle('active'); scheduleUpdate(); });
+    document.getElementById('toolPosTraverseTop').addEventListener('click', () => { appState.traversePosition = 'top'; document.getElementById('toolPosTraverseTop').classList.add('active'); document.getElementById('toolPosTraverseSide').classList.remove('active'); scheduleUpdate(); });
+    document.getElementById('toolPosTraverseSide').addEventListener('click', () => { appState.traversePosition = 'side'; document.getElementById('toolPosTraverseSide').classList.add('active'); document.getElementById('toolPosTraverseTop').classList.remove('active'); scheduleUpdate(); });
+    document.getElementById('toolDimColors').addEventListener('click', (e) => {
+        const btn = e.target.closest('.dim-color-btn'); if (!btn) return;
+        appState.dimensionColor = btn.dataset.color;
+        document.querySelectorAll('.dim-color-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active'); scheduleUpdate();
+    });
+
+    document.getElementById('toggleBraceLeft').addEventListener('click', e => { appState.showBraceLeft = !appState.showBraceLeft; e.currentTarget.classList.toggle('active'); scheduleUpdate(); });
+    document.getElementById('toggleBraceRight').addEventListener('click', e => { appState.showBraceRight = !appState.showBraceRight; e.currentTarget.classList.toggle('active'); scheduleUpdate(); });
+
+    document.querySelectorAll('#offsetPostControls .toggle-btn-group button').forEach(btn => btn.addEventListener('click', e => {
+        appState.offsetPostSide = e.currentTarget.id.replace('offsetPos', '').toLowerCase();
+        setupToggleButton(e.currentTarget, document.querySelectorAll('#offsetPostControls .toggle-btn-group button'));
+        scheduleUpdate();
+    }));
+    document.querySelectorAll('#bracing-variant-group button').forEach(btn => btn.addEventListener('click', e => {
+        appState.doublePostBracing = e.currentTarget.id.replace('bracing', '').toLowerCase();
+        setupToggleButton(e.currentTarget, document.querySelectorAll('#bracing-variant-group button'));
+        scheduleUpdate();
+    }));
+
+    document.getElementById('showDoubleBracing').addEventListener('change', e => { appState.showDoubleBracing = e.target.checked; scheduleUpdate(); });
+
+    document.getElementById('reinforceBracons').addEventListener('click', () => {
+        appState.reinforcementType = 'bracons';
+        setupToggleButton(document.getElementById('reinforceBracons'), document.querySelectorAll('.controls-container .toggle-btn-group button[id^="reinforce"]'));
+        heightUnderBraceInput.readOnly = false; 
+        if (appState.postModel === 'y_shape') {
+            heightUnderBraceInput.value = "2.0"; 
+        } else {
+            heightUnderBraceInput.value = "2.0"; 
+        }
+        scheduleUpdate();
+    });
+    document.getElementById('reinforceJarrets').addEventListener('click', () => {
+        appState.reinforcementType = 'jarrets';
+        setupToggleButton(document.getElementById('reinforceJarrets'), document.querySelectorAll('.controls-container .toggle-btn-group button[id^="reinforce"]'));
+        heightUnderBraceInput.readOnly = false; 
+        if (appState.postModel === 'y_shape') {
+            heightUnderBraceInput.value = "3.20"; 
+        } else {
+            heightUnderBraceInput.value = "3.20";
+        }
+        scheduleUpdate();
+    });
+
+    document.getElementById('overhangSym').addEventListener('click', () => {
+        appState.overhangType = 'sym';
+        setupToggleButton(document.getElementById('overhangSym'), document.querySelectorAll('.controls-container .toggle-btn-group button[id^="overhang"]'), document.getElementById('overhangSymContainer'), document.getElementById('overhangAsymContainer'));
+        scheduleUpdate();
+    });
+    document.getElementById('overhangAsym').addEventListener('click', () => {
+        appState.overhangType = 'asym';
+        setupToggleButton(document.getElementById('overhangAsym'), document.querySelectorAll('.controls-container .toggle-btn-group button[id^="overhang"]'), document.getElementById('overhangAsymContainer'), document.getElementById('overhangSymContainer'));
+        scheduleUpdate();
+    });
+
+    const allModelButtons = document.querySelectorAll('#model-btn-group button');
+    const allModelControls = [document.getElementById('doublePostControls'), document.getElementById('offsetPostControls'), document.getElementById('inclinedPostControls')];
+    const inclinedPostCanvasControls = document.getElementById('inclinedPostCanvasControls');
+    const overhangSymBtn = document.getElementById('overhangSym');
+    const overhangAsymBtn = document.getElementById('overhangAsym');
+
+    const setOverhangControlsEnabled = (enabled) => {
+        overhangSymBtn.disabled = !enabled;
+        overhangAsymBtn.disabled = !enabled;
+    };
+document.getElementById('modelSinglePost').addEventListener('click', (e) => {
+    appState.postModel = 'single';
+
+    // Exemple à ajouter au début des autres écouteurs de modèles :
+let currentWidth = parseFloat(document.getElementById('panelWidth').value);
+if (currentWidth < 8) { // Si c'est une petite largeur (provenant du modèle Y)
+    document.getElementById('panelWidth').value = (currentWidth * 2).toFixed(2);
+}
+
+    document.getElementById('postEccentricity').value = 0;
+    document.getElementById('postInclinationInclined').value = 90;
+    // SUPPRIMÉ : document.getElementById('panelWidth').value = 12.40; (On garde la valeur saisie)
+    setOverhangControlsEnabled(true); 
+    setupToggleButton(e.currentTarget, allModelButtons, null, [...allModelControls, document.getElementById('offsetBraceControls'), inclinedPostCanvasControls]);
+    scheduleUpdate().then(adjustCanvasHeights);
+});
+
+document.getElementById('modelOffsetPost').addEventListener('click', (e) => {
+    appState.postModel = 'offset';
+
+    // Exemple à ajouter au début des autres écouteurs de modèles :
+let currentWidth = parseFloat(document.getElementById('panelWidth').value);
+if (currentWidth < 8) { // Si c'est une petite largeur (provenant du modèle Y)
+    document.getElementById('panelWidth').value = (currentWidth * 2).toFixed(2);
+}
+
+    document.getElementById('postInclinationInclined').value = 90;
+    // SUPPRIMÉ : document.getElementById('panelWidth').value = 12.40;
+    setOverhangControlsEnabled(true); 
+    setupToggleButton(e.currentTarget, allModelButtons, [document.getElementById('offsetPostControls'), document.getElementById('offsetBraceControls')], [document.getElementById('doublePostControls'), document.getElementById('inclinedPostControls'), inclinedPostCanvasControls]);
+    document.getElementById('postEccentricity').value = 2.0; 
+    scheduleUpdate().then(adjustCanvasHeights);
+});
+
+document.getElementById('modelDoublePost').addEventListener('click', (e) => {
+    appState.postModel = 'double';
+
+// Exemple à ajouter au début des autres écouteurs de modèles :
+let currentWidth = parseFloat(document.getElementById('panelWidth').value);
+if (currentWidth < 8) { // Si c'est une petite largeur (provenant du modèle Y)
+    document.getElementById('panelWidth').value = (currentWidth * 2).toFixed(2);
+}
+
+    document.getElementById('postEccentricity').value = 0;
+    document.getElementById('postInclinationInclined').value = 90;
+    // SUPPRIMÉ : document.getElementById('panelWidth').value = 12.40;
+    setOverhangControlsEnabled(true); 
+    setupToggleButton(e.currentTarget, allModelButtons, document.getElementById('doublePostControls'), [document.getElementById('offsetPostControls'), document.getElementById('inclinedPostControls'), document.getElementById('offsetBraceControls'), inclinedPostCanvasControls]);
+    scheduleUpdate().then(adjustCanvasHeights);
+});
+
+document.getElementById('modelInclinedPost').addEventListener('click', (e) => {
+    appState.postModel = 'inclinedPost';
+
+// Exemple à ajouter au début des autres écouteurs de modèles :
+let currentWidth = parseFloat(document.getElementById('panelWidth').value);
+if (currentWidth < 8) { // Si c'est une petite largeur (provenant du modèle Y)
+    document.getElementById('panelWidth').value = (currentWidth * 2).toFixed(2);
+}
+
+    document.getElementById('postEccentricity').value = 0;
+    document.getElementById('postInclinationInclined').value = 65;
+    // SUPPRIMÉ : document.getElementById('panelWidth').value = 12.40;
+    setOverhangControlsEnabled(true); 
+    setupToggleButton(e.currentTarget, allModelButtons, [document.getElementById('inclinedPostControls'), inclinedPostCanvasControls], [document.getElementById('doublePostControls'), document.getElementById('offsetPostControls'), document.getElementById('offsetBraceControls')]);
+    
+    appState.reinforcementType = 'bracons';
+    setupToggleButton(document.getElementById('reinforceBracons'), document.querySelectorAll('.controls-container .toggle-btn-group button[id^="reinforce"]'));
+    heightUnderBraceInput.value = "2.0"; 
+
+    scheduleUpdate().then(adjustCanvasHeights);
+});
+document.getElementById('modelYShape').addEventListener('click', (e) => {
+    appState.postModel = 'y_shape';
+    document.getElementById('postEccentricity').value = 0;
+    document.getElementById('postInclinationInclined').value = 90;
+    
+    // LOGIQUE DE CONVERSION :
+    // On récupère la largeur actuelle (ex: 12.40m) et on la divise par 2 pour le modèle Y (ex: 6.20m)  
+    let currentWidth = parseFloat(document.getElementById('panelWidth').value);
+    if (currentWidth > 8) { // Si la largeur est supérieure à 8m, c'est probablement une largeur totale
+        document.getElementById('panelWidth').value = (currentWidth / 2).toFixed(2);
+    }
+    
+    appState.traversePosition = 'side';
+    document.getElementById('toolPosTraverseSide').classList.add('active');
+    document.getElementById('toolPosTraverseTop').classList.remove('active');
+    
+    appState.reinforcementType = 'bracons';
+    setupToggleButton(document.getElementById('reinforceBracons'), document.querySelectorAll('.controls-container .toggle-btn-group button[id^="reinforce"]'));
+    heightUnderBraceInput.value = "2.0";
+    heightUnderBraceInput.readOnly = false;
+    
+    appState.overhangType = 'sym';
+    setupToggleButton(document.getElementById('overhangSym'), document.querySelectorAll('.controls-container .toggle-btn-group button[id^="overhang"]'), document.getElementById('overhangSymContainer'), document.getElementById('overhangAsymContainer'));
+    setOverhangControlsEnabled(false);
+    
+    setupToggleButton(e.currentTarget, allModelButtons, document.getElementById('offsetBraceControls'), [document.getElementById('doublePostControls'), document.getElementById('offsetPostControls'), document.getElementById('inclinedPostControls'), inclinedPostCanvasControls]);
+    scheduleUpdate().then(adjustCanvasHeights);
+});
+
+    document.getElementById('geometry-title').addEventListener('click', () => {
+        const inputs = document.getElementById('geometry-inputs');
+        const title = document.getElementById('geometry-title');
+        inputs.classList.toggle('collapsed');
+        title.classList.toggle('collapsed');
+        
+        setTimeout(() => {
+            adjustCanvasHeights();
+            scheduleUpdate();
+        }, 350);
+    });
+
+    async function switchTab(groupClass, contentClass, tabButton) {
+        document.querySelectorAll(groupClass).forEach(t => t.classList.remove('active')); tabButton.classList.add('active');
+        document.querySelectorAll(contentClass).forEach(c => c.classList.add('hidden'));
+        const targetView = document.getElementById(tabButton.id.replace('tab', 'view'));
+        if (targetView) targetView.classList.remove('hidden');
+        
+        await new Promise(resolve => requestAnimationFrame(resolve));
+        
+        if (tabButton.id === 'tabCalepinage' && map) {
+            map.invalidateSize();
+        }
+        await scheduleUpdate();
+    }
+    document.getElementById('tabCoupe').addEventListener('click', e => switchTab('.tab-group-1', '.tab-content-1', e.currentTarget));
+    document.getElementById('tabCalepinage').addEventListener('click', e => switchTab('.tab-group-1', '.tab-content-1', e.currentTarget));
+    document.querySelectorAll('.tab-group-2').forEach(tab => tab.addEventListener('click', e => switchTab('.tab-group-2', '.tab-content-2', e.currentTarget)));
+
+    ['Coupe', 'Facade', 'Implantation'].forEach(view => {
+        const manager = managers[view];
+        if (manager) {
+            document.getElementById(`zoomIn${view}`).addEventListener('click', () => manager.zoomIn());
+            document.getElementById(`zoomOut${view}`).addEventListener('click', () => manager.zoomOut());
+            document.getElementById(`reset${view}`).addEventListener('click', () => manager.reset());
+            document.getElementById(`pan${view}`).addEventListener('click', (e) => manager.togglePanMode(e.currentTarget));
+        }
+    });
+
+    // --- EXPORT FUNCTIONS (Conservées) ---
+    document.getElementById('exportCoupeBtn').addEventListener('click', async () => {
+        const canvas = await html2canvas(document.getElementById('coupeCanvas'), { scale: 2, backgroundColor: '#ffffff' });
+        const link = document.createElement('a'); link.download = 'plan-coupe.png'; link.href = canvas.toDataURL('image/png', 1.0); link.click();
+    });
+    document.getElementById('exportFacadeBtn').addEventListener('click', async () => {
+        const canvas = await html2canvas(document.getElementById('facadeCanvas'), { scale: 2, backgroundColor: '#ffffff' });
+        const link = document.createElement('a'); link.download = 'plan-facade.png'; link.href = canvas.toDataURL('image/png', 1.0); link.click();
+    });
+    document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+    // FONTION UTILITIES POUR LE PDF
+    const getProjectInfo = () => {
+        try {
+            const savedData = localStorage.getItem('solarProjectData');
+            if (savedData) {
+                const data = JSON.parse(savedData);
+                const projectInfo = data.projectInfo || {};
+                return `
+                    PROJET OMBRIERE SOLAIRE\n
+                    Nom: ${projectInfo.projectName || '-'}\n
+                    Adresse: ${projectInfo.projectAddress || '-'}\n
+                    Code: ${projectInfo.projectCode || '-'}\n
+                `.trim();
+            }
+        } catch (e) {
+            console.error('Erreur lors de la récupération des informations du projet:', e);
+        }
+        return 'PROJET OMBRIERE SOLAIRE';
+    };
+
+    const addCartouche = (docInstance, pageNum, maxPages) => {
+        const MARGIN = 10; const A3_W = 420; const A3_H = 297;
+        docInstance.setDrawColor(0); docInstance.rect(MARGIN, MARGIN, A3_W - 2 * MARGIN, A3_H - 2 * MARGIN);
+        docInstance.line(A3_W - 60, MARGIN, A3_W - 60, A3_H - MARGIN);
+
+        // Informations Projet
+        docInstance.setFontSize(10); 
+        docInstance.text('PROJET OMBRIERE SOLAIRE', A3_W - 55, MARGIN + 6);
+        docInstance.setFontSize(8);
+        const projectInfo = getProjectInfo();
+        const lines = projectInfo.split('\n');
+        lines.forEach((line, index) => {
+             docInstance.text(line.trim(), A3_W - 55, MARGIN + 12 + index * 4);
+        });
+
+        // Numéro de page
+        docInstance.setFontSize(10);
+        docInstance.text(`Page ${pageNum} / ${maxPages}`, A3_W - 55, A3_H - MARGIN - 5);
+    };
+
+    const addCanvasToPdf = async (canvasId, title, doc, options = {}) => {
+        const canvasEl = document.getElementById(canvasId); 
+        if (!canvasEl) {
+            console.error(`Canvas element with id ${canvasId} not found.`);
+            return;
+        };
+        
+        // 1. Gérer la visibilité
+        let parentView = canvasEl.closest('.tab-content-1, .tab-content-2');
+        if(!parentView) {
+            if (canvasId === 'mapContainer') {
+                parentView = document.getElementById('viewCalepinage');
+            } else {
+                console.error(`Could not find parent view for ${canvasId}`);
+                return;
+            }
+        }
+        const wasHidden = parentView.classList.contains('hidden');
+        let correspondingTab;
+        
+        if (wasHidden) {
+            const tabId = parentView.id.replace('view', 'tab');
+            correspondingTab = document.getElementById(tabId);
+            if(correspondingTab) {
+                const groupClass = correspondingTab.classList.contains('tab-group-1') ? '.tab-group-1' : '.tab-group-2';
+                const contentClass = correspondingTab.classList.contains('tab-group-1') ? '.tab-content-1' : '.tab-content-2';
+                // Switch temporaire pour la capture
+                document.querySelectorAll(groupClass).forEach(t => t.classList.remove('active'));
+                document.querySelectorAll(contentClass).forEach(c => c.classList.add('hidden'));
+                parentView.classList.remove('hidden');
+            }
+        }
+        await new Promise(resolve => setTimeout(resolve, (canvasId === 'mapContainer' ? 500 : 100))); 
+        
+        // 2. Récupérer les données de la bounding box (en mètres)
+        let bounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 };
+        if (canvasId !== 'mapContainer') {
+             // Appelle la fonction de dessin pour obtenir la bounding box
+             const currentManager = managers[canvasId.replace('Canvas', '')];
+             if(currentManager && currentManager.drawFunction) {
+                 const calculatedValues = updateAppLogic();
+                 bounds = currentManager.drawFunction(canvasEl, canvasEl.getContext('2d'), currentManager, calculatedValues);
+             }
+        }
+
+        // 3. Capturer le canvas complet (résolution élevée)
+        const scaleFactor = 3; 
+        const canvas = await html2canvas(canvasEl, { scale: scaleFactor, backgroundColor: '#ffffff', useCORS: true, logging: false });
+        if (canvas.width === 0 || canvas.height === 0) { throw new Error(`Capture failed for ${canvasId}`); }
+
+        // 4. Calculer la zone de rognage (en pixels)
+        const { x, y, w, h } = options; // Espace disponible dans le PDF (mm)
+        const pdfUnitToPixel = (px) => (px / canvasEl.clientWidth) * canvas.width; // Conversion des unités de dessin à la résolution de html2canvas
+        
+        let cropX = 0, cropY = 0, cropWidth = canvas.width, cropHeight = canvas.height;
+        let finalRatio = canvas.width / canvas.height;
+
+        if (canvasId !== 'mapContainer') {
+            const viewportWidthMeters = bounds.maxX - bounds.minX;
+            const viewportHeightMeters = bounds.maxY - bounds.minY;
+            
+            const pixelsPerMeterX = canvas.width / viewportWidthMeters;
+            const pixelsPerMeterY = canvas.height / viewportHeightMeters;
+            const pixelsPerMeter = (pixelsPerMeterX + pixelsPerMeterY) / 2; // Utiliser une moyenne (ou la plus petite pour ne pas rogner)
+            
+            // Calcul de la zone de rognage en pixels
+            const currentMinX = -((canvas.width / 2) + currentManager.panX) / currentManager.zoom / scaleFactor / pixelsPerMeter;
+            const currentMinY = ((canvas.height * 0.8) + currentManager.panY) / currentManager.zoom / scaleFactor / pixelsPerMeter;
+
+            cropX = (bounds.minX * pixelsPerMeter) * scaleFactor + (canvas.width / 2) * scaleFactor; 
+            cropY = (bounds.minY * pixelsPerMeter) * scaleFactor + (canvas.height * 0.8) * scaleFactor;
+            cropWidth = viewportWidthMeters * pixelsPerMeter * scaleFactor;
+            cropHeight = viewportHeightMeters * pixelsPerMeter * scaleFactor;
+            
+            finalRatio = viewportWidthMeters / viewportHeightMeters;
+
+             // Ajustement pour être sûr que les coordonnées ne sont pas négatives
+            cropX = Math.max(0, cropX);
+            cropY = Math.max(0, cropY);
+            cropWidth = Math.min(canvas.width, cropX + cropWidth) - cropX;
+            cropHeight = Math.min(canvas.height, cropY + cropHeight) - cropY;
+        }
+
+        // 5. Créer un canvas de rognage temporaire
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = cropWidth;
+        tempCanvas.height = cropHeight;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+        
+        const imgData = tempCanvas.toDataURL('image/png');
+        
+        // 6. Mise à l'échelle pour le PDF (respect du ratio)
+        const pdfContentW = w;
+        const pdfContentH = h;
+        
+        let imgWidthMM = pdfContentW;
+        let imgHeightMM = imgWidthMM / finalRatio;
+        
+        if (imgHeightMM > pdfContentH) {
+            imgHeightMM = pdfContentH;
+            imgWidthMM = imgHeightMM * finalRatio;
+        }
+
+        // 7. Positionnement dans l'espace disponible (centrage + marge interne)
+        const posX = x + (pdfContentW - imgWidthMM) / 2; 
+        const posY = y + (pdfContentH - imgHeightMM) / 2;
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, x, y + 2); // Titre: 2mm de marge intérieure, en haut à gauche
+        
+        doc.addImage(imgData, 'PNG', posX, posY, imgWidthMM, imgHeightMM, undefined, 'FAST');
+
+        // 8. Revenir à l'état initial
+        if (wasHidden && correspondingTab) {
+            const groupClass = correspondingTab.classList.contains('tab-group-1') ? '.tab-group-1' : '.tab-group-2';
+            const contentClass = correspondingTab.classList.contains('tab-group-1') ? '.tab-content-1' : '.tab-content-2';
+            
+            document.querySelectorAll(groupClass).forEach(t => t.classList.remove('active'));
+            document.querySelectorAll(contentClass).forEach(c => c.classList.add('hidden'));
+            
+            // On ne rétablit pas l'actif ici, on le fait à la fin du process PDF
+        }
+    };
+    
+    document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+        const exportBtn = document.getElementById('exportPdfBtn');
+        const originalText = exportBtn.innerHTML;
+        exportBtn.disabled = true;
+
+        const { jsPDF } = window.jspdf; 
+        const doc = new jsPDF('landscape', 'mm', 'a3');
+        const MARGIN_EXTERNE = 10;
+        const MARGIN_INTERNE = 2; // Marge entre la bordure du cartouche et le contenu
+        const GAP = 3; // Espacement entre les plans
+        const A3_W = 420; const A3_H = 297;
+        
+        const PDF_AREA_X = MARGIN_EXTERNE + MARGIN_INTERNE;
+        const PDF_AREA_Y = MARGIN_EXTERNE + MARGIN_INTERNE;
+        const PDF_AREA_W = A3_W - 60 - MARGIN_EXTERNE - MARGIN_INTERNE * 2; // Marge interne des 2 côtés
+        const PDF_AREA_H = A3_H - MARGIN_EXTERNE - MARGIN_INTERNE * 2; // Marge interne des 2 côtés
+
+        try {
+            const activeTab1 = document.querySelector('.tab-group-1.active');
+            const activeTab2 = document.querySelector('.tab-group-2.active');
+
+            const coupeContainer = document.getElementById('coupe-container');
+            const facadeContainer = document.getElementById('facade-block-container');
+            const h1 = coupeContainer.offsetHeight;
+            const h2 = facadeContainer.offsetHeight;
+            const totalH = h1 + h2;
+            
+            // Calcul des hauteurs pour les zones du PDF
+            const pdfTopH = PDF_AREA_H * (h1 / totalH) - (GAP / 2);
+            const pdfBottomH = PDF_AREA_H * (h2 / totalH) - (GAP / 2);
+            const pdfBottomY = PDF_AREA_Y + pdfTopH + GAP;
+            
+            const pdfHalfW = (PDF_AREA_W - GAP) / 2;
+            const titleOffset = 5; // Décalage pour le titre
+
+            // --- Page 1 ---
+            exportBtn.innerHTML = "Génération Page 1/3...";
+            doc.setFontSize(10);
+            addCartouche(doc, 1, 3);
+            
+            // Plan de Coupe Normal (Gauche)
+            const area1_P1 = { x: PDF_AREA_X, y: PDF_AREA_Y + titleOffset, w: pdfHalfW, h: pdfTopH - titleOffset };
+            await addCanvasToPdf('coupeCanvas', 'Plan de Coupe', doc, area1_P1);
+            
+            // Plan de Coupe Inversé (Droite)
+            appState.invertSlope = !appState.invertSlope; await scheduleUpdate();
+            const area2_P1 = { x: PDF_AREA_X + pdfHalfW + GAP, y: PDF_AREA_Y + titleOffset, w: pdfHalfW, h: pdfTopH - titleOffset };
+            await addCanvasToPdf('coupeCanvas', 'Plan de Coupe (Inversé)', doc, area2_P1);
+            appState.invertSlope = !appState.invertSlope; await scheduleUpdate();
+            
+            // Plan de Façade (Bas)
+            const area3_P1 = { x: PDF_AREA_X, y: pdfBottomY + titleOffset, w: PDF_AREA_W, h: pdfBottomH - titleOffset };
+            await addCanvasToPdf('facadeCanvas', 'Plan de Façade', doc, area3_P1);
+            
+            // --- Page 2 ---
+            exportBtn.innerHTML = "Génération Page 2/3...";
+            doc.addPage(); addCartouche(doc, 2, 3);
+            
+            // Plan de Coupe Normal (Haut - Largeur totale)
+            const PDF_P2_TOP_H = PDF_AREA_H * 0.4 - (GAP / 2);
+            const PDF_P2_BOTTOM_H = PDF_AREA_H * 0.6 - (GAP / 2);
+            const PDF_P2_BOTTOM_Y = PDF_AREA_Y + PDF_P2_TOP_H + GAP;
+            
+            const area1_P2 = { x: PDF_AREA_X, y: PDF_AREA_Y + titleOffset, w: PDF_AREA_W, h: PDF_P2_TOP_H - titleOffset };
+            await addCanvasToPdf('coupeCanvas', 'Plan de Coupe', doc, area1_P2);
+            
+            // Plan d'Implantation (Bas - Largeur totale)
+            const area2_P2 = { x: PDF_AREA_X, y: PDF_P2_BOTTOM_Y + titleOffset, w: PDF_AREA_W, h: PDF_P2_BOTTOM_H - titleOffset };
+            await addCanvasToPdf('implantationCanvas', "Plan d'Implantation des axes de poteaux", doc, area2_P2);
+            
+            // --- Page 3 ---
+            exportBtn.innerHTML = "Génération Page 3/3...";
+            doc.addPage(); addCartouche(doc, 3, 3);
+            
+            // Vue Aérienne (Centrée et Max)
+            const area1_P3 = { x: PDF_AREA_X, y: PDF_AREA_Y + titleOffset, w: PDF_AREA_W, h: PDF_AREA_H - titleOffset };
+            await addCanvasToPdf('mapContainer', 'Vue Aérienne', doc, area1_P3);
+
+            exportBtn.innerHTML = "Finalisation...";
+            doc.save('plans-ombriere.pdf');
+
+            // Restore original tabs
+            if (activeTab1) await switchTab('.tab-group-1', '.tab-content-1', activeTab1);
+            if (activeTab2) await switchTab('.tab-group-2', '.tab-content-2', activeTab2);
+
+        } catch (e) {
+            console.error("PDF Export Error:", e); alert("Une erreur est survenue lors de la génération du PDF.");
+        } finally { 
+            exportBtn.innerHTML = originalText;
+            exportBtn.disabled = false;
+            await scheduleUpdate();
+        }
+    });
+
+    // --- INITIALIZATION (Conservée) ---
+    window.addEventListener('load', () => {
+        ['toggleBraceLeft', 'toggleBraceRight', 'toolPosTraverseTop'].forEach(id => document.getElementById(id).classList.add('active'));
+        document.querySelector('.dim-color-btn[data-color="#0000FF"]').classList.add('active');
+        
+        document.getElementById('overhangSym').click();
+
+        try {
+            map = L.map('mapContainer').setView([47.2184, -1.5536], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                useCORS: true
+            }).addTo(map);
+        } catch (e) { console.error("Erreur init Leaflet:", e); }
+        
+        const checkPanel = document.getElementById('showInclinedGroundBar');
+        const checkCanvas = document.getElementById('showInclinedGroundBarCanvas');
+        
+        if (checkPanel && checkCanvas) {
+            checkCanvas.checked = checkPanel.checked;
+
+            checkPanel.addEventListener('change', () => {
+                checkCanvas.checked = checkPanel.checked;
+            });
+            checkCanvas.addEventListener('change', () => {
+                checkPanel.checked = checkCanvas.checked;
+                scheduleUpdate(); 
+            });
+        }
+
+        adjustCanvasHeights();
+
+        // ========= SYNCHRONISATION AVEC CALEPINAGE =========
+        // Lire le pvId depuis les paramètres URL
+        const _urlParams = new URLSearchParams(window.location.search);
+        const _currentPvId = _urlParams.get('pvId') || null;
+
+        // Fonction pour mettre à jour le localStorage et synchroniser avec la page calepinage
+        function syncToCalepinage(fieldName, value, updateGridInfo = false, gridInfoField = null) {
+            try {
+                const savedData = localStorage.getItem('solarProjectData');
+                if (!savedData) return;
+
+                const data = JSON.parse(savedData);
+                if (!data || !data.formData) return;
+
+                if (_currentPvId) {
+                    // Mettre à jour uniquement le PV courant
+                    if (data.formData[_currentPvId]) {
+                        data.formData[_currentPvId][fieldName] = value;
+                    }
+                    if (updateGridInfo && gridInfoField && data.shapes && data.shapes[_currentPvId] && data.shapes[_currentPvId].gridInfo) {
+                        data.shapes[_currentPvId].gridInfo[gridInfoField] = parseFloat(value);
+                    }
+                } else {
+                    // Fallback: mettre à jour tous les PV
+                    Object.keys(data.formData).forEach(pvId => {
+                        if (data.formData[pvId]) {
+                            data.formData[pvId][fieldName] = value;
+                        }
+                        if (updateGridInfo && gridInfoField && data.shapes && data.shapes[pvId] && data.shapes[pvId].gridInfo) {
+                            data.shapes[pvId].gridInfo[gridInfoField] = parseFloat(value);
+                        }
+                    });
+                }
+
+                // Sauvegarder dans localStorage
+                localStorage.setItem('solarProjectData', JSON.stringify(data));
+
+                // Envoyer un message au parent pour mettre à jour l'interface
+                if (window.parent !== window) {
+                    window.parent.postMessage({
+                        action: 'updateCalepinageField',
+                        fieldName: fieldName,
+                        value: value,
+                        pvId: _currentPvId
+                    }, '*');
+                }
+
+                console.log(`Synchronisation ${fieldName} vers calepinage (${_currentPvId || 'tous'}):`, value);
+            } catch (error) {
+                console.error('Erreur lors de la synchronisation:', error);
+            }
+        }
+
+        // Synchronisation de la largeur du champ PV (panelWidth → dimensionsChampPVlargeur et gridInfo.totalPanelLength)
+        const panelWidthInput = document.getElementById('panelWidth');
+        if (panelWidthInput) {
+            panelWidthInput.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value) && value > 0) {
+                    // Mettre à jour à la fois dimensionsChampPVlargeur et gridInfo.totalPanelLength
+                    syncToCalepinage('dimensionsChampPVlargeur', value.toFixed(2), true, 'totalPanelLength');
+                }
+            });
+        }
+
+        // Synchronisation de la pente de toiture (roofSlope → inclinaison)
+        const roofSlopeInput = document.getElementById('roofSlope');
+        if (roofSlopeInput) {
+            roofSlopeInput.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value)) {
+                    syncToCalepinage('inclinaison', value);
+                }
+            });
+            // Charger la valeur initiale depuis localStorage si pvId disponible
+            if (_currentPvId) {
+                try {
+                    const _savedData = JSON.parse(localStorage.getItem('solarProjectData') || '{}');
+                    const _inclinaison = _savedData.formData?.[_currentPvId]?.inclinaison;
+                    if (_inclinaison !== undefined && _inclinaison !== null) {
+                        roofSlopeInput.value = _inclinaison;
+                        scheduleUpdate();
+                    }
+                } catch (_e) { /* ignore */ }
+            }
+        }
+
+        // Synchronisation de l'inclinaison (postInclinationInclined → inclinaison)
+        const postInclinationInput = document.getElementById('postInclinationInclined');
+        if (postInclinationInput) {
+            postInclinationInput.addEventListener('input', (e) => {
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value)) {
+                    syncToCalepinage('inclinaison', value);
+                }
+            });
+            // Charger la valeur initiale depuis localStorage si pvId disponible (cf. roofSlopeInput
+            // ci-dessus, dont la restauration existait déjà — ce champ-ci écrivait vers le calepinage
+            // mais ne relisait jamais sa propre valeur sauvegardée à la réouverture du modal, ce qui la
+            // faisait repartir à sa valeur par défaut HTML (65) à chaque fois).
+            if (_currentPvId) {
+                try {
+                    const _savedData = JSON.parse(localStorage.getItem('solarProjectData') || '{}');
+                    const _inclinaison = _savedData.formData?.[_currentPvId]?.inclinaison;
+                    if (_inclinaison !== undefined && _inclinaison !== null) {
+                        postInclinationInput.value = _inclinaison;
+                        if (typeof scheduleUpdate === 'function') scheduleUpdate();
+                    }
+                } catch (_e) { /* ignore */ }
+            }
+        }
+
+        // ========= SAUVEGARDE DES CANVAS POUR PDF =========
+        // Fonction pour sauvegarder les canvas dans localStorage pour l'export PDF
+        function saveCanvasToLocalStorage() {
+            try {
+                console.log('Début de la sauvegarde des canvas...');
+
+                // Récupérer les conteneurs cachés
+                const viewImplantation = document.getElementById('viewImplantation');
+                const viewCoupe = document.getElementById('viewCoupe');
+
+                // Sauvegarder l'état de visibilité original
+                const implantationWasHidden = viewImplantation && viewImplantation.classList.contains('hidden');
+                const coupeWasHidden = viewCoupe && viewCoupe.classList.contains('hidden');
+
+                // Rendre temporairement visibles tous les canvas pour qu'ils puissent être dessinés correctement
+                if (implantationWasHidden) {
+                    viewImplantation.classList.remove('hidden');
+                    console.log('viewImplantation rendu visible temporairement');
+                }
+                if (coupeWasHidden) {
+                    viewCoupe.classList.remove('hidden');
+                    console.log('viewCoupe rendu visible temporairement');
+                }
+
+                // Forcer le redessin de tous les canvas AVANT de les capturer
+                // Ceci est crucial car les canvas cachés ne sont pas toujours dessinés correctement
+                console.log('Forçage du redessin de tous les canvas...');
+                runAllDrawings();
+
+                /**
+                 * Crée une copie haute résolution d'un canvas
+                 * @param {HTMLCanvasElement} sourceCanvas - Canvas source
+                 * @param {number} scale - Facteur d'échelle (2 = double résolution)
+                 * @returns {string} - Image base64 haute résolution
+                 */
+                const captureHighResCanvas = (sourceCanvas, scale = 2) => {
+                    if (!sourceCanvas || sourceCanvas.width === 0 || sourceCanvas.height === 0) {
+                        console.warn('Canvas invalide ou vide');
+                        return null;
+                    }
+
+                    // Créer un canvas temporaire à haute résolution
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+
+                    // Définir les dimensions à haute résolution
+                    tempCanvas.width = sourceCanvas.width * scale;
+                    tempCanvas.height = sourceCanvas.height * scale;
+
+                    // Activer l'anti-aliasing pour une meilleure qualité
+                    tempCtx.imageSmoothingEnabled = true;
+                    tempCtx.imageSmoothingQuality = 'high';
+
+                    // Remplir avec un fond blanc
+                    tempCtx.fillStyle = '#ffffff';
+                    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                    // Dessiner le canvas source à l'échelle
+                    tempCtx.scale(scale, scale);
+                    tempCtx.drawImage(sourceCanvas, 0, 0);
+
+                    // Convertir en base64 avec qualité maximale
+                    return tempCanvas.toDataURL('image/png', 1.0);
+                };
+
+                // Attendre un court instant pour que les dessins soient complètement rendus
+                setTimeout(() => {
+                    const canvasData = {};
+
+                    // Capturer le plan de coupe en haute résolution
+                    const coupeCanvas = document.getElementById('coupeCanvas');
+                    if (coupeCanvas) {
+                        const coupeData = captureHighResCanvas(coupeCanvas, 2);
+                        if (coupeData) {
+                            canvasData.coupe = coupeData;
+                            console.log(`Plan de coupe capturé (HD): ${coupeData.length} caractères, ${coupeCanvas.width * 2}x${coupeCanvas.height * 2}px`);
+                        }
+                    } else {
+                        console.warn('coupeCanvas non trouvé');
+                    }
+
+                    // Capturer le plan de facade en haute résolution
+                    const facadeCanvas = document.getElementById('facadeCanvas');
+                    if (facadeCanvas) {
+                        const facadeData = captureHighResCanvas(facadeCanvas, 2);
+                        if (facadeData) {
+                            canvasData.facade = facadeData;
+                            console.log(`Plan de façade capturé (HD): ${facadeData.length} caractères, ${facadeCanvas.width * 2}x${facadeCanvas.height * 2}px`);
+                        }
+                    } else {
+                        console.warn('facadeCanvas non trouvé');
+                    }
+
+                    // Capturer le plan d'implantation en haute résolution
+                    const implantationCanvas = document.getElementById('implantationCanvas');
+                    if (implantationCanvas) {
+                        const implantationData = captureHighResCanvas(implantationCanvas, 2);
+                        if (implantationData) {
+                            canvasData.implantation = implantationData;
+                            console.log(`Plan d'implantation capturé (HD): ${implantationData.length} caractères, ${implantationCanvas.width * 2}x${implantationCanvas.height * 2}px`);
+                        }
+                    } else {
+                        console.warn('implantationCanvas non trouvé');
+                    }
+
+                    // Sauvegarder dans localStorage
+                    localStorage.setItem('geometriePlansData', JSON.stringify(canvasData));
+                    console.log('✓ Canvas sauvegardés en HAUTE RÉSOLUTION dans localStorage pour export PDF');
+
+                    // Restaurer l'état de visibilité original
+                    if (implantationWasHidden && viewImplantation) {
+                        viewImplantation.classList.add('hidden');
+                        console.log('viewImplantation remis en hidden');
+                    }
+                    if (coupeWasHidden && viewCoupe) {
+                        viewCoupe.classList.add('hidden');
+                        console.log('viewCoupe remis en hidden');
+                    }
+                }, 150); // Attendre 150ms pour que les dessins soient complètement rendus
+
+            } catch (error) {
+                console.error('Erreur lors de la sauvegarde des canvas:', error);
+            }
+        }
+
+        // Sauvegarder les canvas à chaque mise à jour
+        // On utilise un debounce pour ne pas sauvegarder trop souvent
+        let saveCanvasTimeout;
+        const debouncedSaveCanvas = () => {
+            clearTimeout(saveCanvasTimeout);
+            saveCanvasTimeout = setTimeout(() => {
+                saveCanvasToLocalStorage();
+            }, 1000); // Attendre 1 seconde après la dernière modification
+        };
+
+        // Écouter les changements sur tous les inputs pour sauvegarder les canvas
+        document.querySelectorAll('.all-inputs').forEach(input => {
+            input.addEventListener('input', debouncedSaveCanvas);
+        });
+
+        // Sauvegarder immédiatement au chargement
+        setTimeout(() => {
+            saveCanvasToLocalStorage();
+        }, 2000);
+
+        // Écouter les messages de la page parente pour forcer la sauvegarde des canvas
+        // Utilisé notamment lors de la génération du PDF
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.action === 'forceSaveCanvas') {
+                console.log('Message reçu de la page parente : forceSaveCanvas');
+                saveCanvasToLocalStorage();
+            }
+        });
+
+        // ========= FIN SAUVEGARDE CANVAS =========
+
+        // ========= FIN SYNCHRONISATION =========
+    });
+
+    const resizeObserver = new ResizeObserver(() => {
+        adjustCanvasHeights();
+        scheduleUpdate();
+    });
+    const appModalEl = document.getElementById('app-modal');
+    
+    if (appModalEl) {
+        resizeObserver.observe(appModalEl);
+    }
+    
+    const controlsContainer = document.getElementById('controls-container');
+    if (controlsContainer) {
+        controlsContainer.addEventListener('scroll', () => {
+            adjustCanvasHeights();
+        });
+    }
+   
+});
+</script>
+
+<!-- Script pour la sauvegarde des plans pour l'export PDF -->
+<script type="module">
+import GeometryPlansSaver from '/static/concevoir_mon_projet/javascript/services/GeometryPlansSaver.js';
+
+// Attendre que le DOM soit chargé
+document.addEventListener('DOMContentLoaded', () => {
+    const saver = new GeometryPlansSaver();
+
+    // Attacher l'événement au bouton de sauvegarde
+    const savePlansBtn = document.getElementById('savePlansBtn');
+    if (savePlansBtn) {
+        savePlansBtn.addEventListener('click', async () => {
+            savePlansBtn.disabled = true;
+            savePlansBtn.textContent = '💾 Sauvegarde en cours...';
+
+            await saver.savePlans();
+
+            savePlansBtn.disabled = false;
+            savePlansBtn.innerHTML = '💾 Sauvegarder les plans pour export PDF';
+        });
+
+        console.log('✅ Bouton de sauvegarde des plans initialisé');
+    }
+});
+</script>
+</body>
+</html>

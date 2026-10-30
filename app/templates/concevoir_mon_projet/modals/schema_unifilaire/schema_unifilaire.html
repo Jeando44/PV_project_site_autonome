@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schéma unifilaire - Solakvan BET Solar</title>
+    <link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/modalHeaderCommon.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    {% include 'concevoir_mon_projet/components/mention_essai.html' %}
+    <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.1/dist/svg2pdf.umd.min.js"></script>
+
+    <style>
+        :root {
+            --bg-page: #f0f2f5;
+            --bg-modal: #ffffff;
+            --bg-panel: #f8f9fa;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --accent-primary: #dc2626;
+            --accent-primary-hover: #991b1b;
+            --border-color: #e5e7eb;
+            --font-family: 'Inter', sans-serif;
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --border-radius-lg: 0.75rem;
+            --border-radius-md: 0.5rem;
+        }
+
+        body {
+            font-family: var(--font-family);
+            height: 100vh;
+            margin: 0;
+            position: relative;
+            background-color: transparent;
+        }
+
+        #modal-backdrop {
+            display: block;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 1001;
+        }
+
+        #app-modal {
+            display: flex;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 95vw;
+            height: 90vh;
+            max-width: 1500px;
+            background-color: var(--bg-modal);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 1002;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .schema-body {
+            flex: 1;
+            display: flex;
+            min-height: 0;
+        }
+
+        #schema-palette {
+            width: 220px;
+            flex-shrink: 0;
+            background-color: var(--bg-panel);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            padding: 0.75rem;
+        }
+
+        #schema-palette h3 {
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            color: var(--text-secondary);
+            margin: 0 0 0.5rem 0;
+        }
+
+        .schema-palette-category {
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+            margin: 0.9rem 0 0.4rem 0;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .schema-palette-category:first-of-type {
+            margin-top: 0;
+            padding-top: 0;
+            border-top: none;
+        }
+
+        .schema-palette-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem;
+            margin-bottom: 0.4rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            background: #fff;
+            cursor: grab;
+            user-select: none;
+        }
+
+        .schema-palette-item:hover {
+            border-color: var(--accent-primary);
+        }
+
+        .schema-palette-item svg {
+            width: 48px;
+            height: 48px;
+            pointer-events: none;
+        }
+
+        .schema-palette-item span {
+            font-size: 0.7rem;
+            color: var(--text-primary);
+            text-align: center;
+            pointer-events: none;
+        }
+
+        #schema-canvas-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            background-color: #fafafa;
+            background-image: linear-gradient(#e5e7eb 1px, transparent 1px), linear-gradient(90deg, #e5e7eb 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        #schema-canvas {
+            width: 2000px;
+            height: 1400px;
+            display: block;
+            transform-origin: 0 0;
+        }
+
+        .schema-symbol {
+            cursor: grab;
+        }
+
+        .schema-symbol.selected .schema-symbol-outline {
+            fill: rgba(220, 38, 38, 0.12);
+            stroke: var(--accent-primary);
+            stroke-width: 2;
+            stroke-dasharray: 4 3;
+        }
+
+        .schema-symbol text {
+            font-size: 11px;
+            font-family: var(--font-family);
+            fill: var(--text-primary);
+        }
+
+        .schema-anchor {
+            fill: #3b82f6;
+            opacity: 0.5;
+            cursor: crosshair;
+        }
+
+        .schema-anchor:hover {
+            opacity: 1;
+        }
+
+        .schema-connection {
+            stroke: #000;
+            stroke-width: 1.5;
+            cursor: pointer;
+        }
+
+        .schema-connection.selected {
+            stroke: var(--accent-primary);
+            stroke-width: 2;
+            stroke-dasharray: 4 3;
+        }
+
+        /* Bouton de rotation (nouvelle fonctionnalité) : visible seulement sur le symbole
+           sélectionné (cf. createSymbolElement dans schema_unifilaire.js), exclu de l'export PDF. */
+        .schema-rotate-handle {
+            cursor: pointer;
+        }
+
+        .schema-rotate-handle:hover circle {
+            fill: #eff6ff;
+        }
+
+        #schema-temp-wire {
+            stroke: #3b82f6;
+            stroke-width: 1.5;
+            stroke-dasharray: 5 4;
+            pointer-events: none;
+        }
+
+        #schema-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.75rem;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        #schema-toolbar button {
+            background-color: #fff;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            padding: 0.4rem 0.75rem;
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        #schema-toolbar button:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        #schema-toolbar .schema-hint {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-left: auto;
+        }
+
+        #schema-toolbar .schema-toolbar-sep {
+            width: 1px;
+            height: 22px;
+            background-color: var(--border-color);
+            margin: 0 0.25rem;
+        }
+
+        #schema-zoom-level {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            min-width: 3.2em;
+            text-align: center;
+        }
+
+        /* Choix du format de page pour l'export PDF (nouvelle fonctionnalité) : A4 par défaut. */
+        #schema-toolbar .schema-format-btn.active,
+        #schema-toolbar .schema-draw-btn.active {
+            background-color: var(--accent-primary);
+            color: #fff;
+            border-color: var(--accent-primary);
+        }
+
+        /* Points 6 & 7 : annotations libres (rectangle / polyligne équipotentielle) sélectionnées. */
+        .schema-free-rect,
+        .schema-equi-line {
+            cursor: pointer;
+        }
+
+        .schema-free-rect.selected,
+        .schema-equi-line.selected {
+            stroke: var(--accent-primary) !important;
+        }
+
+        #schema-export-pdf-btn {
+            background-color: var(--accent-primary) !important;
+            color: #fff !important;
+            border-color: var(--accent-primary) !important;
+        }
+
+        #schema-export-pdf-btn:hover {
+            background-color: var(--accent-primary-hover) !important;
+            border-color: var(--accent-primary-hover) !important;
+            color: #fff !important;
+        }
+
+        #schema-export-pdf-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="modal-backdrop"></div>
+
+    <div id="app-modal">
+        {% set modal_title = "Schéma unifilaire" %}
+        {% set show_toggle = false %}
+        {% include 'concevoir_mon_projet/components/modal_header_unified.html' %}
+
+        <div id="schema-toolbar">
+            <button type="button" id="schema-clear-btn">Effacer tout</button>
+            <button type="button" id="schema-delete-btn">Supprimer la sélection</button>
+            <div class="schema-toolbar-sep"></div>
+            <button type="button" id="schema-circuit-pv-btn" title="Insère un circuit PV complet déjà relié (panneau, coffret DC, onduleur hybride, coffret AC, batterie)">Circuit PV</button>
+            <!-- NOUVEAU (demande explicite : "automatiser la réalisation du schéma unifilaire") : ouvre
+                 le panneau de génération automatique (schema_unifilaire.js::renderAutogenPanel), qui lit
+                 les onduleurs du projet et permet de renseigner les récepteurs complémentaires avant de
+                 générer un schéma complet déjà relié. -->
+            <button type="button" id="schema-autogen-btn" title="Générer automatiquement le schéma à partir des équipements du projet" style="background:#1E8449; color:#fff; border-color:#1E8449;">Générer auto</button>
+            <button type="button" id="schema-rect-btn" class="schema-draw-btn" title="Dessiner un rectangle libre (cliquer-glisser)">Rectangle</button>
+            <button type="button" id="schema-equi-btn" class="schema-draw-btn" title="Polyligne équipotentielle verte (clics successifs, angles 90°, double-clic pour terminer)">Liaison équipot.</button>
+            <div class="schema-toolbar-sep"></div>
+            <button type="button" id="schema-zoom-out-btn" title="Zoom arrière">−</button>
+            <span id="schema-zoom-level">100%</span>
+            <button type="button" id="schema-zoom-in-btn" title="Zoom avant">+</button>
+            <button type="button" id="schema-zoom-reset-btn" title="Réinitialiser le zoom">100%</button>
+            <div class="schema-toolbar-sep"></div>
+            <div class="schema-toolbar-sep"></div>
+            <span class="schema-hint" style="margin-left:0;">Format PDF :</span>
+            <button type="button" class="schema-format-btn active" data-format="a4" id="schema-format-a4-btn" title="Page A4 paysage">A4</button>
+            <button type="button" class="schema-format-btn" data-format="a3" id="schema-format-a3-btn" title="Page A3 paysage">A3</button>
+            <button type="button" id="schema-export-pdf-btn">Export PDF</button>
+            <div class="schema-toolbar-sep"></div>
+            <button type="button" id="schema-toggle-cable-labels-btn" title="Afficher/masquer les libellés des symboles de câbles">Libellés câbles : Affichés</button>
+            <span class="schema-hint">{% if symboles_autorises %}Glissez un symbole vers le canevas, déplacez-le, ou cliquez-glissez{% else %}Déplacez un symbole, ou cliquez-glissez{% endif %} depuis un point bleu (ancre) vers un autre symbole pour créer une liaison, ou vers une zone vide pour prolonger son trait (Échap annule). Ctrl + molette pour zoomer.</span>
+        </div>
+
+        <div class="schema-body">
+            {# Palette réservée à l'administrateur tant que config.SCHEMA_UNIFILAIRE_SYMBOLES_ADMIN_SEUL
+               vaut True (cf. main.py::_schema_unifilaire_symboles_autorises). Absente du DOM sinon. #}
+            {% if symboles_autorises %}
+            <div id="schema-palette">
+                <h3>Bibliothèque de symboles</h3>
+                <!-- Rempli dynamiquement par schema_unifilaire.js, après accord de l'API palette -->
+            </div>
+            {% endif %}
+            <div id="schema-canvas-wrapper">
+                <svg id="schema-canvas" xmlns="http://www.w3.org/2000/svg"></svg>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOUVEAU (demande explicite : "automatiser la réalisation du schéma unifilaire") : panneau de
+         génération automatique, rempli dynamiquement par schema_unifilaire.js::renderAutogenPanel().
+         Placé HORS de #app-modal (celui-ci a `transform` + `overflow:hidden`, ce qui en ferait le
+         "containing block" d'un enfant position:fixed et le ferait rogner) — position:fixed indépendante,
+         au-dessus du modal (z-index supérieur). -->
+    <div id="schema-autogen-panel" style="display:none; position:fixed; top:70px; right:24px; width:440px; max-width:calc(100vw - 48px); background:#fff; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.35); z-index:1003; font-family:'Inter', sans-serif;"></div>
+
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/systeme/schema_unifilaire.js') }}?v=21"></script>
+</body>
+
+</html>

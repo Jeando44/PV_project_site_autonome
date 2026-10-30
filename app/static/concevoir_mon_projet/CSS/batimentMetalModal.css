@@ -1,0 +1,91 @@
+/**
+ * Styles spécifiques au configurateur de Bâtiment Métal
+ */
+
+/* Carte Leaflet */
+.leaflet-container {
+    z-index: 10;
+}
+
+/* Inputs de géométrie avec effet collapse */
+#geometry-inputs {
+    transition: all 0.3s ease-out;
+    max-height: 500px;
+    overflow: hidden;
+}
+
+#geometry-inputs.collapsed {
+    max-height: 0 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    margin-top: 0 !important;
+    gap: 0 !important;
+}
+
+#geometry-title.collapsed #geometry-chevron {
+    transform: rotate(-90deg);
+}
+
+/* Styles pour masquer le formulaire */
+#app-modal.form-hidden #controls-container {
+    width: 0;
+    padding: 0;
+    margin: 0;
+    overflow: hidden;
+    opacity: 0;
+    border: none;
+}
+
+#app-modal.form-hidden #canvas-column {
+    grid-column: span 3 / span 3;
+}
+
+#app-modal.form-hidden #toggle-form-btn svg {
+    transform: rotate(180deg);
+}
+
+/* Ajustement des conteneurs de canvas */
+#coupe-container {
+    transition: height 0.1s ease-out;
+}
+
+#facade-block-container {
+    transition: height 0.1s ease-out;
+}
+
+/* Styles d'impression */
+@media print {
+    body>*:not(#app-modal) {
+        display: none !important;
+    }
+
+    #app-modal,
+    #modal-body {
+        display: block !important;
+        width: 100% !important;
+        height: auto !important;
+        position: static !important;
+        box-shadow: none !important;
+        border: none !important;
+        overflow: visible !important;
+        transform: none !important;
+    }
+
+    #modal-header,
+    .controls-container,
+    header,
+    .z-10,
+    #welcome-modal-overlay {
+        display: none !important;
+    }
+
+    .lg\:col-span-2 {
+        width: 100%;
+        page-break-after: always;
+    }
+
+    .grid {
+        display: block !important;
+    }
+}
+

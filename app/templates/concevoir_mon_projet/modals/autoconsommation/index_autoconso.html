@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <!-- Version des données du projet : cette modale intégrée reprend l'onglet de la page parente
+         (services/version_projet.js) — à charger avant tout script qui enregistre. -->
+    <script src="/static/concevoir_mon_projet/javascript/services/version_projet.js?v=3"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analyse de Projet Photovoltaïque</title>
+
+    <!-- Type de connexion du projet actif : cette page est une route indépendante, chargée en
+         <iframe> — elle ne partage aucune variable avec la page hôte. La valeur vient du context
+         processor de main.py (disponible dans tous les templates), et non du localStorage, seule
+         source jusqu'ici et vide dès qu'on n'est pas passé par le formulaire Paramètres. -->
+    <script>
+        window.ACTIVE_PROJECT_TYPE_CONNEXION = "{{ active_projet_type_connexion|default('', true) }}";
+        // Mode de valorisation du projet actif, vérifié en base (context processor main.py) : pilote
+        // le type d'étude (ACI / ACC / vente en totalité). Le localStorage n'est qu'un repli — vide
+        // après un rechargement ou dans un autre navigateur, ce qui affichait l'import ACI (fichier
+        // unique) à un projet en autoconsommation collective.
+        window.ACTIVE_PROJECT_MODE_VALORISATION = "{{ active_projet_mode_valorisation|default('', true) }}";
+        // Projet actif VÉRIFIÉ en base (cf. main.py::_inject_active_projet_contexte) : clé de la
+        // persistance serveur des courbes de charge ACI/ACC (prodsolaire/persistence.js) — cette page
+        // indépendante ne charge pas window.calepinageService.
+        window.ACTIVE_PROJECT_ID_VERIFIE = {{ active_projet_id_verifie|tojson|safe }};
+        // Adresse du projet actif (JSON : libellé + latitude/longitude), issue de la base côté serveur
+        // (cf. main.py::_inject_active_projet_contexte). Utilisée pour afficher l'adresse du site.
+        window.ACTIVE_PROJECT_ADRESSE = {{ active_projet_adresse|tojson|safe }};
+        // Bornes des modales économiques ACC (app/services/acc/eco_bornes.json, source unique partagée
+        // avec la validation serveur) — appliquées par prodsolaire/acc_eco_validation.js.
+        window.ACC_ECO_BORNES = {{ acc_eco_bornes|default(none)|tojson|safe }};
+        window.TYPE_CONNEXION_HORS_LIGNE = 'hors-ligne';
+        window.isSiteAutonomeProject = function () {
+            return window.ACTIVE_PROJECT_TYPE_CONNEXION === window.TYPE_CONNEXION_HORS_LIGNE;
+        };
+
+        // Quotas de licence pour l'iframe d'autoconsommation
+        window.USER_LICENCE = {
+            max_kwc: {{ licence_pv.get('max_kwc')|tojson if licence_pv and licence_pv.get('max_kwc') is not none else 'null' }},
+            tolerance_percent: {{ licence_power_tolerance_percent|tojson if licence_power_tolerance_percent is defined else 10.0 }},
+            max_kwc_allowed: {{ licence_max_kwc_allowed|tojson if licence_max_kwc_allowed is not none else 'null' }},
+            is_admin: {{ 'true' if (current_user and current_user.get('is_admin')) else 'false' }}
+        };
+
+        window.checkPowerLicenceCompliance = function (requestedKwc) {
+            const requested = Number(requestedKwc || 0);
+            let tolerance = 10.0;
+            if (window.USER_LICENCE && window.USER_LICENCE.tolerance_percent !== undefined) {
+                tolerance = Number(window.USER_LICENCE.tolerance_percent);
+            } else if (window.parent && window.parent.USER_LICENCE && window.parent.USER_LICENCE.tolerance_percent !== undefined) {
+                tolerance = Number(window.parent.USER_LICENCE.tolerance_percent);
+            }
+
+            if ((window.USER_LICENCE && window.USER_LICENCE.is_admin) || (window.parent && window.parent.USER_LICENCE && window.parent.USER_LICENCE.is_admin)) {
+                return {
+                    allowed: true,
+                    compliant: true,
+                    max_kwc: null,
+                    maxKwc: null,
+                    max_allowed_kwc: null,
+                    maxAllowedKwc: null,
+                    tolerance_percent: tolerance,
+                    tolerancePercent: tolerance,
+                    requested_kwc: requested,
+                    requestedKwc: requested,
+                    message: ''
+                };
+            }
+            let maxKwc = window.USER_LICENCE ? window.USER_LICENCE.max_kwc : null;
+            if ((maxKwc === null || maxKwc === undefined) && window.parent && window.parent.USER_LICENCE) {
+                maxKwc = window.parent.USER_LICENCE.max_kwc;
+            }
+            if (maxKwc === null || maxKwc === undefined) {
+                return {
+                    allowed: true,
+                    compliant: true,
+                    max_kwc: null,
+                    maxKwc: null,
+                    max_allowed_kwc: null,
+                    maxAllowedKwc: null,
+                    tolerance_percent: tolerance,
+                    tolerancePercent: tolerance,
+                    requested_kwc: requested,
+                    requestedKwc: requested,
+                    message: ''
+                };
+            }
+
+            const maxAllowed = (window.USER_LICENCE && window.USER_LICENCE.max_kwc_allowed !== null && window.USER_LICENCE.max_kwc_allowed !== undefined)
+                ? Number(window.USER_LICENCE.max_kwc_allowed)
+                : ((window.parent && window.parent.USER_LICENCE && window.parent.USER_LICENCE.max_kwc_allowed !== null && window.parent.USER_LICENCE.max_kwc_allowed !== undefined)
+                    ? Number(window.parent.USER_LICENCE.max_kwc_allowed)
+                    : Math.round(Number(maxKwc) * (1 + tolerance / 100) * 100) / 100);
+
+            if (requested > maxAllowed) {
+                const msg = `Refus strict de calcul : la puissance demandée (${requested.toFixed(2)} kWc) dépasse la puissance maximale autorisée par projet par votre licence (${maxKwc} kWc + ${tolerance}% tolérance = ${maxAllowed.toFixed(2)} kWc).`;
+                return {
+                    allowed: false,
+                    compliant: false,
+                    max_kwc: Number(maxKwc),
+                    maxKwc: Number(maxKwc),
+                    max_allowed_kwc: maxAllowed,
+                    maxAllowedKwc: maxAllowed,
+                    tolerance_percent: tolerance,
+                    tolerancePercent: tolerance,
+                    requested_kwc: requested,
+                    requestedKwc: requested,
+                    message: msg
+                };
+            }
+            return {
+                allowed: true,
+                compliant: true,
+                max_kwc: Number(maxKwc),
+                maxKwc: Number(maxKwc),
+                max_allowed_kwc: maxAllowed,
+                maxAllowedKwc: maxAllowed,
+                tolerance_percent: tolerance,
+                tolerancePercent: tolerance,
+                requested_kwc: requested,
+                requestedKwc: requested,
+                message: ''
+            };
+        };
+    </script>
+
+    <!-- Résumé de pré-dimensionnement site isolé (besoin annuel du site) : lu ici pour calculer le
+         taux de couverture photovoltaïque affiché avec les indicateurs de performance énergétique.
+         Cette page étant une route indépendante chargée en iframe, le script doit y être chargé
+         explicitement (parametre.html, qui le charge pour les autres écrans, n'y est pas inclus). -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/site_autonome/siteAutonomySummary.js') }}?v=2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <!-- 1️⃣ jsPDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    {% include 'concevoir_mon_projet/components/mention_essai.html' %}
+
+    <!-- 2️⃣ autoTable (APRÈS jsPDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/style_autonconso.css') }}">
+    <!-- Feuille de style scopée (préfixée #pvgis-modal-content) pour le contenu PVGIS intégré ci-dessous -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/prodsolaire/style_autonconso.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/prodsolaire/style_prodsolaire_scoped.css') }}">
+
+    <style>
+        /* Styles pour le mode "embedded" (imbriqué dans une iframe) */
+        body.embedded-mode {
+            background-color: transparent; /* Fond transparent pour s'intégrer */
+        }
+
+        body.embedded-mode #launch-modal-btn,
+        body.embedded-mode #modal-backdrop {
+            display: none !important; /* Masquer le bouton de lancement et le fond */
+        }
+
+        body.embedded-mode #app-modal {
+            /* Le conteneur de la modale devient le conteneur principal du contenu */
+            position: static;
+            width: 100%;
+            height: 100%;
+            max-width: none;
+            min-width: 0;
+            min-height: 0;
+            box-shadow: none;
+            transform: none;
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <button id="launch-modal-btn" onclick="openModal()">🚀 Lancer l'Analyseur Photovoltaïque</button>
+
+    <div id="modal-backdrop"></div>
+
+    <div id="app-modal">
+        <div class="modal-header">
+            <h1>Résultats de la simulation énergétique</h1>
+            <div class="header-buttons">
+                <button id="reset-size-btn" title="Réinitialiser la taille">⛶</button>
+                <button id="close-modal-btn" title="Fermer">&times;</button>
+            </div>
+        </div>
+        <div class="app-content">
+            <div class="left-panel">
+                <div class="input-group">
+                    <h2>1. Données de production</h2>
+                    <label for="pv-file">Fichier de production photovoltaïque (.csv, .txt, .xlsx)</label>
+                    <div id="pv-input-group-content">
+                        <div class="file-buttons">
+                            <button id="import-pvgis-btn" class="btn-secondary"
+                                onclick="openPvgisModal()">Importer les données d'ensoleillement</button>
+                            <label for="pv-file-hidden" class="btn-primary"
+                                style="display: flex; align-items: center; justify-content: center;">Importer votre
+                                fichier</label>
+                            <input type="file" id="pv-file-hidden" accept=".csv, .txt, .xlsx">
+                        </div>
+                        <div id="pv-filename-display-container" style="display: none;">
+                            <span id="pv-filename-display">Aucun fichier</span>
+                            <button class="btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;"
+                                onclick="removePvFile()">✕ Supprimer</button>
+                        </div>
+                        <button id="launch-sans-pv-btn" class="btn-secondary"
+                            style="width: 100%; border: 1px dashed var(--border-color); font-weight: 600;"
+                            onclick="launchSansPV()">🌙 Optimisation HC/HP - Sans PV</button>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <h2>Nouveau. Type d'étude</h2>
+                    <div id="study-type-group" style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <label style="cursor: pointer; font-weight: 500;"><input type="radio" name="study_type" value="vente_totalite">
+                            Vente en totalité</label>
+                        <label style="cursor: pointer; font-weight: 500;"><input type="radio" name="study_type" value="aci" checked>
+                            Autoconsommation individuelle (ACI)</label>
+                        <label style="cursor: pointer; font-weight: 500;"><input type="radio" name="study_type" value="acc">
+                            Autoconsommation collective (ACC)</label>
+                        <!-- <label style="cursor: pointer;"><input type="radio" name="study_type" value="aci_acc"> ACI +
+                            ACC</label>
+                        <label style="cursor: pointer;"><input type="radio" name="study_type" value="acc_vente"> ACC +
+                            Vente en totalité</label> -->
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <h2>2. Données de consommation</h2>
+                    <label>Paramètres d'importation</label>
+                    <select id="time-step-select" style="margin-bottom: 1rem;">
+                        <option value="60">Pas de temps : 60 minutes (8 760 lignes)</option>
+                        <option value="30">Pas de temps : 30 minutes (17 520 lignes)</option>
+                        <option value="15">Pas de temps : 15 minutes (35 040 lignes)</option>
+                        <option value="10">Pas de temps : 10 minutes (52 560 lignes)</option>
+                    </select>
+
+                    <label>Fichier de consommation (Excel .xlsx)</label>
+                    <!-- Ce conteneur sera géré dynamiquement par le JS -->
+                    <div id="cons-input-container">
+                        <!-- Section pour ACI (par défaut) -->
+                        <div class="file-buttons">
+                            <label for="cons-file-hidden" class="btn-primary"
+                                style="display: flex; align-items: center; justify-content: center; width: 100%;">Importer
+                                fichier Excel (3 courbes)</label>
+                            <input type="file" id="cons-file-hidden" accept=".xlsx">
+                        </div>
+                        <div id="cons-filename-display-container"
+                            style="display: none; justify-content: space-between; align-items: center; padding: 0.5rem 0.8rem; border: 1px dashed var(--border-color); border-radius: var(--border-radius-md);">
+                            <span id="cons-filename-display"
+                                style="font-size: 0.9rem; color: var(--text-primary); font-weight: 500;">Aucun
+                                fichier</span>
+                            <button class="btn-danger" style="padding: 0.3rem 0.6rem; font-size: 0.8rem;"
+                                onclick="removeConsFile()">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+
+
+                <!-- SECTION SWITCHGRID : déplacée (pas dupliquée) vers app_irve_v1.16.html, section
+                     "Enedis" du menu horizontal — cf. Irve/switchgrid_data.js. Cette page continue de
+                     lire le fichier de consommation qui en résulte via consFileObject/IndexedDB
+                     ('consFile'), sans changement ici. -->
+
+
+
+
+
+                <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--border-color);">
+                <div class="input-group">
+                    <!-- Cette section sera masquée en mode ACC -->
+                    <h2>3. Gestion dynamique d’autoconsommation</h2>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="priority" value="existante" checked> Priorité à la consommation
+                            existante
+                        </label>
+
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="priority" value="irve"> Priorité à la recharge IRVE
+                        </label>
+
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="priority" value="pac"> Priorité à la PAC / climatisation
+                        </label>
+
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="priority" value="none"> Aucune priorité (partage au prorata des consommations)
+                        </label>
+
+                        <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                            <input type="radio" name="priority" value="ordre"> Ordre personnalisé
+                        </label>
+                        <!-- Ordre d'affectation du PV entre usages (main_autoconso.js::lireOrdreUsages). -->
+                        <div id="priority-ordre-container" style="display: none; flex-wrap: wrap; gap: 0.5rem; align-items: center; margin-left: 1.5rem; font-size: 0.9rem;">
+                            <span>1er</span>
+                            <select class="priority-ordre-select"><option value="Cons. existante" selected>Consommation existante</option><option value="Cons. IRVE">Recharge IRVE</option><option value="Cons. PAC">PAC / climatisation</option></select>
+                            <span>2e</span>
+                            <select class="priority-ordre-select"><option value="Cons. existante">Consommation existante</option><option value="Cons. IRVE">Recharge IRVE</option><option value="Cons. PAC" selected>PAC / climatisation</option></select>
+                            <span>3e</span>
+                            <select class="priority-ordre-select"><option value="Cons. existante">Consommation existante</option><option value="Cons. IRVE" selected>Recharge IRVE</option><option value="Cons. PAC">PAC / climatisation</option></select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <h2>4. Intégration du stockage</h2>
+                    <div class="radio-group" style="margin-bottom: 1rem;">
+                        <label><input type="radio" name="storage-toggle" value="oui"
+                                onchange="toggleStorageSection(true)"> Oui</label>
+                        <label><input type="radio" name="storage-toggle" value="non" checked
+                                onchange="toggleStorageSection(false)"> Non</label>
+                    </div>
+
+                    <button onclick="openStorageModal()" class="btn-secondary" id="storage-analysis-btn"
+                        style="display:none; width: 100%; margin-top: 10px;">🔋 Configurer et Analyser le
+                        Stockage</button>
+
+                    <!-- Le contenu de la configuration du stockage est maintenant dans un modal séparé -->
+                </div>
+
+                <hr style="margin: 2rem 0; border: none; border-top: 1px solid var(--border-color);">
+                <div class="input-group">
+                    <h2>5. Lancement de l'analyse</h2>
+                    <p style="font-size: 0.9rem; color: var(--text-secondary); margin-top: 0;">Cliquez pour générer le
+                        tableau de bord.</p>
+                    <button onclick="calculate()" class="btn-primary" style="width: 100%; padding: 0.8rem;">Calculer et
+                        visualiser</button>
+                </div>
+                <button onclick="resetApp()" class="btn-secondary"
+                    style="width: 100%; margin-top: 0.5rem;">Réinitialiser les résultats</button>
+            </div>
+            <div class="right-panel" id="results-container">
+            </div>
+        </div>
+        <div id="resize-handle"></div>
+        <div id="loader"></div>
+    </div>
+
+    <!-- Modal de configuration du stockage -->
+    <div id="storage-modal-overlay" class="modal-overlay" style="display: none;">
+        <div id="storage-modal-content">
+            <div class="storage-modal-header">
+                <h2>Configuration du Stockage</h2>
+                <button onclick="closeStorageModal()" class="close-btn">&times;</button>
+            </div>
+            <div class="storage-modal-body">
+                <!-- NOUVEAU (demande explicite) : retirer / réintégrer le stockage solaire dans le projet.
+                     Cochée par défaut. Décochée : tous les résultats reviennent aux valeurs sans stockage
+                     (cf. invaliderResultatsStockage, main_autoconso.js). -->
+                <div class="section-box" style="display:flex; align-items:center; gap:0.6rem; background:#f0fdf4; border-color:#bbf7d0;">
+                    <input type="checkbox" id="sto_prise_en_compte" checked style="width:18px; height:18px; cursor:pointer;">
+                    <label for="sto_prise_en_compte" style="margin:0; font-weight:600; cursor:pointer;">
+                        Prendre en compte le stockage solaire dans le projet</label>
+                </div>
+                <h3 class="modal-category-title">Caractéristiques techniques batterie</h3>
+                <div class="grid section-box">
+                    <div class="form-group"><label title="Capacité d'UNE batterie (référence du catalogue). La capacité du parc en découle selon le nombre et le montage.">Capacité d'une batterie (kWh)</label><input type="number" id="sto_cap"
+                            value="200" step="any" min="1" max="5000" title="De 1 à 5 000 kWh."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46">
+                    </div>
+                    <div class="form-group"><label title="Puissance de charge d'UNE batterie.">Puissance de charge d'une batterie (kW)</label><input type="number"
+                            id="sto_charge_power" value="100" step="any" min="0.5" max="2500" title="De 0,5 à 2 500 kW."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46">
+                    </div>
+                    <div class="form-group"><label title="Puissance de décharge d'UNE batterie.">Puissance de décharge d'une batterie (kW)</label><input type="number"
+                            id="sto_discharge_power" value="100" step="any" min="0.5" max="2500" title="De 0,5 à 2 500 kW."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46">
+                    </div>
+                    <div class="form-group"><label>DOD (%)</label><input type="number" id="sto_dod" value="80"
+                            step="any" min="10" max="100" title="Profondeur de décharge, de 10 à 100 %."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46">
+                    </div>
+                    <!-- Rendement ALLER-RETOUR unique, en remplacement des anciens champs
+                         « Rendement charge » et « Rendement décharge » (demande explicite).
+                         Pourquoi : une fiche technique de batterie ne publie qu'un rendement
+                         aller-retour, jamais les deux sens séparément — et la base ne stocke qu'une
+                         colonne (round_trip_efficiency_pct). Saisir ce RTE dans les deux anciens
+                         champs revenait à appliquer RTE² : mesuré sur une année complète, un RTE
+                         annoncé de 90 % ne produisait que 80,4 % réels. Le serveur le décompose
+                         désormais en √RTE pour les deux entrées qu'attend PySAM
+                         (cf. rendements_depuis_rte, calcul_stockage.py). -->
+                    <div class="form-group">
+                        <label for="sto_rte" title="Rendement aller-retour (Round Trip Efficiency) : part de l'énergie stockée effectivement restituée. Valeur publiée par les fiches techniques.">Rendement aller-retour (RTE)</label>
+                        <input type="number" id="sto_rte" value="0.90" step="0.01" min="0.3" max="0.95"
+                            title="0,90 par défaut. Lithium : 0,70 à 0,95. Plomb-acide : 0,30 à 0,60."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46">
+                    </div>
+                    <div class="form-group"><label>Nbre de cycle batterie</label><input type="number" id="sto_cycles"
+                            value="3665" step="1" min="500" max="10000" title="De 500 à 10 000 cycles."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57"></div>
+                    <div class="form-group"><label>Dégradation calendaire (annuelle) (%)</label><input type="number"
+                            id="sto_degrad_cal" value="3" step="any" min="1" max="10" title="De 1 à 10 % par an."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46">
+                    </div>
+                    <div class="form-group"><label for="sto_soh_fin_vie" title="Capacité restante (en % de la capacité d'origine) à laquelle la batterie est considérée en fin de vie : valeur de la fiche batterie, 60 % si elle n'est pas renseignée.">État de santé en fin de vie (%)</label><input type="number"
+                            id="sto_soh_fin_vie" value="60" step="1" min="50" max="99" title="De 50 à 99 %. Fiche batterie, 60 % par défaut."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                    </div>
+                    <div class="form-group"><label>Chimie de la batterie</label>
+                        <select id="sto_chemistry" onchange="appliquerContraintesChimie()">
+                            <option value="lfpgraphite" selected>Li-ion LFP (Lithium Fer Phosphate)</option>
+                            <option value="nmcgraphite">Li-ion NMC (Nickel Manganèse Cobalt)</option>
+                            <option value="leadacid">Plomb-acide</option>
+                        </select>
+                    </div>
+                    <!-- Tension système désormais MODIFIABLE (demande explicite). Le serveur honore la
+                         valeur saisie et se rabat automatiquement sur une tension compatible si le
+                         dimensionnement PySAM échoue — il remonte alors la tension réellement retenue
+                         (tension_retenue_v), pour ne jamais laisser croire que la saisie a été
+                         appliquée telle quelle. -->
+                    <div class="form-group">
+                        <label for="sto_voltage" title="Tension d'UNE batterie. Montage série : les tensions s'additionnent. Plage générale : 12 à 1500 V. Plomb-acide hors réseau : 12, 24, 48 ou 96 V.">Tension d'une batterie (V)</label>
+                        <input type="number" id="sto_voltage" value="400" min="12" max="1500" step="any"
+                            title="De 12 à 1500 V. Plomb-acide hors réseau : 12, 24, 48 ou 96 V."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46">
+                    </div>
+
+                </div>
+
+                <!-- Parc de batteries et couplage : calculs et contrôles côté serveur
+                     (configuration_parc_batteries.py), aperçu en direct via /storage_parc
+                     (cf. apercuParcBatteries, main_autoconso.js). -->
+                <h3 class="modal-category-title">Parc de batteries et couplage</h3>
+                <div class="grid section-box">
+                    <div class="form-group">
+                        <label for="sto_nb_batteries" title="Nombre total de batteries (références du catalogue) du parc.">Nombre de batteries</label>
+                        <input type="number" id="sto_nb_batteries" value="1" min="0" max="100" step="1"
+                            title="De 0 à 100."
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                    </div>
+                    <div class="form-group">
+                        <label for="sto_montage" title="Série : tensions additionnées. Parallèle : courants et capacités (Ah) additionnés. Série-parallèle : branches de batteries en série, montées en parallèle.">Type de montage</label>
+                        <select id="sto_montage">
+                            <option value="serie" selected>Série</option>
+                            <option value="parallele">Parallèle</option>
+                            <option value="serie-parallele">Série-parallèle</option>
+                        </select>
+                    </div>
+                    <div class="form-group" id="groupe_sto_nb_serie" style="display:none;">
+                        <label for="sto_nb_serie" title="Nombre de batteries en série dans chaque branche. Le nombre total doit en être un multiple.">Batteries en série par branche</label>
+                        <input type="number" id="sto_nb_serie" value="2" min="1" max="100" step="1"
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57">
+                    </div>
+                    <div class="form-group">
+                        <label for="sto_couplage" title="AC : batterie avec son propre onduleur (rendement de fiche AC → AC). DC : batterie raccordée à un onduleur hybride (rendement de fiche DC → DC, convertisseur DC/DC 99 %).">Type de couplage</label>
+                        <select id="sto_couplage">
+                            <option value="AC" selected>AC (onduleur batterie dédié)</option>
+                            <option value="DC">DC (onduleur hybride)</option>
+                        </select>
+                    </div>
+                    <div class="form-group champ-couplage-dc" style="display:none;">
+                        <label for="sto_rendement_onduleur" title="Rendement européen de l'onduleur hybride (catalogue onduleurs). 97 % par défaut.">Rendement onduleur hybride (%)</label>
+                        <input type="number" id="sto_rendement_onduleur" value="97" min="80" max="100" step="0.1"
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46">
+                    </div>
+                    <div class="form-group champ-couplage-dc" style="display:none;">
+                        <label for="sto_puissance_onduleur_kw" title="Puissance nominale AC de l'onduleur hybride : partagée entre production solaire et décharge. Vide = pas de plafond.">Puissance onduleur hybride (kW)</label>
+                        <input type="number" id="sto_puissance_onduleur_kw" value="" min="0" max="100000" step="any" placeholder="facultatif"
+                            onkeypress="return event.charCode >= 48 && event.charCode <= 57 || event.charCode === 46">
+                    </div>
+                    <!-- Données catalogue non saisissables (évolutivité, courant, onduleur retenu). -->
+                    <input type="hidden" id="sto_nb_serie_min" value="">
+                    <input type="hidden" id="sto_nb_serie_max" value="">
+                    <input type="hidden" id="sto_nb_parallele_max" value="">
+                    <input type="hidden" id="sto_courant_max_a" value="">
+                    <input type="hidden" id="sto_onduleur_hybride" value="">
+                    <input type="hidden" id="sto_onduleur_compatible" value="">
+                </div>
+                <div id="sto_parc_resume" class="section-box" style="font-size:0.85rem; background:#f8fafc;"></div>
+
+                <h3 class="modal-category-title">Planification recharge</h3>
+                <div class="section-box vertical-stack">
+                    <div class="form-group"><label title="Oui : la batterie peut aussi se recharger sur le réseau pendant les heures de recharge sélectionnées. Non : recharge uniquement avec le surplus solaire.">Activation de la restitution de l'énergie de la batterie (recharge sur le réseau)</label>
+                        <div class="radio-group"><label><input type="radio" name="sto_restitution_toggle" value="oui">
+                                Oui</label><label><input type="radio" name="sto_restitution_toggle" value="non" checked>
+                                Non</label></div>
+                    </div>
+                    <div class="form-group"><label>Plage de recharge (<span id="sto_recharge_display">0h
+                                sélectionnées</span>) - Recharge réseau (HC)</label>
+                        <div id="sto_recharge_selector" class="time-selector"></div><input type="hidden"
+                            id="sto_recharge_hours" value="[]">
+                        <p style="font-size: 0.8rem; color: #b45309; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--border-radius-md); padding: 0.5rem 0.75rem; margin-top: 0.5rem;">
+                            ⚠️ Le coût de recharge de l'énergie sur le réseau n'est pas pris en compte dans le
+                            calcul économique du projet pour le moment.</p>
+                        <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                            ℹ️ Avec la réforme du TURPE 7 (Tarif d'Utilisation des Réseaux Publics d'Électricité),
+                            les 8 heures creuses journalières sont désormais réparties entre la nuit (entre 23h et
+                            7h, avec au moins 5 heures consécutives) et la journée (jusqu'à 3 heures entre 11h et
+                            17h). Ces plages horaires s'adaptent aussi selon les saisons (été/hiver) pour valoriser
+                            la production d'énergie solaire.</p>
+                    </div>
+                    <div class="form-group">
+                        <label for="sto_profil_decharge">Profil de consommation type (auto-remplit la plage de décharge ci-dessous, sur les 8 heures de plus forte consommation du profil)</label>
+                        <select id="sto_profil_decharge" onchange="applyDischargeProfile()">
+                            <option value="" selected>— Sélection manuelle —</option>
+                            <option value="residentiel">Résidentiel</option>
+                            <option value="tertiaire">Tertiaire</option>
+                            <option value="industriel">Industriel</option>
+                            <option value="supermarche">Supermarché</option>
+                            <option value="agricole">Agricole</option>
+                            <option value="autres">Autres (profil plat)</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Plage de décharge (<span id="sto_decharge_display">8h
+                                sélectionnées</span>) <small>- toujours modifiable manuellement ci-dessous ; appliquée lorsque la recharge sur le réseau est activée (sinon la batterie se décharge dès que la consommation dépasse la production)</small></label>
+                        <div id="sto_decharge_selector" class="time-selector"></div><input type="hidden"
+                            id="sto_decharge_hours" value="[22,23,0,1,2,3,4,5]">
+                    </div>
+                </div>
+
+                <h3 class="modal-category-title">Fonctionnement du stockage</h3>
+                <div class="section-box" style="background-color: #f0f7ff; border-color: #cce0ff;">
+                    <p style="font-size: 0.85rem; margin: 0;">
+                        ℹ️ La batterie se recharge automatiquement lorsqu'il y a du surplus de production
+                        photovoltaïque. Elle se recharge en plus sur le réseau uniquement si l'option
+                        "Activation de la restitution" est activée et pendant les plages horaires de
+                        recharge sélectionnées ci-dessus ; elle ne se décharge alors que pendant la plage de
+                        décharge. L'objectif est de maximiser le taux d'autoconsommation du site.</p>
+                </div>
+                <!-- Ancienne sélection de stratégies (conservée mais masquée, non supprimée) : depuis la
+                     migration du calcul vers PySAM, le dispatch est géré automatiquement (autoconsommation
+                     + recharge réseau optionnelle) — ce choix n'a plus aucun effet sur le calcul. -->
+                <div class="section-box" style="display: none; flex-direction: column; gap: 0.5rem;">
+                    <label><input type="radio" name="storage_strategy" value="priority_stockage" disabled> Priorité au
+                        stockage (recharge avant consommation)</label>
+                    <label><input type="radio" name="storage_strategy" value="optim_existante" checked disabled> Optimisation
+                        consommation existante (surplus vers batterie)</label>
+                    <label><input type="radio" name="storage_strategy" value="optim_irve" disabled> Optimisation consommation
+                        IRVE (surplus vers batterie)</label>
+                    <label><input type="radio" name="storage_strategy" value="optim_globale" disabled> Optimisation globale
+                        (surplus vers batterie)</label>
+                    <label><input type="radio" name="storage_strategy" value="optim_sansPV" disabled> Optimisation HC/HP -Sans PV
+                    </label>
+                </div>
+            </div>
+            <div class="storage-modal-footer">
+                <button onclick="closeStorageModal()" class="btn-secondary">Annuler</button>
+                <button id="storage-launch-btn" onclick="calculateStorage()" class="btn-primary">Lancer l'analyse</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="message-area"></div>
+
+    <!-- Modal PVGIS : le contenu de prodsolaire.html est intégré directement (plus d'iframe),
+         afin que main_prodsolaire.js et main_autoconso.js partagent le même contexte JS
+         (window.sharedSolarProduction directement accessible, sans passer par le backend). -->
+    <div id="pvgis-modal-overlay" class="modal-overlay" style="display: none; z-index: 1004;">
+        <div id="pvgis-modal-content" class="storage-modal-content" style="width: 92vw; max-width: 1600px; height: 92vh; display: flex; flex-direction: column; overflow: hidden;">
+{% include 'concevoir_mon_projet/modals/autoconsommation/prodsolaire_body.html' %}
+        </div>
+    </div>
+
+
+    
+         <script   src="{{ url_for('static', filename='concevoir_mon_projet/javascript/prodsolaire/main_prodsolaire.js') }}?v=3"></script>
+    
+         <!-- Pont de sélection de batterie : cette page est une route indépendante chargée en
+              iframe, aucun évènement du calepinage ne l'atteint. Le module doit donc y être
+              chargé explicitement, AVANT main_autoconso.js qui s'y abonne. -->
+         <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/batterie/batterieSelection.js') }}?v=3"></script>
+         <script type="module" src="{{ url_for('static', filename='concevoir_mon_projet/javascript/prodsolaire/main_autoconso.js') }}?v=29"></script>
+
+         <script>
+            // Détecte si la page est dans une iframe et ajoute la classe 'embedded-mode'
+            // pour appliquer les styles d'intégration.
+            if (window.self !== window.top) {
+                document.body.classList.add('embedded-mode');
+            }
+        </script>
+        
+</body>
+</html>

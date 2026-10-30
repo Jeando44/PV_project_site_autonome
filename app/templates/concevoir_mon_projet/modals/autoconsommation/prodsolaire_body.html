@@ -1,0 +1,367 @@
+  <header id="pvgis-modal-header" style="cursor: move; user-select: none;">
+    <h1>Résumé système</h1>
+    <button id="close-prodsolaire-btn"
+      onclick="if(window.closePvgisModal) { window.closePvgisModal(); } else { window.history.back(); }"
+      title="Fermer">&times;</button>
+  </header>
+
+  <main>
+    <!-- ========================================================= ONGLETS -->
+    <div class="tabs">
+      <button class="tab-btn active" data-tab="pv">PV (horaire – production)</button>
+      <button class="tab-btn" data-tab="tmy" disabled title="Non disponible">TMY (météo typique)</button>
+    </div>
+
+    <!-- ========================================================= PANEL PV -->
+    <section id="panel-pv" class="panel active">
+      <form id="pvForm" onsubmit="event.preventDefault(); calculatePV();">
+
+        <!-- Localisation PV -->
+        <div class="card">
+          <div class="card-title">Localisation</div>
+          <div class="grid">
+            <div class="col-3 form-group">
+              <label for="pv_lat">Latitude</label>
+              <input id="pv_lat" name="pv_lat" type="number" step="0.000001" placeholder="ex. 47.274040">
+            </div>
+            <div class="col-3 form-group">
+              <label for="pv_lon">Longitude</label>
+              <input id="pv_lon" name="pv_lon" type="number" step="0.000001" placeholder="ex. -2.213664">
+            </div>
+            <div class="col-3 form-group">
+              <label>&nbsp;</label>
+              <button type="button" class="btn btn-secondary" onclick="geoLocate('pv')">🧭 Ma position</button>
+            </div>
+            <div class="col-3 form-group">
+              <label>&nbsp;</label>
+              <span id="pv_location_lock_note" class="note" style="display:none;">🔒 Verrouillée sur l'emplacement du projet</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Réglages PVGIS (définis dans Paramètres du projet) -->
+        <div class="card">
+          <div class="card-title">Base de données d'irradiation</div>
+          <p class="note" style="margin: -0.5rem 0 0.75rem;">Ces valeurs sont définies dans l'onglet <strong>Paramètres du projet</strong> et sont appliquées automatiquement ici (lecture seule).</p>
+          <div class="grid">
+            <div class="col-3 form-group">
+              <label for="pv_usehorizon">Horizon (relief)</label>
+              <select id="pv_usehorizon" disabled>
+                <option value="1" selected>Oui</option>
+                <option value="0">Non</option>
+              </select>
+            </div>
+            <div class="col-3 form-group">
+              <label for="pv_raddb">Base d'irradiance (indicatif)</label>
+              <select id="pv_raddb" disabled title="Indicatif : le calcul TMY de PVGIS sélectionne automatiquement sa source de données selon la localisation">
+                <option value="PVGIS-SARAH3" selected>PVGIS-SARAH3 (EU/AF/AS)</option>
+                <option value="PVGIS-ERA5">PVGIS-ERA5 (global)</option>
+                <option value="PVGIS-NSRDB">PVGIS-NSRDB (Amériques, v5.2)</option>
+              </select>
+            </div>
+            <div class="col-3 form-group">
+              <label for="pv_version">Version API</label>
+              <select id="pv_version" disabled>
+                <option value="v5_3" selected>v5.3</option>
+                <option value="v5_2">v5.2</option>
+              </select>
+            </div>
+            <div class="col-3 form-group">
+              <label for="pv_cached_db">Bases météo en cache (Locales, 10 km max.)</label>
+              <div style="display:flex; align-items:center; gap:0.5rem;">
+                  <select id="pv_cached_db" onchange="onCachedDbChange()" style="flex:1; min-width:0;">
+                      <option value="">-- Automatique (base locale à 5 km max., sinon PVGIS) --</option>
+                  </select>
+                  {% if current_user and current_user.get('is_admin') %}
+                  <button type="button" id="pv_cached_db_delete" onclick="deleteSelectedCachedDb()" disabled
+                      title="Supprimer la base météo locale sélectionnée (administrateur)"
+                      style="width:auto; padding:0.35rem 0.6rem; background:#fee2e2; color:#b91c1c; border:1px solid #fca5a5; border-radius:4px; cursor:pointer;">&#128465;</button>
+                  {% endif %}
+              </div>
+              <small id="pv_cached_db_note" class="note" style="display:block; margin-top:0.25rem;"></small>
+            </div>
+            <div class="col-12 form-group" style="margin-top: 10px;">
+              <label style="display:flex; align-items:center; gap:0.5rem; font-weight: normal;">
+                <input type="checkbox" id="pv_force_api" style="width: auto;">
+                Forcer le téléchargement PVGIS (ne pas utiliser la base météo locale, même si elle est à moins de 5 km du projet)
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Configuration PV -->
+        <div class="card">
+          <div class="card-title">Configuration des Champs PV</div>
+          <p class="note" style="margin: -0.5rem 0 0.75rem;">Puissance, tilt, azimut et onduleur sont repris du calepinage (verrouillés) ; les caractéristiques de la fiche technique du panneau restent modifiables.</p>
+          <!-- Le conteneur pour les champs PV sera rempli par JavaScript à partir du calepinage -->
+          <div id="pv-fields-container"></div>
+        </div>
+
+        <!-- Consommation Auxiliaire -->
+        <div class="card">
+          <div class="card-title">Paramètres Généraux de Production</div>
+          <p class="note" style="margin: -0.5rem 0 0.75rem;">Valeurs saisies dans le tableau <strong>Paramètres Généraux de Production</strong> du résumé du calepinage (verrouillées ici).</p>
+          <div class="grid">
+            <div class="col-6 form-group">
+              <label for="pv_aux_cons">Cons. Auxiliaire Nuit/Jour (W) - Hors onduleurs</label>
+              <input type="number" id="pv_aux_cons" value="3.5" step="0.1" placeholder="Ex: 3.5" readonly>
+            </div>
+            <div class="col-6 form-group">
+              <label for="pv_grid_loss">Affectation prod. hors ACC (%)</label>
+              <input type="number" id="pv_grid_loss" value="0" min="0" max="15" step="0.1" placeholder="Ex: 0" readonly>
+            </div>
+          </div>
+        </div>
+
+        <!-- Simulations avancées : bridage onduleur défini mois par mois + un coefficient de
+             température Pmax unique (au lieu de la valeur fixe de la fiche technique du panneau). -->
+        <div class="card">
+          <div class="card-title">Simulations avancées</div>
+          <p class="note" style="margin: -0.5rem 0 0.75rem;">Bridage de(s) onduleur(s) mois par mois et coefficient de température Pmax unique, en alternative au calcul standard (fiche technique du panneau appliquée toute l'année).</p>
+          <div class="grid">
+            <div class="col-6 form-group" style="flex-direction: row; align-items: center;">
+              <button type="button" class="btn btn-secondary" id="btn-toggle-advanced-sim" onclick="toggleAdvancedSimTable()">📅 Afficher le tableau mensuel</button>
+            </div>
+            <div class="col-6 form-group" style="flex-direction: row; align-items: center; justify-content: flex-end;">
+              <label style="display:flex; align-items:center; gap:0.5rem; font-weight: normal; margin: 0;">
+                <input type="checkbox" id="pv_advanced_sim_enabled" style="width:auto;">
+                Appliquer ces paramètres avancés au calcul
+              </label>
+            </div>
+            <div class="col-6 form-group">
+              <label for="pv_advanced_tempcoeff">Coeff. Temp. Pmax (%/°C) — valeur unique</label>
+              <input type="number" id="pv_advanced_tempcoeff" min="-0.40" max="-0.15" step="0.01" value="-0.29" onchange="clampAdvancedInput(this, -0.40, -0.15)">
+            </div>
+          </div>
+          <div id="advanced-sim-table-wrap" style="display:none; margin-top: 1rem; overflow-x:auto;">
+            <div style="display:flex; gap: 1.5rem; flex-wrap: wrap;">
+              <table class="seasonal-table" style="flex: 1 1 260px; border-collapse: collapse; text-align:center;">
+                <thead>
+                  <tr>
+                    <th style="padding: 6px;">Mois</th>
+                    <th style="padding: 6px;">Bridage onduleur (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td style="padding: 6px;">Janvier</td><td><input type="number" id="adv_bridage_1" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Février</td><td><input type="number" id="adv_bridage_2" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Mars</td><td><input type="number" id="adv_bridage_3" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Avril</td><td><input type="number" id="adv_bridage_4" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Mai</td><td><input type="number" id="adv_bridage_5" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Juin</td><td><input type="number" id="adv_bridage_6" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                </tbody>
+              </table>
+              <table class="seasonal-table" style="flex: 1 1 260px; border-collapse: collapse; text-align:center;">
+                <thead>
+                  <tr>
+                    <th style="padding: 6px;">Mois</th>
+                    <th style="padding: 6px;">Bridage onduleur (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td style="padding: 6px;">Juillet</td><td><input type="number" id="adv_bridage_7" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Août</td><td><input type="number" id="adv_bridage_8" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Septembre</td><td><input type="number" id="adv_bridage_9" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Octobre</td><td><input type="number" id="adv_bridage_10" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Novembre</td><td><input type="number" id="adv_bridage_11" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                  <tr><td style="padding: 6px;">Décembre</td><td><input type="number" id="adv_bridage_12" min="0" max="100" step="0.1" value="0" onchange="clampAdvancedInput(this, 0, 100)"></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Période & sortie PV (verrouillé, défini dans Paramètres du projet) -->
+        <div class="card" style="display: none;">
+          <div class="card-title">Période &amp; Sortie</div>
+          <p class="note" style="margin: -0.5rem 0 0.75rem;">Période historique (indicative) utilisée par PVGIS pour construire l'année type (TMY) — n'affecte pas directement le résultat.</p>
+          <div class="grid">
+            <div class="col-3 form-group">
+              <label for="pv_start">Année de début (indicatif)</label>
+              <input id="pv_start" type="number" min="1980" max="2100" placeholder="ex. 2005" readonly title="Période fixe utilisée par PVGIS pour construire le TMY">
+            </div>
+            <div class="col-3 form-group">
+              <label for="pv_end">Année de fin (indicatif)</label>
+              <input id="pv_end" type="number" min="1980" max="2100" placeholder="ex. 2020" readonly title="Période fixe utilisée par PVGIS pour construire le TMY">
+            </div>
+            <div class="col-3 form-group">
+              <label for="pv_format">Format</label>
+              <select id="pv_format">
+                <option value="csv" selected>CSV</option>
+                <option value="json">JSON</option>
+                <option value="basic">CSV "basic"</option>
+              </select>
+            </div>
+            <div class="col-3 form-group">
+              <label for="pv_browser">Mode téléchargement</label>
+              <select id="pv_browser">
+                <option value="1" selected>Fichier (ouvre/télécharge)</option>
+                <option value="0">Flux (stream)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Synthèse des données envoyées au backend -->
+        <div class="card" id="pv-summary-card">
+          <div class="card-title">Synthèse des données de calcul</div>
+          <p class="note" style="margin: -0.5rem 0 0.75rem;">Vérifiez ces valeurs avant de lancer le calcul. Pour modifier les réglages PVGIS, la localisation ou la période, retournez dans <strong>Paramètres du projet</strong> ; pour modifier la géométrie des champs PV, retournez dans le <strong>calepinage</strong>.</p>
+          <div id="pv-summary-content">
+            <em>En attente des données du projet…</em>
+          </div>
+          <div class="col-12 form-group" style="align-items: flex-start; margin-top: 1rem;">
+            <button type="button" class="btn btn-primary" id="btn-calculate-pv" onclick="calculatePV()">Calculer la production</button>
+          </div>
+        </div>
+
+        <!-- Résultats de Simulation -->
+        <div class="card" id="results-section" style="display: none;">
+          <div class="card-title">Résultats de Simulation (Centralisés)</div>
+
+          <div id="multi-pv-results"></div>
+
+          <div style="height: 280px; margin-top: 1.5rem;">
+            <canvas id="pv-production-curve-chart"></canvas>
+          </div>
+          <div style="height: 260px; margin-top: 1.5rem;">
+            <canvas id="pv-monthly-chart"></canvas>
+          </div>
+
+          <div class="actions" style="margin-top: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+            <button type="button" class="btn btn-success" id="btn_60" onclick="exportPvExcel(60)">📊 Excel (60
+              min)</button>
+            <button type="button" class="btn btn-success" id="btn_30" onclick="exportPvExcel(30)">📊 Excel (30
+              min)</button>
+            <button type="button" class="btn btn-success" id="btn_15" onclick="exportPvExcel(15)">📊 Excel (15
+              min)</button>
+            <button type="button" class="btn btn-success" id="btn_10" onclick="exportPvExcel(10)">📊 Excel (10
+              min)</button>
+            <button type="button" class="btn btn-secondary" id="pvPdfBtn" onclick="exportPvPDF()">📄 Exporter Rapport
+              PDF</button>
+          </div>
+        </div>
+
+        <!-- Actions PV -->
+        <div class="card">
+          <div class="actions">
+            <span id="pv_status" class="status"></span>
+          </div>
+
+          <div class="progress-wrap" id="progressWrap">
+            <div class="progress-bar">
+              <div class="progress-bar-inner" id="progressInner"></div>
+            </div>
+            <div class="progress-label" id="progressLabel"></div>
+          </div>
+        </div>
+
+      </form>
+    </section>
+
+    <!-- ========================================================= PANEL TMY -->
+    <section id="panel-tmy" class="panel">
+      <form id="tmyForm" onsubmit="event.preventDefault(); openTmy();">
+
+        <!-- Localisation -->
+        <div class="card">
+          <div class="card-title">Localisation</div>
+          <div class="grid">
+            <div class="col-3 form-group">
+              <label for="lat">Latitude (décimale)</label>
+              <input id="lat" name="tmy_lat" type="number" step="0.000001" placeholder="ex. 47.274040">
+            </div>
+            <div class="col-3 form-group">
+              <label for="lon">Longitude (décimale)</label>
+              <input id="lon" name="tmy_lon" type="number" step="0.000001" placeholder="ex. -2.213664">
+            </div>
+            <div class="col-3 form-group">
+              <label>&nbsp;</label>
+              <button type="button" class="btn btn-secondary" disabled>Ombrage proche (À venir)</button>
+            </div>
+            <div class="col-3 form-group">
+              <label>&nbsp;</label>
+              <button type="button" class="btn btn-secondary" onclick="geoLocate('tmy')">🧭 Utiliser ma
+                position</button>
+            </div>
+            <div class="col-3 form-group" style="justify-content:flex-end;">
+              <label>&nbsp;</label>
+              <span class="note">Astuce : coller des coordonnées depuis Google Maps.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Options TMY -->
+        <div class="card">
+          <div class="card-title">Période &amp; Options TMY</div>
+          <div class="grid">
+            <div class="col-3 form-group">
+              <label for="startyear">Année de début (≥ 10 ans)</label>
+              <input id="startyear" type="number" min="1980" max="2100" placeholder="ex. 2005">
+            </div>
+            <div class="col-3 form-group">
+              <label for="endyear">Année de fin</label>
+              <input id="endyear" type="number" min="1980" max="2100" placeholder="ex. 2023">
+            </div>
+            <div class="col-3 form-group">
+              <label for="usehorizon">Horizon (relief)</label>
+              <select id="usehorizon">
+                <option value="1" selected>Oui (recommandé)</option>
+                <option value="0">Non</option>
+              </select>
+            </div>
+            <div class="col-3 form-group">
+              <label for="v53">Version API</label>
+              <select id="v53">
+                <option value="v5_3" selected>v5.3</option>
+                <option value="v5_2">v5.2</option>
+              </select>
+            </div>
+
+            <div class="col-3 form-group">
+              <label for="outputformat">Format de sortie</label>
+              <select id="outputformat">
+                <option value="csv" selected>CSV</option>
+                <option value="json">JSON</option>
+                <option value="epw">EPW</option>
+              </select>
+            </div>
+            <div class="col-3 form-group">
+              <label for="browser">Mode téléchargement</label>
+              <select id="browser">
+                <option value="1" selected>Fichier (ouvre/télécharge)</option>
+                <option value="0">Flux (stream)</option>
+              </select>
+            </div>
+            <div class="col-6 form-group" style="justify-content:flex-end;">
+              <label>&nbsp;</label>
+              <p class="note">Sortie via <code>/api/&lt;ver&gt;/tmy</code> — contrôlé par <code>outputformat</code> et
+                <code>browser</code>.<br>
+                Les appels directs (AJAX) peuvent être bloqués par CORS. Utilisez l'onglet <strong>Export
+                  Excel</strong>
+                pour un traitement local.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions TMY -->
+        <div class="card">
+          <div class="actions">
+            <button type="submit" class="btn btn-primary">⬇️ Télécharger le TMY</button>
+            <button type="button" class="btn btn-secondary" onclick="copyUrl('tmy')">📋 Copier l'URL</button>
+            <span id="status" class="status"></span>
+          </div>
+          <div class="urlbox" id="urlBox"></div>
+        </div>
+
+      </form>
+    </section>
+
+  </main>
+
+  <footer>
+    <p>
+      Source des données : <span style="color: var(--primary); text-decoration: none;">PVGIS –
+        Commission Européenne JRC</span>.
+    </p>
+  </footer>

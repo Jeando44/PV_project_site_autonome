@@ -1,0 +1,16 @@
+{
+    // Application Site autonome : port 5002 et cookie __session_sa (cf. .env).
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Site autonome (port 5002)",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${workspaceFolder}\app.py",
+            "python": "${workspaceFolder}\Skvenv313\Scripts\python.exe",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        }
+    ]
+}

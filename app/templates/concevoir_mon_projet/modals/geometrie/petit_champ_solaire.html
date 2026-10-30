@@ -1,0 +1,1487 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <!-- Version des données du projet : cette modale intégrée reprend l'onglet de la page parente
+         (services/version_projet.js) — à charger avant tout script qui enregistre. -->
+    <script src="/static/concevoir_mon_projet/javascript/services/version_projet.js?v=3"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurateur d'Ombrière Solaire v4.1 (Finalisé)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    {% include 'concevoir_mon_projet/components/mention_essai.html' %}
+
+    <style>
+        :root {
+            --main-color: #DC2626;
+            --main-color-hover: #B91C1C;
+            --modal-default-width: 100vw;
+            --modal-default-height: 100vh;
+        }
+
+        html,
+        body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #e5e7eb;
+        }
+
+        /* Styles pour le modal de lancement */
+        #welcome-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 1999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #welcome-modal {
+            background-color: white;
+            padding: 2.5rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 2000;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        #launch-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            background-color: var(--main-color);
+            color: white;
+            font-weight: 700;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+
+        #launch-btn:hover {
+            background-color: var(--main-color-hover);
+        }
+
+        #launch-btn svg {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+
+        #modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            z-index: 999;
+        }
+
+        #app-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: var(--modal-default-width);
+            height: var(--modal-default-height);
+            min-width: 80px;
+            min-height: 600px;
+            background-color: #f0f2f5;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            resize: both;
+            overflow: hidden;
+            transition: width 0.3s ease-in-out, left 0.3s ease-in-out;
+        }
+
+        #modal-header {
+            background-color: var(--main-color);
+            color: white;
+            padding: 0.75rem 1rem;
+            border-radius: 0.75rem 0.75rem 0 0;
+            cursor: move;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+            display: none;
+        }
+
+        #modal-header h2 {
+            font-weight: 600;
+        }
+
+        .modal-header-btn {
+            background: none;
+            border: none;
+            color: white;
+            padding: 0.25rem;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+
+        .modal-header-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-header-btn svg {
+            width: 1.25rem;
+            height: 1.25rem;
+        }
+
+        #modal-body {
+            flex-grow: 1;
+            overflow-y: auto;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+
+        }
+
+        .controls-container {
+            background-color: #ffffff;
+            overflow-y: auto;
+            transition: all 0.3s ease-in-out;
+            overflow-x: hidden;
+            height: max-content;
+        }
+
+        .canvas-container {
+            position: relative;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            cursor: default;
+            width: 100%;
+            height: 100%;
+        }
+
+        canvas.grabbing {
+            cursor: grabbing;
+        }
+
+        .input-group-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 0.5rem;
+            grid-column: 1 / -1;
+        }
+
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.75rem 1.5rem;
+        }
+
+        .span-2 {
+            grid-column: span 2 / span 2;
+        }
+
+        .tab-button {
+            transition: all 0.3s ease;
+            border-bottom: 3px solid transparent;
+            padding: 0.75rem 1rem;
+        }
+
+        .tab-button.active {
+            border-bottom-color: var(--main-color);
+            color: var(--main-color);
+            font-weight: 600;
+        }
+
+        .view-title {
+            color: var(--main-color);
+            font-weight: 600;
+            text-align: center;
+            padding-top: 0.5rem;
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            pointer-events: none;
+        }
+
+        .tool-button {
+            height: 2.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.375rem;
+            border: 1px solid #d1d5db;
+            background-color: #ffffff;
+            color: #4b5563;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            padding: 0 0.5rem;
+        }
+
+        .tool-button.icon-only {
+            width: 2.25rem;
+            padding: 0;
+        }
+
+        .tool-button:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .tool-button.active {
+            background-color: var(--main-color);
+            color: #ffffff;
+            border-color: var(--main-color);
+        }
+
+        .tool-button:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .dim-color-btn {
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        }
+
+        .dim-color-btn.active {
+            border-color: var(--main-color);
+            box-shadow: 0 0 0 2px var(--main-color);
+        }
+
+        .toggle-btn-group button {
+            background-color: #e5e7eb;
+        }
+
+        .toggle-btn-group button.active {
+            background-color: var(--main-color);
+            color: white;
+        }
+
+        .toggle-btn-group button:disabled {
+            background-color: #f3f4f6;
+            color: #9ca3af;
+            cursor: not-allowed;
+            border-color: #d1d5db;
+        }
+
+        .toggle-btn-group.equal-width {
+            display: flex;
+        }
+
+        .toggle-btn-group.equal-width button {
+            flex: 1;
+        }
+
+        #model-btn-group button {
+            background-color: #e5e7eb;
+        }
+
+        #model-btn-group button.active {
+            background-color: var(--main-color);
+            color: white;
+        }
+
+        #mapContainer {
+            width: 100%;
+            height: 100%;
+            border-radius: 0.5rem;
+        }
+
+        .leaflet-container {
+            z-index: 10;
+        }
+
+        #geometry-inputs {
+            transition: all 0.3s ease-out;
+            max-height: 500px;
+            overflow: hidden;
+        }
+
+        #geometry-inputs.collapsed {
+            max-height: 0 !important;
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+            margin-top: 0 !important;
+            gap: 0 !important;
+        }
+
+        #geometry-title.collapsed #geometry-chevron {
+            transform: rotate(-90deg);
+        }
+
+        /* MOD 1.5: Styles pour masquer le formulaire */
+        #app-modal.form-hidden #controls-container {
+            width: 0;
+            padding: 0;
+            margin: 0;
+            overflow: hidden;
+            opacity: 0;
+            border: none;
+        }
+
+        #app-modal.form-hidden #canvas-column {
+            grid-column: span 4 / span 4;
+        }
+
+        #app-modal.form-hidden #toggle-form-btn svg {
+            transform: rotate(180deg);
+        }
+
+        /* Styles pour masquer la vue façade */
+        #app-modal.facade-hidden #facade-block-container,
+        #app-modal.facade-hidden #facade-form-section {
+            display: none;
+        }
+
+        #app-modal.facade-hidden #coupe-container {
+            height: 100% !important;
+            flex-grow: 1 !important;
+            max-height: none !important;
+        }
+
+        #app-modal.facade-hidden #viewCoupe {
+            max-height: none !important;
+        }
+
+        /* Styles pour masquer la vue coupe (item 2/3) — miroir de .facade-hidden ci-dessus : cache
+           #coupe-container et laisse #facade-block-container occuper tout l'espace disponible. Les
+           icônes de bascule ne sont plus des enfants de ces conteneurs (cf. #canvas-column), elles
+           restent donc visibles dans les deux états. */
+        #app-modal.coupe-hidden #coupe-container {
+            display: none;
+        }
+
+        #app-modal.coupe-hidden #facade-block-container {
+            height: 100%;
+            flex-grow: 1;
+        }
+
+        /* Item 1 : masque aussi la section du formulaire propre au Plan de coupe (modèle, hauteurs,
+           panneaux, altimétrie/dénivelé) quand ce plan est masqué. */
+        #app-modal.coupe-hidden #coupe-form-section {
+            display: none;
+        }
+
+
+        /* MOD 1.0 (Alignement): Ajustement des conteneurs de canvas */
+        #coupe-container {
+            flex: 1 1 100% !important;
+            width: 100% !important;
+            flex-direction: column;
+            transition: height 0.1s ease-out;
+        }
+
+        #facade-block-container {
+            transition: height 0.1s ease-out;
+            min-height: 350px;
+            /* max-height: 350px; */
+
+        }
+
+        @media print {
+            body>*:not(#app-modal) {
+                display: none !important;
+            }
+
+            #app-modal,
+            #modal-body {
+                display: block !important;
+                width: 100% !important;
+                height: auto !important;
+                position: static !important;
+                box-shadow: none !important;
+                border: none !important;
+                overflow: visible !important;
+                transform: none !important;
+            }
+
+            #modal-header,
+            .controls-container,
+            header,
+            .z-10,
+            #welcome-modal-overlay {
+                display: none !important;
+            }
+
+            .lg\:col-span-2 {
+                width: 100%;
+                page-break-after: always;
+            }
+
+            .grid {
+                display: block !important;
+            }
+        }
+
+        #app-modal.form-hidden #controls-container {
+            display: none !important;
+        }
+
+        #app-modal.form-hidden #canvas-column {
+            grid-column: span 4 / span 4 !important;
+        }
+
+        #canvas-column {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+
+        @media print {
+            canvas {
+                max-width: 100%;
+                height: auto;
+            }
+
+            .canvas-container {
+                page-break-after: avoid;
+                break-inside: avoid;
+            }
+
+            #viewImplantation,
+            #viewFacade,
+            #viewCoupe {
+                page-break-after: always;
+            }
+        }
+
+        /* Modal de rejet de saisie invalide : bloque l'interaction tant que l'utilisateur n'a pas cliqué OK,
+           sans jamais modifier la valeur qu'il a saisie dans le champ concerné. */
+        #validation-modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            z-index: 3000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #validation-modal-overlay.visible {
+            display: flex;
+        }
+
+        #validation-modal {
+            background-color: white;
+            padding: 1.75rem 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+        }
+
+        #validation-modal-icon {
+            width: 2.5rem;
+            height: 2.5rem;
+            line-height: 2.5rem;
+            border-radius: 9999px;
+            background-color: #FEE2E2;
+            color: var(--main-color);
+            font-weight: 700;
+            font-size: 1.25rem;
+            margin: 0 auto 0.75rem;
+        }
+
+        #validation-modal-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+            color: #111827;
+            margin-bottom: 0.5rem;
+        }
+
+        #validation-modal-message {
+            color: #374151;
+            font-size: 0.9rem;
+            margin-bottom: 1.25rem;
+            white-space: pre-line;
+        }
+
+        #validation-modal-ok {
+            background-color: var(--main-color);
+            color: white;
+            font-weight: 700;
+            padding: 0.6rem 2.5rem;
+            border-radius: 0.5rem;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        #validation-modal-ok:hover {
+            background-color: var(--main-color-hover);
+        }
+    </style>
+    <!-- Plans de coupe / façade fixes pendant le défilement du formulaire (cf. ce fichier). -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/geometrie_plans_fixes.css') }}?v=2">
+</head>
+
+<body class="bg-gray-100">
+
+    <div id="modal-overlay"></div>
+    <div id="app-modal">
+        <div id="modal-header">
+            <h2>Ombridesign 2.1</h2>
+            <div class="flex items-center space-x-2">
+                <button id="toggle-form-btn" class="modal-header-btn" title="Afficher/Masquer le formulaire">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="w-5 h-5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5l-7.5-7.5 7.5-7.5" />
+                    </svg>
+                </button>
+                <button id="reset-modal-btn" class="modal-header-btn" title="Réinitialiser la position et la taille">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round"
+                            d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m4.5 11.25h-4.5m4.5 0v-4.5m0 .001L15 15" />
+                    </svg>
+                </button>
+                <button id="close-modal-btn" class="modal-header-btn" title="Fermer">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="modal-body">
+            <div class="container mx-auto flex-1 flex flex-col" style="min-width: 100%;">
+
+                <div id="pcs-layout" class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 min-h-0">
+
+                    <div id="canvas-column" class="lg:col-span-3 flex flex-col gap-6 min-h-0 relative">
+
+                        <!-- Icônes de bascule Plan de coupe / Plan de façade : positionnées ici (enfant
+                             direct de #canvas-column, pas de #facade-block-container) pour rester
+                             visibles quel que soit l'état facade-hidden/coupe-hidden — sinon, masquer
+                             #facade-block-container masquait aussi ces boutons, empêchant de revenir en
+                             arrière (item 2/3). -->
+                        <div class="absolute top-2 right-2 z-20 flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                            <button id="toggleFacadeViewBtn" class="tool-button icon-only"
+                                title="Masquer/Afficher les plans de façade et d'implantation">👁️</button>
+                            <button id="toggleCoupeViewBtn" class="tool-button icon-only"
+                                title="Masquer/Afficher le plan de coupe">✂️</button>
+                        </div>
+
+                        <div id="coupe-container" class="flex flex-col min-h-0" style="max-height:640px">
+                            <div class="onglets flex border-b border-gray-200 mb-2 flex-shrink-0">
+                                <button id="tabCoupe" class="tab-button tab-group-1 active">Plan de coupe</button>
+                                <!-- <button id="tabPlanMasse" class="tab-button tab-group-1">Plan de masse</button> -->
+                            </div>
+
+                            <div id="viewCoupe" class="tab-content-1 canvas-container flex-1"
+                                style="min-height: 600px;">
+                                <div class="absolute top-2 left-2 z-10 flex flex-wrap gap-2">
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="zoomInCoupe" class="tool-button icon-only"
+                                            title="Zoom avant">+</button>
+                                        <button id="zoomOutCoupe" class="tool-button icon-only"
+                                            title="Zoom arrière">-</button>
+                                        <button id="panCoupe" class="tool-button icon-only"
+                                            title="Déplacer (Panoramique)">🖐</button>
+                                        <button id="resetCoupe" class="tool-button icon-only"
+                                            title="Tout voir">⛶</button>
+                                    </div>
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="toolInvertSlope" class="tool-button icon-only"
+                                            title="Inverser la pente">⇅</button>
+                                        <div class="border-l border-gray-300 h-6 mx-1 self-center"></div>
+                                        <button id="toolPosTraverseTop" class="tool-button"
+                                            title="Position Traverse: Dessus">Dessus</button>
+                                        <button id="toolPosTraverseSide" class="tool-button"
+                                            title="Position Traverse: Côté">Côté</button>
+                                    </div>
+                                    <div id="offsetBraceControls"
+                                        class="hidden flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="toggleBraceLeft" class="tool-button"
+                                            title="Afficher/Masquer Renfort Gauche">Renfort G.</button>
+                                        <button id="toggleBraceRight" class="tool-button"
+                                            title="Afficher/Masquer Renfort Droit">Renfort D.</button>
+                                    </div>
+                                    <div id="toolDimColors" class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button class="tool-button dim-color-btn" data-color="#0000FF"
+                                            style="background-color: #0000FF;" title="Bleu"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#FF0000"
+                                            style="background-color: #FF0000;" title="Rouge"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#000000"
+                                            style="background-color: #000000;" title="Noir"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#FF00FF"
+                                            style="background-color: #FF00FF;" title="Magenta"></button>
+                                        <button class="tool-button dim-color-btn" data-color="#4169E1"
+                                            style="background-color: #4169E1;" title="Bleu Foncé"></button>
+                                    </div>
+                                    <div class="flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                        <button id="toolFoundation" class="tool-button icon-only"
+                                            title="Afficher les fondations">🧱</button>
+                                        <button id="toolToggleDimensions" class="tool-button icon-only"
+                                            title="Masquer/Afficher les cotations">📏</button>
+                                        <button id="toolToggleHeightDims" class="tool-button icon-only"
+                                            title="Masquer/Afficher les cotations Hauteur sous bracon et Hauteur libre de passage">📐</button>
+                                        <button id="toolToggleAltimetryDims" class="tool-button icon-only active"
+                                            title="Masquer/Afficher les cotations altimétriques (niveau terrain +0.00m)">⛰️</button>
+                                        <button id="toolToggleParcelLimitDims" class="tool-button icon-only active"
+                                            title="Masquer/Afficher la ligne de limite de propriété (plans de coupe et de façade)">🚩</button>
+                                    </div>
+                                </div>
+                                <h3 id="coupe-orientation-title" class="view-title"
+                                    style="top: 240px; font-size: 0.9rem; color: #4b5563; text-align: right; right: 15%; left: auto; transform: none; z-index: 5;">
+                                </h3>
+                                <h3 class="view-title">Plan de coupe</h3>
+                                <canvas id="coupeCanvas"></canvas>
+                            </div>
+
+                            <!-- <div id="viewPlanMasse"
+                                class="tab-content-1 hidden canvas-container flex-1 bg-gray-50 flex items-center justify-center">
+                                <h3 class="view-title">Plan de masse</h3>
+                                <p class="text-gray-400">Contenu du plan de masse à venir...</p>
+                            </div> -->
+
+
+                        </div>
+
+
+
+                        <!-- FIX : #coupe-container est "flex flex-col" (ses enfants flex-1 s'étirent donc
+                             correctement pour occuper toute la hauteur), mais #facade-block-container
+                             n'avait AUCUNE classe flex — sa hauteur forcée à 100% par
+                             #app-modal.coupe-hidden (cf. CSS plus haut) ne se répercutait donc jamais sur
+                             #viewFacade (flex-1 sans parent flex = no-op), laissant une zone grise vide en
+                             dessous. Mêmes classes que #coupe-container pour que flex-1 fonctionne enfin. -->
+                        <div id="facade-block-container" class="flex flex-col min-h-0">
+
+                            <div class="flex border-b border-gray-200 mb-2 flex-shrink-0">
+                                <button id="tabFacade" class="tab-button tab-group-2 active">Plan de façade</button>
+                                <button id="tabImplantation" class="tab-button tab-group-2">Plan d'implantation</button>
+                            </div>
+
+                            <div id="viewFacade" class="tab-content-2 canvas-container flex-1">
+                                <div class="absolute top-2 left-2 z-10 flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                    <button id="zoomInFacade" class="tool-button icon-only"
+                                        title="Zoom avant">+</button>
+                                    <button id="zoomOutFacade" class="tool-button icon-only"
+                                        title="Zoom arrière">-</button>
+                                    <button id="panFacade" class="tool-button icon-only"
+                                        title="Déplacer (Panoramique)">🖐</button>
+                                    <button id="resetFacade" class="tool-button icon-only" title="Tout voir">⛶</button>
+                                </div>
+                                <h3 class="view-title">Plan de façade</h3>
+                                <canvas id="facadeCanvas"></canvas>
+                            </div>
+
+                            <div id="viewImplantation" class="tab-content-2 hidden canvas-container flex-1">
+                                <div class="absolute top-2 left-2 z-10 flex gap-0.5 bg-white p-1 rounded-lg shadow-md">
+                                    <button id="zoomInImplantation" class="tool-button icon-only"
+                                        title="Zoom avant">+</button>
+                                    <button id="zoomOutImplantation" class="tool-button icon-only"
+                                        title="Zoom arrière">-</button>
+                                    <button id="panImplantation" class="tool-button icon-only"
+                                        title="Déplacer (Panoramique)">🖐</button>
+                                    <button id="resetImplantation" class="tool-button icon-only"
+                                        title="Tout voir">⛶</button>
+                                </div>
+                                <h3 class="view-title">Plan d’implantation des axes de poteaux</h3>
+                                <canvas id="implantationCanvas"></canvas>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <div id="controls-container" class="lg:col-span-1 controls-container p-4 rounded-lg shadow-md">
+                        <div class="input-grid">
+                            <!-- <h2 class="input-group-title">Type de structure</h2>
+                            <div class="span-2 mb-4">
+                                <div id="structure-type-group"
+                                    class="mt-1 flex flex-wrap gap-1 rounded-md shadow-sm toggle-btn-group">
+                                    <button id="structMetal"
+                                        class="flex-1 min-w-[120px] relative inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Ombrière
+                                        métal</button>
+                                    <button id="structBois"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Ombrière
+                                        bois</button>
+                                    <button id="structBeton"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Ombrière
+                                        béton</button>
+                                    <button id="structBatIncline"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Bâtiment
+                                        incliné</button>
+                                    <button id="structTable"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Table
+                                        solaire</button>
+                                    <button id="structAutres"
+                                        class="flex-1 min-w-[120px] relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Autres</button>
+                                </div> -->
+                        </div>
+
+                        <!-- Regroupe toute la configuration spécifique au Plan de coupe (modèle,
+                             hauteurs, panneaux, altimétrie/dénivelé) : masqué avec #app-modal.coupe-hidden
+                             quand le bouton "Masquer/Afficher le plan de coupe" est activé (item 1). -->
+                        <div id="coupe-form-section">
+                        <h2 class="input-group-title">Données des coupes</h2>
+                        <div class="span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Modèle de poteaux</label>
+                            <div id="model-filter-error" class="text-red-600 text-sm font-semibold hidden mb-2"></div>
+                            <div id="model-btn-group" class="mt-1 flex flex-wrap gap-1 rounded-md shadow-sm">
+                                <button id="modelSinglePost"
+                                    class="flex-1 relative inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-l-md">Centrés</button>
+                                <button id="modelOffsetPost"
+                                    class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Excentrés</button>
+                                <button id="modelDoublePost"
+                                    class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium">Double
+                                    Poteaux</button>
+                                <button id="modelYShape"
+                                    class="flex-1 relative -ml-px inline-flex items-center justify-center px-2 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Bipente</button>
+                            </div>
+                        </div>
+
+
+
+                        <div id="entraxeControl" class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                            <div><label for="postSpacing" class="block text-sm font-medium text-gray-700">Entraxe
+                                    (m)</label><input type="number" id="postSpacing" value="15.0" step="0.1" min="5"
+                                    max="30"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                <div id="entraxeError" class="text-red-600 text-sm font-semibold mt-1"></div>
+                            </div>
+                        </div>
+                        <div id="doublePostControls" class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                            <div id="doublePostBracingVariant" class="span-2"><label
+                                    class="block text-sm font-medium text-gray-700">Variante
+                                    Contreventement</label>                                
+                                <div class="mt-1 grid grid-cols-2 gap-1 rounded-md shadow-sm toggle-btn-group" id="bracing-variant-group">
+                                    <button id="bracingV1" class="text-xs px-2 py-1 border border-gray-300 rounded-tl-md">V1</button>
+                                    <button id="bracingV2" class="text-xs px-2 py-1 border border-gray-300 rounded-tr-md">V2</button>
+                                    <button id="bracingV3" class="text-xs px-2 py-1 border border-gray-300 rounded-bl-md active">V3</button>
+                                    <button id="bracingV4" class="text-xs px-2 py-1 border border-gray-300 rounded-br-md">V4</button>
+                                </div>
+                            </div>
+                            <div class="span-2 flex items-center"><input type="checkbox" id="showDoubleBracing"
+                                    class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                                    checked><label for="showDoubleBracing"
+                                    class="ml-2 block text-sm text-gray-900">Afficher contreventement</label></div>
+                        </div>
+                        <div id="offsetPostControls" class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                            <div class="span-2"><label class="block text-sm font-medium text-gray-700">Position
+                                    Poteau</label>
+                                <div class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width">
+                                    <button id="offsetPosLow"
+                                        class="text-sm px-2 py-2 border border-gray-300 rounded-l-md">Côté
+                                        Bas (Égout)</button>
+                                    <button id="offsetPosHigh"
+                                        class="text-sm px-2 py-2 -ml-px border border-gray-300 rounded-r-md">Côté
+                                        Haut (Faîtage)</button>
+                                </div>
+                            </div>
+                            <div><label for="postEccentricity"
+                                    class="block text-sm font-medium text-gray-700">Excentrement (m)</label><input
+                                    type="number" id="postEccentricity" value="2.0" step="0.01" min="0" max="30"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                            </div>
+                            <p id="postEccentricityError" class="text-red-600 text-sm span-2"></p>
+                        </div>
+
+                        <!-- Item 3 : orientation dédiée au Plan de coupe, indépendante de celle du Plan de
+                             façade (#facade-orientation-group, plus bas, resté par défaut sur Sud). -->
+                        <div class="span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Orientation façade (Plan de
+                                coupe)</label>
+                            <div id="coupe-orientation-group"
+                                class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width">
+                                <button data-orientation="Est"
+                                    class="coupe-orientation-btn relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Est</button>
+                                <button data-orientation="Ouest"
+                                    class="coupe-orientation-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium">Ouest</button>
+                                <button data-orientation="Nord"
+                                    class="coupe-orientation-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium">Nord</button>
+                                <button data-orientation="Sud"
+                                    class="coupe-orientation-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Sud</button>
+                            </div>
+                        </div>
+
+                        <div><label for="roofSlope" class="block text-sm font-medium text-gray-700">Pente des
+                                panneaux (°)</label><input type="number" id="roofSlope" value="14" step="1" min="0"
+                                max="20"
+                                class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                required>
+                        </div>
+
+                        <div class="span-2 grid grid-cols-2 gap-4">
+                            <div><label for="lowPointHeight" class="block text-sm font-medium text-gray-700">Hauteur
+                                    bas PV (m)</label><input type="number" id="lowPointHeight" value="0.8"
+                                    step="0.01" min="0.3" max="5"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div id="braceHeightControl"><label for="heightUnderBrace"
+                                    class="block text-sm font-medium text-gray-700">Hauteur sous renfort
+                                    (m)</label><input type="number" id="heightUnderBrace" value="0.0" step="0.1" min="0"
+                                    max="2"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                        </div>
+                        <!-- Masqué (item 1) : champ calculé "Hauteur libre de passage", conservé en DOM pour ne
+                             pas casser getFormValues()/les calculs qui en dépendent, mais retiré de l'affichage. -->
+                        <div class="hidden"><label for="passageHeight"
+                                class="block text-sm font-medium text-gray-700">Hauteur libre de
+                                passage (calc.)</label><input type="number" id="passageHeight" value="0.80" step="0.01"
+                                min="0.2" max="2"
+                                class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100"
+                                readonly></div>
+                        <p id="heightError" class="text-red-600 text-sm span-2"></p>
+
+                        <div class="hidden"><label for="postHeight"
+                                class="block text-sm font-medium text-gray-700">Hauteur Poteau
+                                (calc.)</label><input type="number" id="postHeight" value="3.50" step="0.01"
+                                class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100"
+                                readonly></div>
+
+                        <div class="hidden"><label for="anchorDepth"
+                                class="block text-sm font-medium text-gray-700">Profondeur
+                                d'ancrage (m)</label><input type="number" id="anchorDepth" value="0.3" step="0.05"
+                                min="0.01" max="1"
+                                class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                        </div>
+
+                        <!-- Largeur du champ PV : calculée automatiquement (nb panneaux en rampant x dimension
+                             panneau selon mode de pose + espacement Y) -- cf. updatePanelWidthFromRampant() dans
+                             petit_champ_solaire.js. Pas de "readonly" ici : getFormValues() ne fait le
+                             parseFloat() des champs number que s'ils ne sont PAS readonly (cf. ligne ~1622),
+                             et de nombreux calculs du moteur (hérité d'ombriere_v2.js) appellent
+                             values.panelWidth.toFixed()/des opérations arithmétiques dessus en supposant un
+                             nombre : le passer en readonly transforme sa valeur en chaîne et casse ces calculs. -->
+                        <div class="hidden"><label for="panelWidth"
+                                class="block text-sm font-medium text-gray-700">Largeur champ
+                                PV (calc.) (m)</label><input type="number" id="panelWidth" value="12.40" step="0.1"
+                                min="0.01" max="25"
+                                class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                required>
+                        </div>
+                        <h2 class="input-group-title">Configuration Panneaux (Petit champ)</h2>
+                        <!-- Masqués (demande explicite, "ne pas perdre l'utilisateur") : ces champs sont
+                             entièrement alimentés par le calepinage — module résidentiel via
+                             CalepinageMaisonDimensionsPetitChamp, ou #shedsCols / #shedsColSpacing / ... du
+                             formulaire PRO via sync_calepinage_shed.js. Conservés en DOM (non retirés) car
+                             getFormValues() et les calculs du modal en dépendent. -->
+                        <div class="hidden span-2 grid grid-cols-2 gap-4">
+                            <div><label for="nbPanelsRampant" class="block text-sm font-medium text-gray-700">Nb
+                                    panneaux
+                                    en rampant</label><input type="number" id="nbPanelsRampant" value="2" step="1"
+                                    min="1" max="20"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="panelSpacingY" class="block text-sm font-medium text-gray-700">Espacement
+                                    Y. (mm)</label><input type="number" id="panelSpacingY" value="20" step="1" min="0"
+                                    max="500"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                        </div>
+                        <div class="hidden span-2 grid grid-cols-2 gap-4">
+                            <div><label for="nbShed" class="block text-sm font-medium text-gray-700">Nbre de
+                                    shed</label><input type="number" id="nbShed" value="3" step="1" min="1" max="50"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="shedSpacing" class="block text-sm font-medium text-gray-700">Espacement
+                                    entre shed (m)</label><input type="number" id="shedSpacing" value="0.5" step="0.01"
+                                    min="0.1" max="20"
+                                    title="Distance horizontale entre le point haut d'une rangée de shed et celui de la rangée suivante"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                        </div>
+                        <div class="hidden span-2"><label class="block text-sm font-medium text-gray-700">Dimension
+                                panneaux L x l x E (mm)</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <input type="number" id="petitPanelLengthMm" value="2382" step="1" min="1"
+                                    title="Longueur (mm)"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                <input type="number" id="petitPanelWidthMm" value="1134" step="1" min="1"
+                                    title="Largeur (mm)"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                <input type="number" id="petitPanelThicknessMm" value="30" step="1" min="1"
+                                    title="Épaisseur (mm)"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                        </div>
+                        <div class="hidden span-2"><label class="block text-sm font-medium text-gray-700">Mode de pose des
+                                panneaux</label>
+                            <div class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width"
+                                id="panelOrientationGroup">
+                                <button type="button" id="panelOrientationPortrait"
+                                    class="relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Portrait</button>
+                                <button type="button" id="panelOrientationPaysage"
+                                    class="relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Paysage</button>
+                            </div>
+                        </div>
+                        <div class="span-2"><label class="block text-sm font-medium text-gray-700">Type de
+                                porte-à-faux</label>
+                            <div class="mt-1 flex rounded-md shadow-sm toggle-btn-group"><button id="overhangSym"
+                                    class="w-full relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md active">Symétrique</button><button
+                                    id="overhangAsym"
+                                    class="hidden w-full relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Asymétrique</button>
+                            </div>
+                        </div>
+
+
+                        <div id="overhangSymContainer" class="span-2"><label for="overhangSymValue"
+                                class="block text-sm font-medium text-gray-700">Porte-à-faux
+                                (%)</label><input type="number" id="overhangSymValue" value="20" step="1" min="0"
+                                max="49"
+                                class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                        </div>
+                        <div id="overhangAsymContainer" class="hidden span-2 hidden"><label for="overhangAsymHigh"
+                                class="block text-sm font-medium text-gray-700">Porte-à-faux Haut / Bas (m)</label>
+                            <div class="flex gap-2"><input type="number" id="overhangAsymHigh" value="0.5" step="0.1"
+                                    min="0" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"><input
+                                    type="number" id="overhangAsymLow" value="1.0" step="0.1" min="0" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                        </div>
+
+                        <div class="span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Orientation Façade</label>
+                            <div id="facade-orientation-group"
+                                class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width">
+                                <button data-orientation="Est"
+                                    class="facade-orientation-btn relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md">Est</button>
+                                <button data-orientation="Ouest"
+                                    class="facade-orientation-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium">Ouest</button>
+                                <button data-orientation="Nord"
+                                    class="facade-orientation-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium">Nord</button>
+                                <button data-orientation="Sud"
+                                    class="facade-orientation-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md active">Sud</button>
+                            </div>
+                        </div>
+
+                        <!-- Altimétrie/Dénivelé : déplacés ici (section Plan de coupe), avant le label
+                             "Fondations" — mêmes champs (ids inchangés) que ceux utilisés par le Plan de
+                             façade, la pente du terrain étant désormais également reproduite sur le Plan
+                             de coupe (cf. drawCoupe). -->
+                        <!-- Terrain automatique (geometrie_structure/terrain_plans.js) : profils du champ PV
+                             (IGN en France, Google ailleurs) sous le Plan de coupe ET le Plan de façade.
+                             Décoché : saisie manuelle ci-dessous (altitude + dénivelé). -->
+                        <div class="span-2 rounded-md border border-gray-200 bg-gray-50 p-2">
+                            <div class="flex items-center"><input type="checkbox" id="terrainAuto" checked
+                                    title="Coché (défaut) : terrain réel du champ PV, sous les plans de coupe et de façade. Décoché : saisie manuelle de l'altitude et du dénivelé."
+                                    class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"><label
+                                    for="terrainAuto" class="ml-2 block text-sm font-medium text-gray-900">Terrain automatique</label>
+                            </div>
+                            <div id="terrainAutoInfo" class="mt-1 text-xs text-gray-600"></div>
+                        </div>
+                        <div class="span-2 grid grid-cols-2 gap-4">
+                            <div><label for="baseAltimetry" class="block text-sm font-medium text-gray-700">Altimétrie
+                                    au point +0.00m (m)</label><input type="number" id="baseAltimetry" value="0.00"
+                                    step="0.01" min="0" max="1500"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div><label for="groundSlopeFacade" class="block text-sm font-medium text-gray-700">Dénivelé
+                                    du terrain (m)</label><input type="number" id="groundSlopeFacade" value="0.00"
+                                    step="0.01" min="-3" max="3"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                        </div>
+                        <div class="flex items-center span-2"><input type="checkbox" id="coupeAlignRoof" checked
+                                title="Coché (défaut) : chaque ombrière suit le sol local (hauteurs identiques pour tous les sheds). Décoché : la toiture reste à niveau, la cotation Hauteur haut PV est ajustée du dénivelé."
+                                class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"><label
+                                for="coupeAlignRoof" class="ml-2 block text-sm text-gray-900">Alignement toiture</label>
+                        </div>
+                        </div>
+                        <!-- fin #coupe-form-section -->
+
+                        <!-- Bloc "Fondations" positionné ici (item 1 : avant "Géométrie matériels"). -->
+                        <div class="span-2 flex items-center justify-between">
+                            <h2 class="input-group-title !mb-0 !border-0">Fondations</h2>
+                            <button type="button" id="toggleFoundationOptions"
+                                class="px-3 py-1 border border-gray-300 rounded-md text-sm font-medium bg-gray-50 hover:bg-gray-100">Fondation
+                                ▾</button>
+                        </div>
+                        <div id="foundationOptionsWrapper" class="span-2 hidden">
+                            <div class="span-2"><label class="block text-sm font-medium text-gray-700 mb-1">Type
+                                    d'ancrage</label>
+                                <div class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width"
+                                    id="anchor-system-group">
+                                    <button type="button" id="anchorBeton"
+                                        class="relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Béton</button>
+                                    <button type="button" id="anchorVis"
+                                        class="relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium">Vis</button>
+                                    <button type="button" id="anchorMicropieu"
+                                        class="relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Micropieux</button>
+                                </div>
+                            </div>
+                            <div id="foundationBetonFields" class="span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                                <div class="span-2"><label
+                                        class="block text-sm font-medium text-gray-700 mb-1">Configuration
+                                        (Plots béton)</label>
+                                    <div class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width"
+                                        id="foundation-config-group">
+                                        <button type="button" data-config="1p"
+                                            class="foundation-config-btn relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active"
+                                            title="Fondation individuelle : un plot par poteau">1P-Ancrage</button>
+                                        <button type="button" data-config="dp"
+                                            class="foundation-config-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md"
+                                            title="Fondation partagée pour 2 poteaux (type longrine) — modèle Double Poteaux">2P-Ancrage</button>
+                                    </div>
+                                </div>
+                                <div class="span-2"><label class="block text-sm font-medium text-gray-700 mb-1">Position
+                                        (Béton)</label>
+                                    <div class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width"
+                                        id="foundation-position-group">
+                                        <button type="button" data-position="surface"
+                                            class="foundation-position-btn relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Sur
+                                            le sol</button>
+                                        <button type="button" data-position="enterre"
+                                            class="foundation-position-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Enterré(e)</button>
+                                    </div>
+                                </div>
+                                <div><label for="foundationLength"
+                                        class="block text-sm font-medium text-gray-700">Longueur
+                                        (m)</label><input type="number" id="foundationLength" value="0.8" step="0.1"
+                                        min="0"
+                                        title="Longueur de base du plot (1P-Ancrage) — recalculée automatiquement à partir de l'entraxe pour 2P-Ancrage"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                                <div><label for="foundationWidth"
+                                        class="block text-sm font-medium text-gray-700">Largeur
+                                        (m)</label><input type="number" id="foundationWidth" value="0.5" step="0.05"
+                                        min="0"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                                <div><label for="foundationDepth"
+                                        class="block text-sm font-medium text-gray-700">Profondeur
+                                        (m)</label><input type="number" id="foundationDepth" value="0.3" step="0.05"
+                                        min="0"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                                <div><label for="foundationOverhang"
+                                        class="block text-sm font-medium text-gray-700">Débord
+                                        (chaque côté, m)</label><input type="number" id="foundationOverhang" value="0.3"
+                                        step="0.05" min="0"
+                                        title="Ajouté de chaque côté de l'entraxe pour la longueur de la longrine 2P-Ancrage (ex: entraxe 2m + 2x0.3m = 2.6m)"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                                <div id="foundationBuryLevelContainer" class="hidden"><label for="foundationBuryLevel"
+                                        class="block text-sm font-medium text-gray-700">Niveau d'ancrage
+                                        (m)</label><input type="number" id="foundationBuryLevel" value="0.30"
+                                        step="0.05" min="0" max="3"
+                                        title="Profondeur sous le terrain naturel à laquelle démarre le dessus de la fondation, en position Enterré(e)"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                            </div>
+                            <div id="foundationVisFields"
+                                class="hidden span-2 input-grid p-3 bg-gray-50 rounded-md border">
+                                <div><label for="visDepth" class="block text-sm font-medium text-gray-700">Profondeur
+                                        (vis / micropieu) (m)</label><input type="number" id="visDepth" value="1.0"
+                                        step="0.1" min="0"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm">
+                                </div>
+                                <div class="flex items-center"><label
+                                        class="flex items-center gap-2 text-sm mt-4"><input type="checkbox"
+                                            id="visReinforced" class="w-auto"> Avec renfort (jambes de force)</label>
+                                </div>
+                                <div id="visPositionContainer" class="hidden span-2"><label
+                                        class="block text-sm font-medium text-gray-700 mb-1">Position (Vis avec
+                                        renfort)</label>
+                                    <div class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width"
+                                        id="vis-position-group">
+                                        <button type="button" data-vis-position="enterre"
+                                            class="vis-position-btn relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md active">Enterré(e)</button>
+                                        <button type="button" data-vis-position="surface"
+                                            class="vis-position-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Sur
+                                            le sol</button>
+                                    </div>
+                                </div>
+                                <div id="micropieuPlateContainer" class="hidden span-2 flex items-center"><input
+                                        type="checkbox" id="micropieuShowPlate" class="w-auto" checked><label
+                                        for="micropieuShowPlate" class="ml-2 text-sm text-gray-900">Afficher la plaque
+                                        d'about du pieu</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <h2 id="geometry-title"
+                            class="input-group-title cursor-pointer flex justify-between items-center collapsed">
+                            <span>Géométrie matériels</span>
+                            <svg id="geometry-chevron" class="w-5 h-5 transition-transform"
+                                xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                    clip-rule="evenodd" />
+                            </svg>
+                        </h2>
+                        <div id="geometry-inputs" class="span-2 input-grid collapsed">
+                            <div><label for="postWidth" class="block text-sm font-medium text-gray-700">Épaisseur
+                                    Poteau (m)</label><input type="number" id="postWidth" value="0.10" step="0.01"
+                                    min="0.01" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div><label for="purlinHeight" class="block text-sm font-medium text-gray-700">Épaisseur
+                                    pannes (m)</label><input type="number" id="purlinHeight" value="0.10" step="0.01"
+                                    min="0.01" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div><label for="purlinWidth" class="block text-sm font-medium text-gray-700">Largeur
+                                    panne (m)</label><input type="number" id="purlinWidth" value="0.02" step="0.01"
+                                    min="0.01" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div><label for="panelThickness" class="block text-sm font-medium text-gray-700">Épaisseur
+                                    panneaux
+                                    (m)</label><input type="number" id="panelThickness" value="0.03" step="0.01"
+                                    min="0.01" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div><label for="beamHeight" class="block text-sm font-medium text-gray-700">Épaisseur
+                                    Traverse (m)</label><input type="number" id="beamHeight" value="0.10" step="0.01"
+                                    min="0.01" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div><label for="beamWidth" class="block text-sm font-medium text-gray-700">Largeur
+                                    Traverse (m)</label><input type="number" id="beamWidth" value="0.15" step="0.01"
+                                    min="0.01" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div><label for="braceWidth" class="block text-sm font-medium text-gray-700">Épaisseur
+                                    des bracons (m)</label><input type="number" id="braceWidth" value="0.05" step="0.01"
+                                    min="0.01" max="1"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+
+                            <div class="span-2"><label for="purlinCount"
+                                    class="block text-sm font-medium text-gray-700">Nombre de pannes (calc. = 2 ×
+                                    panneaux en rampant)</label><input type="number" id="purlinCount" value="4" step="1"
+                                    min="2" max="20"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm sm:text-sm bg-gray-100"
+                                    readonly required>
+                            </div>
+                            <div id="braceFixControl"><label for="braceFixPercentage"
+                                    class="block text-sm font-medium text-gray-700">Fixation renfort
+                                    (%)</label><input type="number" id="braceFixPercentage" value="70" step="1" min="50"
+                                    max="80"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                        </div>
+
+                        <h2 class="input-group-title">Limite parcelaire plans de coupe</h2>
+                        <div class="span-2 grid grid-cols-2 gap-4">
+                            <!-- NOUVEAU (demande explicite) : min="0" (au lieu de "0.01") — 0 est désormais une
+                                 valeur valide, auquel cas la ligne de cotation correspondante n'est pas tracée
+                                 (cf. drawParcelLimitCoupe, petit_champ_solaire_poteau_utilities.js, déjà gardée
+                                 par `if (!(limitM > 0)) return null;`). -->
+                            <div><label for="parcelLimitLeftCoupe"
+                                    class="block text-sm font-medium text-gray-700">Limite
+                                    parcellaire gauche (m)</label><input type="number" id="parcelLimitLeftCoupe"
+                                    value="5" step="0.1" min="0" max="100"
+                                    title="Distance entre l'extrémité gauche du panneau et la limite parcellaire. 0 ou vide pour ne rien tracer."
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="parcelLimitRightCoupe"
+                                    class="block text-sm font-medium text-gray-700">Limite
+                                    parcellaire droite (m)</label><input type="number" id="parcelLimitRightCoupe"
+                                    value="5" step="0.1" min="0" max="100"
+                                    title="Distance entre l'extrémité droite du panneau et la limite parcellaire. 0 ou vide pour ne rien tracer."
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                        </div>
+
+
+
+                        <!-- La longueur totale de la façade est ici -->
+
+
+
+                        <div id="validationError" class="text-red-600 text-sm span-2 mt-2"></div>
+
+                        <div style="border:#4b5563 1px dashed;margin-top: 4vh;"></div>
+                        <div style="margin-top: 8vh;  border:#4b5563 1px dashed;"></div>
+                        <div id="facade-form-section">
+                            <h2 id="facade-data-title" class="input-group-title">Données de Façade</h2>
+
+                            <div class="hidden"><label for="facadeLength"
+                                    class="block text-sm font-medium text-gray-700">Longueur
+                                    totale (m)</label><input type="number" id="facadeLength" value="39" step="1"
+                                    min="0.01" max="600"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required disabled>
+                            </div>
+                            <!-- Masqués (item 2, plan de façade) : ces 2 champs sont désormais entièrement
+                                 auto-calculés par updateOverhangsFromCalepinage() (porte-à-faux symétrique
+                                 déduit du calepinage LxC + #facadeEntraxe) — conservés en DOM (non retirés)
+                                 pour ne pas casser getFormValues()/les calculs qui en dépendent. -->
+                            <div class="hidden"><label for="leftOverhang" class="block text-sm font-medium text-gray-700">Porte-à-faux
+                                    Gauche (m)</label><input type="number" id="leftOverhang" value="1" step="0.1"
+                                    min="0" max="3"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <div class="hidden"><label for="rightOverhang" class="block text-sm font-medium text-gray-700">Porte-à-faux
+                                    Droit (m)</label><input type="number" id="rightOverhang" value="2" step="0.1"
+                                    min="0" max="3"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    required>
+                            </div>
+                            <!-- NOUVEAU (demande explicite) : miroir local du sélecteur "Analyse par rangée"
+                                 déjà présent côté calepinage.html (#shedRowSelector). Options et valeur
+                                 sélectionnée synchronisées par sync_calepinage_shed.js
+                                 (populateFacadeRowSelector) ; un changement ici est répercuté sur le VRAI
+                                 sélecteur parent (même événement 'change' natif), qui reste l'unique source
+                                 de vérité pour le calcul du nombre de groupes de la rangée
+                                 (#shedGroupsInRow -> #nbShedGroups ci-dessous) — évite de dupliquer cette
+                                 logique et garantit la cohérence entre les deux formulaires. -->
+                            <div class="span-2"><label for="facadeRowSelector"
+                                    class="block text-sm font-medium text-gray-700">Analyse par
+                                    rangée</label><select id="facadeRowSelector"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    title="Sélectionne une rangée du calepinage shed pour recalculer automatiquement le nombre de panneaux (Nb sheds en longueur) de ce plan de façade">
+                                </select></div>
+                            <div class="span-2"><label for="pvLayout"
+                                    class="block text-sm font-medium text-gray-700">Nbre
+                                    de PV Calepinage
+                                    (LxC)</label><input type="text" id="pvLayout" value="2L x 6C"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    placeholder="ex: 10L x 30C"></div>
+                            <div><label for="panelSpacingX" class="block text-sm font-medium text-gray-700">Espacement
+                                    X. (mm)</label><input type="number" id="panelSpacingX" value="20" step="1" min="0"
+                                    max="500"
+                                    title="Espacement entre panneaux consécutifs le long de la façade (grille de calepinage LxC)"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="nbShedGroups" class="block text-sm font-medium text-gray-700">Nb sheds en
+                                    longueur</label><input type="number" id="nbShedGroups" value="3" step="1" min="1"
+                                    max="50"
+                                    title="Nombre de fois où le plan de façade (calepinage LxC) est dupliqué en longueur"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <div><label for="shedGroupSpacing"
+                                    class="block text-sm font-medium text-gray-700">Espacement
+                                    entre groupe de shed (m)</label><input type="number" id="shedGroupSpacing"
+                                    value="0.10" step="0.01" min="0" max="10"
+                                    title="Distance entre deux groupes de shed dupliqués dans le plan de façade"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <!-- Déplacé ici (demande explicite) depuis la section "Données des coupes" :
+                                 ligne de la rangée le long de laquelle le terrain du Plan de façade est relevé —
+                                 sa place est donc dans #facade-form-section, juste avant "Alignement toiture".
+                                 Les boutons pilotent le <select> caché #terrainLigneFacade (.all-inputs : c'est
+                                 lui qui est sauvegardé/restauré), cf. terrain_plans.js. Id sans suffixe "-group" :
+                                 le gestionnaire de stockage ne doit pas le sauvegarder une seconde fois. -->
+                            <div class="span-2">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">Profil de terrain de la façade</label>
+                                <div id="terrainLigneFacadeBoutons"
+                                    class="mt-1 flex rounded-md shadow-sm toggle-btn-group equal-width">
+                                    <button type="button" data-ligne="avant" title="Ligne de poteaux avant (bord bas des panneaux)"
+                                        class="terrain-ligne-btn relative inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-l-md">Avant</button>
+                                    <button type="button" data-ligne="centre" title="Axe central des poteaux (défaut)"
+                                        class="terrain-ligne-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium active">Centre</button>
+                                    <button type="button" data-ligne="arriere" title="Ligne de poteaux arrière (bord haut des panneaux)"
+                                        class="terrain-ligne-btn relative -ml-px inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-r-md">Arrière</button>
+                                </div>
+                                <select id="terrainLigneFacade" class="all-inputs hidden" aria-hidden="true" tabindex="-1">
+                                    <option value="centre" selected>centre</option>
+                                    <option value="avant">avant</option>
+                                    <option value="arriere">arriere</option>
+                                </select>
+                            </div>
+                            <div class="flex items-center span-2"><input type="checkbox" id="alignRoof"
+                                    class="all-inputs h-4 w-4 rounded border-gray-300 text-red-600 focus:ring-red-500"><label
+                                    for="alignRoof" class="ml-2 block text-sm text-gray-900">Alignement toiture</label>
+                            </div>
+
+                            <div><label for="facadeEntraxe" class="block text-sm font-medium text-gray-700">Entraxe
+                                    entre poteaux (m)</label><input type="number" id="facadeEntraxe" value="2" step="0.1"
+                                    min="1" max="10"
+                                    title="Entraxe fixe entre 2 poteaux successifs le long de la façade, utilisé pour calculer automatiquement le nombre de poteaux et le porte-à-faux à partir du Nbre de PV Calepinage (LxC)"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                            </div>
+                            <!-- Masqué (item 2, plans de façade) : champ désormais entièrement auto-calculé par
+                                 updateOverhangsFromCalepinage() (cf. #facadeEntraxe) — conservé en DOM (non
+                                 retiré) pour ne pas casser getFormValues()/les calculs qui en dépendent. -->
+                            <div class="span-2 hidden"><label for="postDistances"
+                                    class="block text-sm font-medium text-gray-700">Entraxes poteaux (ex: 4*10.5 +
+                                    2*8)</label><input type="text" id="postDistances" value="2*4.925"
+                                    class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                    pattern="[0-9*+\s.]+" title="Utilisez uniquement des nombres, + et *">
+                                <div id="postDistancesError" class="text-red-600 text-sm mt-1"></div>
+                            </div>
+
+                            <!-- Item 3 : Altimétrie/Dénivelé dédiés au Plan de façade, indépendants de ceux
+                                 du Plan de coupe (#baseAltimetry/#groundSlopeFacade, section "Données des
+                                 coupes") — chaque plan garde son propre dénivelé de terrain. -->
+                            <div class="span-2 grid grid-cols-2 gap-4">
+                                <div><label for="facadeBaseAltimetry" class="block text-sm font-medium text-gray-700">Altimétrie
+                                        au point +0.00m (m)</label><input type="number" id="facadeBaseAltimetry"
+                                        value="0.00" step="0.01" min="0" max="1500"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                                <div><label for="facadeGroundSlope" class="block text-sm font-medium text-gray-700">Dénivelé
+                                        du terrain (m)</label><input type="number" id="facadeGroundSlope"
+                                        value="0.00" step="0.01" min="-3" max="3"
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm"
+                                        required>
+                                </div>
+                            </div>
+
+                            <h2 class="input-group-title">Limite parcelaire plan de façade</h2>
+                            <!-- NOUVEAU (demande explicite) : min="0" (au lieu de "0.01") — voir même correctif
+                                 pour le plan de coupe ci-dessus. -->
+                            <div class="span-2 grid grid-cols-2 gap-4">
+                                <div><label for="parcelLimitLeftFacade"
+                                        class="block text-sm font-medium text-gray-700">Limite
+                                        parcellaire gauche (m)</label><input type="number" id="parcelLimitLeftFacade"
+                                        value="5" step="0.1" min="0" max="100"
+                                        title="Distance entre l'extrémité gauche du panneau et la limite parcellaire. 0 ou vide pour ne rien tracer."
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                                <div><label for="parcelLimitRightFacade"
+                                        class="block text-sm font-medium text-gray-700">Limite
+                                        parcellaire droite (m)</label><input type="number" id="parcelLimitRightFacade"
+                                        value="5" step="0.1" min="0" max="100"
+                                        title="Distance entre l'extrémité droite du panneau et la limite parcellaire. 0 ou vide pour ne rien tracer."
+                                        class="all-inputs mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-red-500 focus:ring-red-500 sm:text-sm">
+                                </div>
+                            </div>
+                        </div>
+
+                        <h2 id="actions-title" class="input-group-title">Actions</h2>
+                        <div class="span-2 space-y-2">
+                            <!--<button id="exportCoupeBtn"
+                                    class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Exporter
+                                    Plan de Coupe en PNG</button>
+                                <button id="exportFacadeBtn"
+                                    class="w-full bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Exporter
+                                    Plan de Façade en PNG</button> -->
+                            <div class="border-t pt-2">
+                                <!-- Dossier de plans de conception (modal de la page parente, cf.
+                                     dossier_plans/iframe/pont_dossier.js) : remplace l'ancien export
+                                     « Exporter tous les plans en PDF » (captures raster), masqué ci-dessous. -->
+                                <!-- Masqué sur le parcours Résidentiel (app/utils/parcours.py, plans_petit_champ). -->
+                                <button id="openDossierPlansBtn" type="button"{{ ' style="display:none !important;"'|safe if 'plans_petit_champ' in parcours_projet.masquer }}
+                                    class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Dossier
+                                    de plans de conception (PDF)</button>
+                                <p id="pcsSauvegardeStatut" class="text-xs mt-1" style="color:#64748b;" aria-live="polite"></p>
+                                <button id="exportPdfBtn" hidden
+                                    class="hidden w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">Exporter
+                                    tous les plans en PDF</button>
+                                <button id="printBtn"
+                                    class="hidden w-full mt-2 bg-gray-600 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-700">Imprimer</button>
+                                <button id="exportDxfBtn"
+                                    class="w-full mt-2 bg-gray-700 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-800">Exporter
+                                    les plans en DXF</button>
+                            </div>
+                            <div class="border-t pt-2">
+                                <button id="exportVectorPdfBtn" class="w-full bg-red-600 text-white font-bold py-2 px-4 rounded-md hover:bg-red-700">Exporter Coupe + Façade en PDF (A3, vectoriel)</button>
+                                <!-- Plan de masse en DXF : exactement le plan de l'onglet « Plan de masse » du
+                                     modal « Exporter les plans en PDF et DXF ». Généré par la page parente
+                                     (seule à avoir la carte et le calepinage), cf.
+                                     dossier_plans/iframe/pont_dossier.js + export_plans_pdf_dxf/PlanDeMassePont.js. -->
+                                <button id="exportPlanMasseDxfBtn" type="button"
+                                    class="w-full mt-2 bg-gray-800 text-white font-bold py-2 px-4 rounded-md hover:bg-gray-900">Exporter le plan de masse en DXF</button>
+                                <p id="exportPlanMasseDxfStatut" class="text-xs mt-1" style="color:#64748b;" aria-live="polite"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+    </div>
+
+    <div id="validation-modal-overlay">
+        <div id="validation-modal">
+            <div id="validation-modal-icon">!</div>
+            <h3 id="validation-modal-title">Valeur invalide</h3>
+            <p id="validation-modal-message"></p>
+            <button id="validation-modal-ok" type="button">OK</button>
+        </div>
+    </div>
+
+    <script>
+        // Validation supplémentaire: hauteur sous renfort < hauteur libre de passage
+        const passageHeightInput = document.getElementById('passageHeight');
+        const heightUnderBraceInput = document.getElementById('heightUnderBrace');
+
+        function validateHeightUnderBrace() {
+            const passage = parseFloat(passageHeightInput.value) || 0;
+            const brace = parseFloat(heightUnderBraceInput.value) || 0;
+            if (brace >= passage) {
+                heightUnderBraceInput.setCustomValidity('La hauteur sous renfort doit être inférieure à la hauteur libre de passage.');
+            } else {
+                heightUnderBraceInput.setCustomValidity('');
+            }
+        }
+        passageHeightInput.addEventListener('input', validateHeightUnderBrace);
+        heightUnderBraceInput.addEventListener('input', validateHeightUnderBrace);
+        validateHeightUnderBrace();
+    </script>
+
+    <!-- Bornes de saisie : même fichier que la validation serveur (app/services/petit_champ_solaire/limites.json). -->
+    <script>
+        window.PETIT_CHAMP_LIMITES = {{ petit_champ_limites | tojson }};
+        window.GEOMETRIE_STRUCTURE_TYPE = 'petit_champ_solaire';
+    </script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/dossier_plans/iframe/validation_parametres.js') }}"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/ombriere_liasonnee.js') }}"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/petit_champ_solaire_poteau_fondations.js') }}"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/terrain_plans.js') }}?v=7"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/petit_champ_solaire_poteau_utilities.js') }}?v=2"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/petit_champ_solaire_poteau_centre.js') }}"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/petit_champ_solaire_poteau_excentres.js') }}"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/petit_champ_solaire_poteau_bipente.js') }}"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/petit_champ_solaire_poteau_Double poteaux_V1_V2.js') }}"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/petit_champ_solaire_poteau_Double poteaux_V3_V4 .js') }}"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/petit_champ_solaire.js') }}?v=6"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/enregistreur_vectoriel.js') }}?v=1"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/plan_coupe_petit_champ_solaire.js') }}?v=4"></script>
+    <!-- Synchronisation "Calepinage shed" -> "Petit champ solaire" (cf. sync_calepinage_shed.js) :
+         chargé en dernier pour que petit_champ_solaire.js ait déjà attaché ses écouteurs sur les
+         champs .all-inputs avant que ce script ne pousse ses premières valeurs. -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/sync_calepinage_shed.js') }}?v=2"></script>
+    <!-- Persistance des saisies (localStorage + serveur) et pont vers le dossier de plans. -->
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/storage_manager_geometrie_structure.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/dossier_plans/iframe/persistance_parametres.js') }}?v=4"></script>
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/dossier_plans/iframe/pont_dossier.js') }}?v=2"></script>
+
+</body>
+
+</html>

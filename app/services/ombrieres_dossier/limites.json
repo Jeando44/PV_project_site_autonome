@@ -1,0 +1,16 @@
+{
+  "_commentaire": "Source UNIQUE des bornes du dossier de plans de conception « Ombrières » : lue par le serveur (validation.py) et servie au navigateur par GET /api/ombrieres/dossier/limites (OmbriereDossierModal.js). Modifier une borne ici la change des deux côtés.",
+  "version": 1,
+  "reglementation": {
+    "sections": {
+      "urbanisme":   { "libelle": "Urbanisme", "min": 20, "max": 3000, "lignesMax": 80 },
+      "sdis":        { "libelle": "SDIS & Sécurité", "min": 20, "max": 3000, "lignesMax": 80 },
+      "contraintes": { "libelle": "Contraintes spécifiques du site", "min": 20, "max": 3000, "lignesMax": 80 }
+    }
+  },
+  "dossier": {
+    "indicePattern": "^[A-Z]{1,2}[0-9]?$",
+    "generationsParProjet": 5,
+    "champsMax": 60
+  }
+}

@@ -1,0 +1,308 @@
+/**
+ * Génération du PDF "Devis" résidentiel (CAPEX 9 postes + récapitulatif TVA/HT/TTC + bloc
+ * signature — les charges annuelles OPEX ne figurent volontairement pas dans ce document, cf.
+ * point 8 des correctifs), avec le même en-tête/pied de page que les rapports existants (cf.
+ * PdfUtilities.addHeaderFooter).
+ *
+ * Fichier volontairement autonome : peut être appelé (1) depuis la vue Chiffrage & Devis
+ * Résidentiel du modal Études Économiques, avec les données déjà en mémoire (dataOverride), ou
+ * (2) depuis le modal "Exporter les plans" (ExportPlansModal.js, contexte de page différent, où
+ * ResidentielCapexTable/ResidentielOpexTable ne sont pas forcément chargés) — dans ce cas les
+ * données sont rechargées depuis la base via la même route que ResidentielChiffrageDB.js.
+ *
+ * Script classique (non-module), comme le reste du dossier residentiel/ : PdfUtilities est un
+ * module ES (export default) chargé ici via import() dynamique, utilisable depuis un script
+ * classique sans changer son type ni celui du template qui l'inclut.
+ */
+(function () {
+    'use strict';
+
+    window.ResidentielChiffrage = window.ResidentielChiffrage || {};
+
+    /**
+     * Devise sélectionnée (#devise, radio Production — même champ que le moteur de calcul
+     * partagé) : "€"/"$"/"FCFA"/"HTG" (demande explicite point 4). Repli sur "€" si absent — c'est
+     * le cas lorsque ce fichier est appelé depuis ExportPlansModal.js (page index.html, où le
+     * fragment étude économique et son #devise n'existent pas).
+     */
+    function getDeviseSymbol() {
+        const checked = document.querySelector('input[name="devise"]:checked');
+        return (checked && checked.value) || '€';
+    }
+
+    /**
+     * Puissance du projet (kWc) affichée en en-tête du devis : champ #puissance du modal Études
+     * Économiques (même valeur que le moteur de calcul et le ratio €/kWc du tableau CAPEX), sinon
+     * somme des pans du calepinage "toiture multi-typologie" — cas d'un appel depuis
+     * ExportPlansModal.js, où #puissance n'existe pas. null si aucune source n'est disponible.
+     */
+    function getPuissanceProjetKwc() {
+        const champ = parseFloat(document.getElementById('puissance')?.value);
+        return champ > 0 ? champ : null;
+    }
+
+    /**
+     * Puissance imprimée sur le devis, décidée par le serveur (route puissance-etude) : calepinage
+     * ENREGISTRÉ pour un projet « Chiffrage », calcul ProSolaire enregistré sinon. Plus de repli sur
+     * le calepinage en mémoire. null si inconnue (le devis affiche alors « non renseignée »).
+     */
+    async function lirePuissanceProjetKwc() {
+        const projetId = getCurrentProjetId();
+        if (!projetId) return null;
+        try {
+            const res = await fetch(`/concevoir_mon_projet/parametre-projet/${projetId}/puissance-etude`);
+            const json = await res.json();
+            return json && json.success && json.puissance_kwc > 0 ? Number(json.puissance_kwc) : null;
+        } catch (e) {
+            console.warn('[DevisPdfGenerator] Puissance du projet indisponible :', e);
+            return null;
+        }
+    }
+
+    function getCurrentProjetId() {
+        if (window.calepinageService && typeof window.calepinageService.getCurrentProjetId === 'function') {
+            const id = window.calepinageService.getCurrentProjetId();
+            if (id) return id;
+        }
+        return localStorage.getItem('current_projet_id');
+    }
+
+    async function fetchSavedConfig() {
+        const projetId = getCurrentProjetId();
+        if (!projetId) return null;
+        try {
+            const res = await fetch(`/concevoir_mon_projet/parametre-projet/${projetId}/residentiel-chiffrage/load`);
+            const result = await res.json();
+            if (result.success && result.config_exists && result.config && result.config.data) {
+                return result.config.data;
+            }
+        } catch (e) {
+            console.warn('[DevisPdfGenerator] Chargement des données résidentielles impossible :', e);
+        }
+        return null;
+    }
+
+    function lineTotals(line) {
+        const qte = Number(line.qte) || 0;
+        const puHt = Number(line.puHt) || 0;
+        const tva = Number(line.tvaPct) || 0;
+        const totalHt = qte * puHt;
+        const totalTtc = totalHt * (1 + tva / 100);
+        return { totalHt, totalTtc };
+    }
+
+    function posteTotals(poste) {
+        return (poste.lines || []).reduce((acc, line) => {
+            const t = lineTotals(line);
+            acc.totalHt += t.totalHt;
+            acc.totalTtc += t.totalTtc;
+            return acc;
+        }, { totalHt: 0, totalTtc: 0 });
+    }
+
+    function grandCapexTotals(postes) {
+        return (postes || []).reduce((acc, poste) => {
+            const t = posteTotals(poste);
+            if (poste.deduction) {
+                acc.totalHt -= t.totalHt;
+                acc.totalTtc -= t.totalTtc;
+            } else {
+                acc.totalHt += t.totalHt;
+                acc.totalTtc += t.totalTtc;
+            }
+            return acc;
+        }, { totalHt: 0, totalTtc: 0 });
+    }
+
+    /**
+     * Retire les lignes masquées du chiffrage PRO (capex.lignesExclues, cf.
+     * ResidentielCapexTable.js::getData()) : hors totaux à l'écran, donc absentes du devis. Idem du
+     * poste « Main-d'œuvre » quand la case « Inclure la main-d'œuvre » est décochée.
+     */
+    function postesAffiches(capexData) {
+        const exclues = new Set((capexData && capexData.lignesExclues) || []);
+        const sansMainOeuvre = !!capexData && capexData.inclureMainOeuvre === false;
+        return ((capexData && capexData.postes) || [])
+            .filter((poste) => !(sansMainOeuvre && poste.key === 'main_oeuvre'))
+            .map((poste) => ({ ...poste, lines: (poste.lines || []).filter((l) => !exclues.has(l.key)) }))
+            .filter((poste) => poste.lines.length);
+    }
+
+    function buildCapexRows(postes, detailed, devise) {
+        const rows = [];
+        (postes || []).forEach((poste) => {
+            const pt = posteTotals(poste);
+            const signe = poste.deduction ? -1 : 1;
+            if (!detailed) {
+                rows.push([
+                    poste.label, '', '', '', '',
+                    (signe * pt.totalHt).toFixed(2) + ' ' + devise,
+                    (signe * pt.totalTtc).toFixed(2) + ' ' + devise
+                ]);
+                return;
+            }
+            rows.push([{ content: poste.label, colSpan: 7, styles: { fontStyle: 'bold', fillColor: [240, 240, 240] } }]);
+            (poste.lines || []).forEach((line) => {
+                const t = lineTotals(line);
+                rows.push([
+                    line.designation || '',
+                    line.reference || '',
+                    String(line.qte || 0),
+                    (Number(line.puHt) || 0).toFixed(2) + ' ' + devise,
+                    (Number(line.tvaPct) || 0) + ' %',
+                    (signe * t.totalHt).toFixed(2) + ' ' + devise,
+                    (signe * t.totalTtc).toFixed(2) + ' ' + devise
+                ]);
+            });
+        });
+        return rows;
+    }
+
+    /**
+     * Construit le document jsPDF "Devis" et le renvoie sous forme { blob, filename } — même
+     * contrat que les autres exporters d'ExportPlansModal.js (cf. plan_situation.js).
+     * @param {object} options
+     * @param {{postes:Array, viewMode:string}} [options.capexOverride] - données CAPEX déjà en mémoire (vue modal), sinon rechargées depuis la DB.
+     * @param {boolean} [options.detailed] - inclure le détail des lignes (sinon 9 postes de synthèse uniquement).
+     * @param {function} [options.onProgress]
+     */
+    async function generate(options = {}) {
+        const { onProgress } = options;
+        let capexData = options.capexOverride;
+        const detailed = !!options.detailed;
+
+        if (!capexData) {
+            if (onProgress) onProgress('Chargement des données du devis...');
+            const saved = await fetchSavedConfig();
+            capexData = (saved && saved.capex) || { postes: [] };
+        }
+
+        if (onProgress) onProgress('Construction du PDF...');
+
+        const puissanceKwc = options.puissanceKwc > 0 ? options.puissanceKwc : await lirePuissanceProjetKwc();
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+        dessiner(doc, { capexData, detailed, puissanceKwc });
+
+        if (onProgress) onProgress("Ajout de l'en-tête et du pied de page...");
+        try {
+            const PdfUtilitiesModule = await import('/static/concevoir_mon_projet/javascript/services/PdfUtilities.js');
+            const PdfUtilities = PdfUtilitiesModule.default;
+            const residentialInfo = (await PdfUtilities.getPersonnalisationRapport()) || {};
+            PdfUtilities.addHeaderFooter(doc, residentialInfo);
+        } catch (e) {
+            console.warn('[DevisPdfGenerator] En-tête/pied de page indisponibles :', e);
+        }
+
+        return { blob: doc.output('blob'), filename: 'Devis.pdf' };
+    }
+
+    /**
+     * Dessine le devis (titre, puissance, tableau CAPEX, récapitulatif TVA/HT/TTC, bon pour accord)
+     * à partir de la page COURANTE de `doc` (A4 portrait attendu), sans en-tête ni pied de page :
+     * c'est l'appelant qui les pose. Synchrone — réutilisé tel quel par le dossier de plans
+     * (pièce « Devis », cf. geometrie_structure/dossier_devis.js), même trame que le devis seul.
+     * @param {object} doc - document jsPDF (avec le plugin autoTable)
+     * @param {{capexData:object, detailed:boolean, devise?:string, puissanceKwc?:number}} options
+     * @returns {{premierePage:number, dernierePage:number}}
+     */
+    function dessiner(doc, options) {
+        const capexData = (options && options.capexData) || { postes: [] };
+        const detailed = !!(options && options.detailed);
+        const devise = (options && options.devise) || getDeviseSymbol();
+        const premierePage = doc.getCurrentPageInfo().pageNumber;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(22);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Devis', doc.internal.pageSize.getWidth() / 2, 50, { align: 'center' });
+
+        // Puissance du projet, juste avant le tableau (devis détaillé comme synthétique).
+        const puissanceKwc = (options && options.puissanceKwc > 0) ? options.puissanceKwc : null;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.text(
+            'Puissance du projet : ' + (puissanceKwc
+                ? puissanceKwc.toLocaleString('fr-FR', { maximumFractionDigits: 2, useGrouping: false }) + ' kWc'
+                : 'non renseignée'),
+            15, 62
+        );
+
+        // Le tableau des charges annuelles (OPEX) n'est volontairement pas inclus dans le devis
+        // (point 8 des correctifs) : seul le chiffrage CAPEX y figure.
+        const postes = postesAffiches(capexData);
+        const capexTotals = grandCapexTotals(postes);
+        const totalTva = capexTotals.totalTtc - capexTotals.totalHt;
+
+        doc.autoTable({
+            startY: 67,
+            head: [['Poste / Désignation', 'Référence', 'Qté', 'PU HT', 'TVA', 'Total HT', 'Total TTC']],
+            body: buildCapexRows(postes, detailed, devise),
+            foot: [['', '', '', '', 'Total CAPEX', capexTotals.totalHt.toFixed(2) + ' ' + devise, capexTotals.totalTtc.toFixed(2) + ' ' + devise]],
+            styles: { fontSize: 9, cellPadding: 2 },
+            headStyles: { fillColor: [30, 30, 30] },
+            footStyles: { fillColor: [230, 230, 230], textColor: [0, 0, 0], fontStyle: 'bold' },
+            margin: { top: 40 }
+        });
+
+        // Récapitulatif TVA / HT / TTC (point 8) — un second tableau, sous le chiffrage.
+        const afterCapexY = doc.lastAutoTable.finalY + 10;
+        doc.autoTable({
+            startY: afterCapexY,
+            head: [['Total TVA', 'Prix HT', 'Prix TTC']],
+            body: [[
+                totalTva.toFixed(2) + ' ' + devise,
+                capexTotals.totalHt.toFixed(2) + ' ' + devise,
+                capexTotals.totalTtc.toFixed(2) + ' ' + devise
+            ]],
+            styles: { fontSize: 10, cellPadding: 3, halign: 'center', fontStyle: 'bold' },
+            headStyles: { fillColor: [30, 30, 30] },
+            margin: { top: 40 }
+        });
+
+        // Bloc signature (point 8) — nouvelle page si la place manque en bas de la dernière page
+        // du récapitulatif (CAPEX détaillé potentiellement long).
+        let signatureY = doc.lastAutoTable.finalY + 25;
+        if (signatureY > doc.internal.pageSize.getHeight() - 40) {
+            doc.addPage();
+            signatureY = 40;
+        }
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.setTextColor(0, 0, 0);
+        doc.text('Bon pour accord', 15, signatureY);
+        doc.text('Date de signature : ......../......../..........', 15, signatureY + 10);
+        doc.text('Le ..........................................................', 15, signatureY + 20);
+
+        return { premierePage, dernierePage: doc.getNumberOfPages() };
+    }
+
+    /** Totaux HT / TTC du devis tels qu'imprimés (lignes masquées exclues, postes déduits). */
+    function totauxDevis(capexData) {
+        return grandCapexTotals(postesAffiches(capexData));
+    }
+
+    function triggerBlobDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    window.ResidentielChiffrage.PDF = {
+        generate,
+        dessiner,
+        totauxDevis,
+        chargerDevisEnregistre: fetchSavedConfig,
+        getDeviseSymbol,
+        getPuissanceProjetKwc,
+        lirePuissanceProjetKwc,
+        triggerBlobDownload,
+        // Adaptateur au contrat des exporters ExportPlansModal.js : static async exportPdf({indice, onProgress}) -> {blob, filename}
+        exportPdf: (opts) => generate({ detailed: true, onProgress: opts && opts.onProgress })
+    };
+})();

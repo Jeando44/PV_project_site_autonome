@@ -1,0 +1,1311 @@
+ 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+ /* Définition des variables de style pour une maintenance facile */
+        :root {
+            --bg-page: #f0f2f5;
+            --bg-modal: #ffffff;
+            --bg-panel: #f8f9fa;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            /* Couleurs principales mises à jour en rouge (design accent) */
+            --accent-primary: #ef4444;
+            --accent-primary-hover: #991b1b;
+
+            --border-color: #e5e7eb;
+            --danger-color: #ef4444;
+            --success-color: #22c55e;
+            --font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --border-radius-lg: 0.75rem;
+            --border-radius-md: 0.5rem;
+        }
+
+        /* Styles généraux du corps de la page */
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-page);
+            margin: 0;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-image: linear-gradient(45deg, #eef2f3, #e0e9f0);
+        }
+
+        /* Styles pour le bouton de lancement de la modale */
+        #launch-modal-btn {
+            display: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            background-color: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: var(--shadow-md);
+        }
+
+        #launch-modal-btn:hover {
+            background-color: var(--accent-primary-hover);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        /* Styles pour le fond semi-transparent derrière la modale */
+        #modal-backdrop {
+            display: none !important;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.4);
+            z-index: 999;
+        }
+
+        /* Conteneur principal de la modale */
+        #app-modal {
+            display: flex;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 90vw;
+            height: 90vh;
+            max-width: 1600px;
+            min-width: 800px;
+            min-height: 600px;
+            background-color: var(--bg-modal);
+            border-radius: var(--border-radius-lg);
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Entête de la modale (pour le déplacement) */
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 1.5rem;
+            background-color: var(--accent-primary);
+            color: white;
+            border-bottom: 1px solid var(--accent-primary);
+            cursor: move;
+            /* Curseur indiquant que l'élément est déplaçable */
+            border-top-left-radius: var(--border-radius-lg);
+            border-top-right-radius: var(--border-radius-lg);
+        }
+
+        .modal-header h1 {
+            font-size: 1.25rem;
+            margin: 0;
+            font-weight: 600;
+            color: white;
+        }
+
+        /* Palette de sélection de couleur dans l'en-tête */
+        .color-picker-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            position: relative; /* Changement pour un positionnement relatif */
+            /* On retire le centrage absolu pour le placer dans le flux normal */
+            /* left: 50%; */
+            /* transform: translateX(-50%); */
+        }
+
+        .color-picker-label {
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .color-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid white;
+            transition: transform 0.2s;
+        }
+
+        .color-dot:hover {
+            transform: scale(1.15);
+        }
+
+        #custom-color-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            background-color: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        #custom-color-picker::-webkit-color-swatch {
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        #custom-color-picker::-moz-color-swatch {
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+
+        .header-buttons {
+            display: flex;
+            align-items: center;
+            /* Ajout d'un gap pour espacer la palette des autres boutons */
+            gap: 0.75rem;
+        }
+
+        .header-buttons button {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: rgba(255, 255, 255, 0.8);
+            transition: color 0.2s;
+            padding: 0;
+            line-height: 1;
+        }
+
+        .header-buttons button:hover {
+            color: white;
+        }
+
+
+        /* Contenu principal de l'application, divisé en deux panneaux */
+        .app-content {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            flex-grow: 1;
+            overflow: hidden;
+        }
+
+        /* Panneau du formulaire (entrées utilisateur) : repositionné à droite via order,
+           sans changer l'ordre du DOM (évite toute régression sur le JS existant). */
+        .left-panel {
+            order: 2;
+            padding: 1.5rem;
+            border-left: 1px solid var(--border-color);
+            background-color: var(--bg-panel);
+            overflow-y: auto;
+        }
+
+        /* Panneau des résultats : repositionné à gauche (zone large) */
+        .right-panel {
+            order: 1;
+            padding: 1.5rem;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .right-panel:empty::before {
+            content: "Les résultats de la simulation apparaîtront ici...";
+            color: var(--text-secondary);
+            font-style: italic;
+            text-align: center;
+            margin-top: 4rem;
+        }
+
+        h2 {
+            margin: 0 0 1rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-transform: none;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+        }
+
+        h2::first-letter {
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        input[type="text"],
+        select {
+            width: 100%;
+            padding: 0.6rem 0.8rem;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius-md);
+            box-sizing: border-box;
+            background-color: #fff;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+            outline: none;
+        }
+
+        /* Masquer le input[type="file"] par défaut, on utilisera un bouton à la place */
+        input[type="file"] {
+            display: none;
+        }
+
+        /* Style des boutons */
+        button {
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 500;
+            border-radius: var(--border-radius-md);
+            cursor: pointer;
+            transition: all 0.2s;
+            padding: 0.6rem 1.2rem;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background-color: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: #fff;
+            color: var(--text-primary);
+            border-color: var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background-color: #f8f9fa;
+            border-color: #d1d5db;
+        }
+
+.info-tooltip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: help;
+}
+
+.info-icon {
+    font-style: normal;
+    font-weight: bold;
+    font-family: serif;
+    background-color: var(--text-secondary);
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+}
+
+/* Modal info compact */
+.info-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.info-modal-box {
+    position: relative;
+    background: var(--bg-card, #fff);
+    border-radius: 10px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+    padding: 1.4rem 1.6rem 1.2rem;
+    max-width: 360px;
+    width: 90%;
+    animation: infoModalIn 0.18s ease;
+}
+
+@keyframes infoModalIn {
+    from { opacity: 0; transform: scale(0.92); }
+    to   { opacity: 1; transform: scale(1); }
+}
+
+.info-modal-close {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.7rem;
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    line-height: 1;
+    color: var(--text-secondary, #6b7280);
+    cursor: pointer;
+    padding: 0;
+}
+
+.info-modal-close:hover {
+    color: var(--text-primary, #111827);
+}
+
+.info-modal-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin-top: 0.2rem;
+}
+
+.info-modal-icon {
+    flex-shrink: 0;
+    font-style: normal;
+    font-weight: bold;
+    font-family: serif;
+    background-color: var(--text-secondary, #6b7280);
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    margin-top: 2px;
+}
+
+.info-modal-body p {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-primary, #374151);
+    line-height: 1.5;
+}
+
+.download-icon-link {
+    text-decoration: none;
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+}
+
+.download-icon-link:hover {
+    transform: scale(1.1);
+}
+
+        .btn-danger {
+            background-color: #fee2e2;
+            color: var(--danger-color);
+        }
+
+        .btn-danger:hover {
+            background-color: #fecaca;
+        }
+
+        .btn-tertiary {
+            background-color: #fee2e2;
+            color: var(--danger-color);
+            border-color: #fecaca;
+        }
+
+        .btn-tertiary:hover {
+            background-color: #fecaca;
+        }
+
+        /* Conteneur pour les courbes de charge */
+        #charge-curves-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .file-input-item {
+            background: var(--bg-modal);
+            padding: 1rem;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 0.5rem 1rem;
+            align-items: center;
+        }
+
+        .file-input-item label {
+            margin-bottom: 0.2rem;
+        }
+
+        .file-input-item input[type="text"] {
+            grid-column: 1 / 2;
+        }
+
+        .file-input-item .delete-btn {
+            justify-self: end;
+            grid-row: 1 / 2;
+            grid-column: 2 / 3;
+            padding: 0.3rem 0.6rem;
+        }
+
+        .file-input-item .file-picker-btn {
+            grid-column: 1 / 3;
+            width: 100%;
+        }
+
+        /* Style pour l'input PV */
+        #pv-input-group-content {
+            background: var(--bg-modal);
+            padding: 1rem;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        #pv-input-group-content .file-buttons {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        #pv-input-group-content .file-buttons>label,
+        #pv-input-group-content .file-buttons>button {
+            flex-grow: 1;
+            text-align: center;
+            padding: 0.6rem 0.8rem;
+            border-radius: var(--border-radius-md);
+        }
+
+        #pv-filename-display-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0.8rem;
+            border: 1px dashed var(--border-color);
+            border-radius: var(--border-radius-md);
+        }
+
+        #pv-filename-display {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex-grow: 1;
+        }
+
+        /* Poignée pour redimensionner la modale */
+        #resize-handle {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 15px;
+            height: 15px;
+            cursor: nwse-resize;
+            /* Curseur indiquant une redimension */
+            background-image: linear-gradient(135deg, transparent 40%, var(--border-color) 40%, var(--border-color) 60%, transparent 60%),
+                linear-gradient(135deg, transparent 70%, var(--border-color) 70%);
+            background-repeat: no-repeat;
+        }
+
+        /* Block de carte, Indicateurs de performance (KPIs)  Modif JJD*/
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            background-color: #0dcaf0;
+            border-radius: var(--border-radius-md);
+            padding: 0.75rem;
+            border: 1px solid #14509b;
+        }
+
+ /* Gestion style carte individuelle, Indicateurs de performance (KPIs)  Modif JJD*/
+        .stat-card {
+            background-color: #f3f4f6;
+            padding: 1.25rem;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+   /* Gestion style contenu carte individuelle, Indicateurs de performance (KPIs)  Modif JJD*/      
+        .stat-card .label {
+            font-size: 0.9rem;
+            color: orange;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            background-color: #eef1f3;
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--border-radius-md);
+        }
+
+        .stat-card .value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--accent-primary);
+        }
+
+        /* Tableau des résultats */
+        .table-header-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .table-header-controls h3 {
+            margin: 0;
+        }
+
+        .site-filter-container {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th,
+        td {
+            border: 1px solid var(--border-color);
+            padding: 0.75rem 1rem;
+            text-align: center;
+        }
+
+        th:first-child,
+        td:first-child {
+            text-align: left;
+        }
+
+        thead th {
+            background-color: var(--accent-primary);
+            color: white;
+            font-weight: 600;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: var(--bg-panel);
+        }
+
+        tbody tr.total-row {
+            font-weight: bold;
+        }
+
+        /* Section des graphiques */
+        .charts-container {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .main-chart-container {
+            position: relative;
+            height: 350px;
+            width: 100%;
+        }
+
+        #pie-charts-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        #pie-charts-header h3 {
+            margin: 0;
+        }
+
+        .pie-charts-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3rem;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* Assure la même taille aux camemberts en fixant le conteneur */
+        .chart-item {
+            /* Flex-basis et max-width assurent l'uniformité et le wrap si la place manque */
+            flex-basis: 300px;
+            max-width: 300px;
+            min-width: 250px;
+        }
+
+        .chart-item h3 {
+            text-align: center;
+            font-weight: 600;
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin: 0 0 0.5rem;
+            white-space: nowrap;
+        }
+
+        /* Correction pour centrer la zone de dessin du camembert et sa légende */
+        .chart-item>canvas {
+            display: block;
+            margin: 0 auto;
+        }
+
+        /* Section des filtres et exports */
+        .controls-section {
+            background: var(--bg-panel);
+            padding: 1rem;
+            border-radius: var(--border-radius-md);
+            border: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .filter-group,
+        .export-group {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+        }
+
+        .filter-group label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+        }
+
+        /* Loader et messages */
+        #loader {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid var(--accent-primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            z-index: 10;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        #message-area {
+            position: fixed;
+            bottom: 140px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: var(--text-primary);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 2000;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        #message-area.visible {
+            opacity: 1;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+
+        #message-area.error {
+            background-color: var(--danger-color);
+        }
+
+        /* Module Analyses Saisonnières */
+        .seasonal-analysis-container {
+            background-color: var(--bg-panel);
+            padding: 1.5rem;
+            border-radius: var(--border-radius-lg);
+            border: 1px solid var(--border-color);
+            margin-top: 1.5rem;
+        }
+
+        .seasonal-analysis-container h3 {
+            margin-top: 0;
+            color: var(--accent-primary);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .seasonal-analysis-container h4 {
+            color: var(--text-primary);
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .seasonal-tables-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        @media (max-width: 1024px) {
+            .seasonal-tables-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .table-card {
+            background: var(--bg-modal);
+            padding: 1rem;
+            border-radius: var(--border-radius-md);
+            box-shadow: var(--shadow-md);
+        }
+
+        /* Espacement pour séparer le tableau mensuel des saisonniers */
+        .mb-2 {
+            margin-bottom: 2rem;
+        }
+
+        .table-responsive {
+            overflow-x: auto;
+        }
+
+        .seasonal-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .seasonal-table th,
+        .seasonal-table td {
+            border: 1px solid var(--border-color);
+            padding: 0.5rem;
+            text-align: center;
+        }
+
+        .seasonal-table th {
+            background-color: var(--text-secondary);
+            color: white;
+            font-weight: 500;
+        }
+
+        .seasonal-table tbody tr:nth-child(even) {
+            background-color: var(--bg-page);
+        }
+
+/* NOUVEAU: Styles pour le tableau des hypothèses */
+.assumptions-table {
+    font-size: 0.9rem;
+}
+.assumptions-table th {
+    background-color: #f8f9fa;
+    color: var(--text-primary);
+    text-align: left;
+    width: 25%;
+    font-weight: 600;
+}
+.assumptions-table td {
+    text-align: right;
+    background-color: #fff;
+}
+.assumptions-table .table-subheader {
+    background-color: #e2e8f0;
+    text-align: center;
+    font-weight: 700;
+}
+/* Annule le fond alterné pour le tableau des participants qui est maintenant dans une carte blanche */
+#eco-participants-table tbody tr:nth-child(even) {
+    background-color: transparent;
+}
+
+        /* Style accentué pour la ligne Total du tableau Mensuel */
+        .seasonal-table tbody tr.total-row {
+            font-weight: 700;
+            background-color: #f1f5f9;
+        }
+
+/* NOUVEAU: Grille pour les résultats financiers du producteur */
+.financial-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr); /* Force une grille de 3 colonnes */
+    gap: 1rem;
+    margin-top: 1.5rem; /* Espace par rapport au tableau du dessus */
+}
+
+/* On réutilise le style des cartes KPI pour un design cohérent */
+.financial-stats-grid .stat-card {
+    background-color: var(--bg-modal); /* Fond blanc pour se démarquer */
+    border: 1px solid var(--border-color);
+    padding: 1rem; /* Padding un peu plus léger */
+}
+
+/* Styles pour le module de stockage intégré */
+.modal-category-title {
+    color: var(--accent-primary);
+    margin-top: 25px;
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    position: relative;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 8px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    color: var(--text-primary);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.section-box {
+    border: 1px solid var(--border-color);
+    padding: 15px;
+    border-radius: var(--border-radius-md);
+    margin-bottom: 20px;
+    background-color: #fdfdfd;
+}
+
+.section-box:not(.grid) {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+/* Force l'empilement vertical avec un espace aéré (lisibilité) */
+.vertical-stack {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2rem !important; /* Espacement accentué pour mieux respirer */
+}
+
+/* Force chaque composant (form-group) à s'isoler sur sa propre ligne et s'aligner à gauche */
+.vertical-stack .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: flex-start; /* Alignement strict à gauche */
+    width: 100%;
+}
+
+.section-box input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    background-color: #f9fafb;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+    box-sizing: border-box;
+}
+
+.section-box input:focus {
+    border-color: var(--accent-primary);
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15);
+    outline: none;
+}
+
+.radio-group {
+    display: flex;
+    gap: 20px;
+    margin-top: 5px;
+    font-size: 0.9em;
+}
+
+.time-selector {
+    display: flex;
+    width: 100%;
+    height: 30px;
+    border: 1px solid #ccc;
+    border-radius: var(--border-radius-md);
+    overflow: hidden;
+    cursor: pointer;
+    margin-top: 5px;
+}
+
+.time-segment {
+    flex: 1;
+    background-color: #eee;
+    border-right: 1px solid #fff;
+    height: 30px;
+    transition: background-color 0.1s;
+}
+
+.time-segment:last-child {
+    border-right: none;
+}
+
+.time-segment.selected {
+    background-color: var(--accent-primary);
+}
+
+/* Styles pour le modal de stockage (superposé) */
+#storage-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Correction: Fond semi-transparent */
+    pointer-events: none;
+    z-index: 1001; /* Au-dessus du contenu de app-modal */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+#storage-modal-content {
+    background: var(--bg-modal);
+    border-radius: var(--border-radius-lg);
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--border-color);
+    width: 100%;
+    max-width: 1100px;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    animation: fadeIn 0.3s ease-out;
+}
+
+/* Correction: Rétablir les événements de la souris sur le contenu du modal */
+.modal-overlay > .storage-modal-content {
+    pointer-events: auto;
+}
+
+/* Finition pour le modal économique : fond blanc unifié */
+#economic-params-modal .storage-modal-body,
+#economic-params-modal .storage-modal-footer {
+    background-color: var(--bg-modal); /* --bg-modal est #ffffff */
+}
+
+
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.storage-modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.25rem 2.5rem;
+    background-color: var(--accent-primary);
+    border-bottom: 1px solid var(--accent-primary);
+    border-top-left-radius: var(--border-radius-lg);
+    border-top-right-radius: var(--border-radius-lg);
+}
+
+.storage-modal-header h2 {
+    color: white;
+    margin: 0;
+}
+
+.storage-modal-header .close-btn {
+    background: none;
+    border: none;
+    font-size: 1.75rem;
+    cursor: pointer;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.storage-modal-header .close-btn:hover {
+    color: white;
+}
+
+.storage-modal-body {
+    padding: 1.5rem 2.5rem 2.5rem 2.5rem;
+    overflow-y: auto;
+}
+
+.storage-modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 1rem;
+    padding: 1rem 2.5rem;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--bg-panel);
+}
+
+.results-table th {
+    background-color: var(--text-secondary);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.results-table td:first-child {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+/* Encapsulation : Alignement Flexbox précis pour les boutons radio dans le module de stockage */
+#storage-modal-content .section-box label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+#storage-modal-content .section-box input[type="radio"] {
+    width: auto;
+    margin: 0;
+}
+
+/* Correction pour le modal économique qui doit passer par-dessus le modal principal */
+#economic-params-modal {
+    z-index: 1002; /* Doit être supérieur au z-index de #storage-modal-overlay (1001) et #app-modal (1000) */
+    pointer-events: auto; /* Permet les clics sur le fond semi-transparent pour une future fermeture */
+}
+
+/* NOUVEAU: Styles pour le modal d'analyse financière avancée */
+#advanced-economic-modal {
+    z-index: 1002; /* Doit être supérieur au modal de stockage mais inférieur au modal PVGIS */
+    pointer-events: auto;
+}
+
+/* Modal PVGIS : superposé au modal principal, sans fond assombri (pas de backdrop) */
+#pvgis-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
+    pointer-events: none;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+}
+
+/* Modal de personnalisation du tableau de bord */
+#dashboard-modal {
+    z-index: 1003;
+    pointer-events: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+#dashboard-modal .storage-modal-content {
+    background-color: #ffffff;
+    pointer-events: auto;
+}
+
+/* NOUVEAU: Styles pour le contenu du modal financier */
+#advanced-economic-modal .storage-modal-content {
+    max-width: 1400px; /* Rendre le modal plus large */
+    border: 2px solid var(--accent-primary);
+}
+
+#advanced-economic-modal .storage-modal-body,
+#advanced-economic-modal .storage-modal-footer {
+    background-color: var(--bg-modal); /* Fond blanc unifié */
+}
+
+/* Style moderne pour les inputs dans le modal économique */
+.eco-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    box-sizing: border-box;
+    background-color: #f9fafb;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.eco-input:focus {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+    outline: none;
+    background-color: #fff;
+}
+
+/* NOUVEAU: Grille pour la mise en page en 2 colonnes */
+.advanced-eco-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem 2.5rem; /* Espace vertical et horizontal */
+}
+
+/* NOUVEAU: Ajustement pour la section des tarifs par profil */
+#eco-profiles-container.grid {
+    /* On réduit la largeur minimale pour permettre à plus d'éléments de tenir sur une ligne */
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem; /* Réduire l'espacement pour compacter */
+}
+
+#eco-profiles-container .form-group .input-pair {
+    display: flex;
+    flex-direction: column; /* Empile les champs verticalement */
+    gap: 0.5rem; /* Espace entre les deux champs */
+}
+
+/* NOUVEAU: Centrer le label du profil au-dessus de ses champs */
+#eco-profiles-container .form-group > label {
+    text-align: center;
+}
+
+/* =====================================================================
+   STYLES SPÉCIFIQUES À L'AUTOCONSOMMATION COLLECTIVE (ACC)
+===================================================================== */
+
+/* Conteneur stylisé pour les sections de paramètres ACC */
+.acc-keys-section-container {
+    padding: 1.25rem;
+    background-color: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+/* Ligne pour chaque consommateur */
+.acc-key-input-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.acc-key-label {
+    flex: 1;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+/* Wrapper pour l'input et le symbole % */
+.acc-key-input-wrapper {
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius-md);
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.acc-key-input-wrapper:focus-within {
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+}
+
+.acc-key-input-wrapper input.acc-key-input {
+    border: none;
+    outline: none;
+    background: transparent;
+    width: 60px; /* Réduction de la largeur du champ de saisie */
+    text-align: right;
+    padding: 0.5rem 0.2rem 0.5rem 0.8rem;
+}
+
+.acc-key-input-wrapper span {
+    padding-right: 0.8rem;
+    color: var(--text-secondary);
+}
+
+/* NOUVEAU: Styles pour les graphiques P50/P90 */
+.p50-p90-charts-grid {
+    display: grid;
+    grid-template-columns: 1fr; /* Un seul graphique pleine largeur */
+    gap: 1.5rem;
+}
+
+.chart-item-full {
+    background-color: var(--bg-modal);
+    padding: 1.5rem;
+    border-radius: var(--border-radius-md);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-md);
+}
+
+.chart-item-full h3 {
+    text-align: center;
+    margin: 0 0 1rem 0;
+}
+
+/* NOUVEAU: Styles pour le glisser-déposer */
+.drag-handle {
+    cursor: grab;
+    text-align: center;
+    color: var(--text-secondary);
+    user-select: none; /* Empêche la sélection du texte '☰' */
+}
+
+tr.dragging {
+    opacity: 0.7;
+    background-color: #eef2ff; /* Couleur de fond pendant le déplacement */
+    border: 2px dashed var(--accent-primary);
+    display: table; /* Empêche la ligne de s'effondrer */
+    width: 100%;
+}
+/* Modales ACC "Paramètres économiques", "Analyse financière avancée" et "Tableau de bord" : affichées
+   à droite du modal principal (éléments flex du body, cf. body { display: flex; height: 100vh }).
+   Sans limite de hauteur, une modale plus haute que l'écran débordait au-dessus de la page (en-tête
+   inaccessible, centrage vertical) et faisait défiler toute la page, modal principal compris.
+   Hauteur bornée à l'écran, ancrée en haut : en-tête/pied toujours visibles, seul le corps défile. */
+#economic-params-modal,
+#advanced-economic-modal,
+#dashboard-modal {
+    align-self: stretch;
+    height: 100vh;
+    max-height: 100vh;
+    box-sizing: border-box;
+    align-items: flex-start;
+    overflow: hidden;
+    overscroll-behavior: contain;
+}
+
+#economic-params-modal > .storage-modal-content,
+#advanced-economic-modal > .storage-modal-content,
+#dashboard-modal > .storage-modal-content {
+    display: flex;
+    flex-direction: column;
+    max-height: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+#economic-params-modal .storage-modal-header,
+#advanced-economic-modal .storage-modal-header,
+#dashboard-modal .storage-modal-header,
+#economic-params-modal .storage-modal-footer,
+#advanced-economic-modal .storage-modal-footer,
+#dashboard-modal .storage-modal-footer {
+    flex-shrink: 0;
+}
+
+#economic-params-modal .storage-modal-body,
+#advanced-economic-modal .storage-modal-body,
+#dashboard-modal .storage-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}

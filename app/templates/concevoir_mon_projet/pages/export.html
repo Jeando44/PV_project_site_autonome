@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    {% include 'concevoir_mon_projet/components/headLinks.html' %}
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion d'impression de projet</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+     crossorigin=""/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='concevoir_mon_projet/CSS/Impression.css') }}">
+</head>
+<body>
+    {% include 'concevoir_mon_projet/components/menu_list.html' %}
+    {% include 'concevoir_mon_projet/pages/parametre.html' %}
+
+    <div class="impression-page">
+        <div class="main-wrapper">
+            <div class="left-panel">
+            <h2>Résumé et localisation projet</h2>
+            <div id="report-summary">
+                <p>Ce projet concerne la construction d’une centrale photovoltaïque en toiture d’un bâtiment agricole. L’électricité produite par cette centrale sera valorisée en autoconsommation individuelle…</p>
+                <p>
+                    <b>Calepinage et productible :</b><br>
+                    Nbre de PV : 165<br>
+                    Référence PV : XXX<br>
+                    Système d’intégration : YY<br>
+                    P_totale projet :^82.33 kWc<br>
+                    Surface totale projetée : 329.69 m²<br>
+                    Production P50 année 1 : 94.64 MWh<br>
+                    Productible spécifique (P50/P90) : 1149.47 / 110 kWh/kWc/an.
+                </p>
+                <p>
+                    <b>Dimensionnement électrique :</b><br>
+                    Nbre d’onduleurs : 2<br>
+                    Référence onduleurs : SSSSS<br>
+                    P_injection : 150 kVA.
+                </p>
+                <p>
+                    <b>Rentabilité :</b><br>
+                    Capex projet : 400 k€<br>
+                    Opex projet : 2 k€/an<br>
+                    TRI=8%, VAN=45 k€<br>
+                    Facture évitée : 500 k€.
+                </p>
+            </div>
+            <div id="map"></div>
+        </div>
+
+        <div class="container">
+            <h1>Impression des documents du projet</h1>
+
+            <div class="controls">
+                <label class="select-all-label">
+                    <input type="checkbox" id="select-all">
+                    Tout sélectionner
+                </label>
+                <div class="action-buttons">
+                    <button id="print-button" class="btn btn-print">🖨️ Imprimer la sélection</button>
+                    <button id="share-button" class="btn btn-share">🔗 Générer un lien de partage</button>
+                </div>
+            </div>
+
+            <ul id="document-list">
+                </ul>
+
+            <div id="share-link-container">
+                <p>Lien de partage généré :</p>
+                <code id="share-link"></code>
+            </div>
+        </div>
+        </div> <!-- Fin de main-wrapper -->
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+     crossorigin=""></script>
+     
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const documents = [
+                { id: 'garde', title: 'Page de garde du rapport', url: '#' },
+                { id: 'presentation', title: 'Synthèse du projet', url: '#' },
+                { id: 'presentation', title: 'Présentation du projet', url: '#' },
+                { id: 'contraintes', title: 'Contraintes d’urbanisme, spécifiques et hypothèses de conception', url: '#' },
+                { id: 'calepinage', title: 'Calepinage et implantation du projet', url: '#' },
+                { id: 'donnees', title: 'Tableau de données de calepinage et géométrie', url: '#' },
+                { id: 'productible', title: 'Analyse de productible', url: '#' },
+                { id: 'geometrie', title: 'Géométrie de la structure', url: '#' },
+                { id: 'dimensionnement', title: 'Dimensionnement électrique', url: '#' },
+                { id: 'economique', title: 'Analyse économique', url: '#' },
+                { id: 'materiels', title: 'Liste de matériels', url: '#' },
+                { id: 'annexes', title: 'Annexes (plans) :', url: '#', isHeader: true },
+                { id: 'plan_calepinage', title: 'Plan de calepinage', url: '#', isAnnexe: true },
+                { id: 'plan_masse', title: 'Plan de masse projet', url: '#', isAnnexe: true },
+                { id: 'plan_coupe', title: 'Plan coupe projet', url: '#', isAnnexe: true },
+                { id: 'synoptique', title: 'Synoptique projet', url: '#', isAnnexe: true },
+                { id: 'glossaire', title: 'Glossaire', url: '#' }
+            ];
+
+            const docList = document.getElementById('document-list');
+            
+            // Génération de la liste des documents
+            documents.forEach(doc => {
+                const li = document.createElement('li');
+                
+                if (!doc.isHeader) {
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.id = doc.id;
+                    checkbox.className = 'doc-checkbox';
+                    li.appendChild(checkbox);
+                }
+
+                const title = document.createElement('span');
+                title.className = 'doc-title';
+                title.textContent = doc.title;
+                li.appendChild(title);
+
+                if (doc.isAnnexe) {
+                    li.classList.add('annexe-item');
+                }
+                
+                if (!doc.isHeader) {
+                    const link = document.createElement('a');
+                    link.href = doc.url;
+                    link.className = 'doc-link';
+                    link.textContent = 'Ouvrir';
+                    link.target = '_blank';
+                    li.appendChild(link);
+                } else {
+                    // Pour que le titre de section prenne toute la largeur
+                    li.style.gridColumn = "1 / -1";
+                }
+
+                docList.appendChild(li);
+            });
+            
+            const selectAllCheckbox = document.getElementById('select-all');
+            const docCheckboxes = document.querySelectorAll('.doc-checkbox');
+            const printButton = document.getElementById('print-button');
+            const shareButton = document.getElementById('share-button');
+            const shareLinkContainer = document.getElementById('share-link-container');
+            const shareLinkElement = document.getElementById('share-link');
+
+            // Fonctionnalité "Tout sélectionner"
+            selectAllCheckbox.addEventListener('change', function() {
+                docCheckboxes.forEach(checkbox => {
+                    checkbox.checked = this.checked;
+                });
+            });
+
+            // Fonctionnalité d'impression
+            printButton.addEventListener('click', function() {
+                const selectedDocs = Array.from(docCheckboxes)
+                                          .filter(checkbox => checkbox.checked)
+                                          .map(checkbox => checkbox.id);
+                
+                if (selectedDocs.length === 0) {
+                    alert('Veuillez sélectionner au moins un document à imprimer.');
+                    return;
+                }
+
+                selectedDocs.forEach(docId => {
+                    const docToPrint = documents.find(d => d.id === docId);
+                    if (docToPrint && docToPrint.url !== '#') {
+                        const printWindow = window.open(docToPrint.url, '_blank');
+                        printWindow.onload = function() {
+                           printWindow.print();
+                        };
+                    } else {
+                        console.warn(`URL non définie pour le document: ${docId}`);
+                    }
+                });
+            });
+
+            // Fonctionnalité de partage
+            shareButton.addEventListener('click', function() {
+                const selectedDocs = Array.from(docCheckboxes)
+                                          .filter(checkbox => checkbox.checked)
+                                          .map(checkbox => checkbox.id);
+                
+                if (selectedDocs.length === 0) {
+                    alert('Veuillez sélectionner au moins un document pour créer un lien de partage.');
+                    return;
+                }
+
+                const baseUrl = window.location.href.split('?')[0];
+                const shareUrl = `${baseUrl}?select=${selectedDocs.join(',')}`;
+
+                shareLinkElement.textContent = shareUrl;
+                // Le conteneur de lien partagé doit être dans la grille pour s'afficher correctement
+                docList.appendChild(shareLinkContainer);
+                shareLinkContainer.style.display = 'block';
+                
+                navigator.clipboard.writeText(shareUrl).then(() => {
+                    alert('Le lien de partage a été copié dans le presse-papiers !');
+                }).catch(err => {
+                    console.error('Erreur lors de la copie du lien: ', err);
+                });
+            });
+            
+            // Vérifier les paramètres de l'URL au chargement de la page
+            const urlParams = new URLSearchParams(window.location.search);
+            const selectedFromUrl = urlParams.get('select');
+            
+            if (selectedFromUrl) {
+                const selectedIds = selectedFromUrl.split(',');
+                selectedIds.forEach(id => {
+                    const checkbox = document.getElementById(id);
+                    if (checkbox) {
+                        checkbox.checked = true;
+                    }
+                });
+            }
+
+            // Initialisation de la carte OpenStreetMap
+            // Coordonnées centrées sur Paris, France
+            const map = L.map('map').setView([48.8566, 2.3522], 12);
+
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+
+            // Ajout d'un marqueur
+            L.marker([48.8566, 2.3522]).addTo(map)
+                .bindPopup('Emplacement du projet.')
+                .openPopup();
+        });
+    </script>
+
+        <!-- Scripts JavaScript nécessaires pour les dépendances -->
+        <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+        <!-- Script d'initialisation de la carte pour le modal paramètres -->
+        <script type="module" src="{{ url_for('static', filename='concevoir_mon_projet/javascript/parametreProjetMap/initialisationMap.js') }}?v=33"></script>
+
+        <!-- MODAL GEOMETRIE -->
+        <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/geometrieModal.js') }}"></script>
+    </div> <!-- Fin de impression-page -->
+
+    {% include 'concevoir_mon_projet/components/page_navigation.html' %}
+</body>
+</html>

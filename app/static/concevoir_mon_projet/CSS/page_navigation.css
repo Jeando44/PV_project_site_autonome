@@ -1,0 +1,210 @@
+/* Navigation flottante Suivant/Précédent */
+.page-navigator {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: linear-gradient(135deg, #de0000 0%, #C00000 100%);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    z-index: 9999;
+    min-width: 280px;
+    max-width: 320px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: default;
+    user-select: none;
+    display: flex;
+    flex-direction: column-reverse;
+}
+
+.page-navigator:hover {
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+/* Header du navigateur */
+.navigator-header {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: 0 0 12px 12px;
+    cursor: move;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.navigator-handle {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 14px;
+    margin-right: 8px;
+    cursor: move;
+    transition: color 0.2s;
+}
+
+.navigator-header:hover .navigator-handle {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.navigator-title {
+    flex: 1;
+    color: #ffffff;
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.3px;
+}
+
+.navigator-toggle {
+    background: none;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 6px;
+    transition: all 0.2s;
+    font-size: 12px;
+}
+
+.navigator-toggle:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.navigator-toggle i {
+    transition: transform 0.3s;
+}
+
+/* Body du navigateur */
+.navigator-body {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px;
+    gap: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    max-height: 200px;
+    opacity: 1;
+}
+
+/* État minimisé */
+.page-navigator.minimized .navigator-body {
+    max-height: 0;
+    padding: 0 16px;
+    opacity: 0;
+}
+
+.page-navigator.minimized .navigator-toggle i {
+    transform: rotate(180deg);
+}
+
+/* Boutons de navigation */
+.nav-btn {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px 16px;
+    background: rgba(255, 255, 255, 0.95);
+    border: none;
+    border-radius: 8px;
+    color: #313131;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+    overflow: hidden;
+}
+
+.nav-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, transparent 0%, rgba(0, 90, 156, 0.1) 100%);
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.nav-btn:hover::before {
+    opacity: 1;
+}
+
+.nav-btn:hover {
+    background: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.nav-btn:active {
+    transform: translateY(0);
+}
+
+.nav-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.nav-btn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.nav-btn i {
+    font-size: 14px;
+}
+
+.nav-separator {
+    color: rgba(255, 255, 255, 0.4);
+    font-weight: 300;
+    font-size: 18px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-navigator {
+        bottom: 20px;
+        right: 20px;
+        min-width: 240px;
+    }
+
+    .nav-text {
+        display: none;
+    }
+
+    .nav-btn {
+        padding: 12px;
+    }
+
+    .nav-separator {
+        display: none;
+    }
+}
+
+/* Animation de dragging */
+.page-navigator.dragging {
+    opacity: 0.9;
+    cursor: move;
+    transition: opacity 0.2s;
+}
+
+/* Effet au survol du header */
+.navigator-header:active {
+    cursor: grabbing;
+}
+
+/* Indicateurs de modaux */
+.modal-indicators {
+    width: 100%;
+    padding-top: 8px;
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.modal-indicators small {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 11px;
+    text-align: center;
+    display: block;
+    line-height: 1.3;
+}

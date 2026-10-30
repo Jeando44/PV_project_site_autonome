@@ -1,0 +1,122 @@
+{# En-tête unifiée pour tous les modals #}
+{# À inclure avec: {% include 'concevoir_mon_projet/components/modal_header_unified.html' %} #}
+{# Paramètres attendus: modal_title (requis), show_toggle (optionnel), show_reset (optionnel) #}
+
+<link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/modalHeaderCommon.css">
+
+<div id="modal-header">
+    <h2>{{ modal_title|default('Modal') }}</h2>
+    <div class="flex items-center space-x-2">
+        {% if show_toggle|default(true) %}
+        <button id="toggle-form-btn" class="modal-header-btn" title="Afficher/Masquer le formulaire">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 19.5l-7.5-7.5 7.5-7.5" />
+            </svg>
+        </button>
+        {% endif %}
+
+        {% if show_reset|default(true) %}
+        <button id="reset-modal-btn" class="modal-header-btn" title="Réinitialiser la position et la taille">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m4.5 11.25h-4.5m4.5 0v-4.5m0 .001L15 15" />
+            </svg>
+        </button>
+        {% endif %}
+
+        <button id="close-modal-btn" class="modal-header-btn" title="Fermer">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+</div>
+
+<script>
+// Script pour gérer les boutons de l'en-tête
+(function() {
+    const toggleBtn = document.getElementById('toggle-form-btn');
+    const resetBtn = document.getElementById('reset-modal-btn');
+    const closeBtn = document.getElementById('close-modal-btn');
+    const modal = document.getElementById('app-modal') || document.querySelector('.modal');
+
+    // Toggle formulaire
+    if (toggleBtn && modal) {
+        toggleBtn.addEventListener('click', function() {
+            modal.classList.toggle('form-hidden');
+        });
+    }
+
+    // Reset position et taille
+    if (resetBtn && modal) {
+        resetBtn.addEventListener('click', function() {
+            modal.style.width = 'var(--modal-default-width, 90vw)';
+            modal.style.height = 'var(--modal-default-height, 90vh)';
+            modal.style.top = '50%';
+            modal.style.left = '50%';
+            modal.style.transform = 'translate(-50%, -50%)';
+        });
+    }
+
+    // Fermer le modal
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            // Essayer différentes méthodes de fermeture
+            if (window.parent && window.parent !== window) {
+                // Si dans une iframe, envoyer message au parent
+                window.parent.postMessage({ action: 'closeModal' }, '*');
+            } else if (modal) {
+                // Sinon masquer le modal
+                modal.style.display = 'none';
+                const overlay = document.getElementById('modal-overlay');
+                if (overlay) overlay.style.display = 'none';
+            } else {
+                // En dernier recours, rediriger
+                window.location.href = {{ (parcours_projet.url_accueil if parcours_projet else '/concevoir_mon_projet/')|tojson }};
+            }
+        });
+    }
+
+    // Rendre le modal draggable
+    if (modal) {
+        const header = document.getElementById('modal-header');
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+
+        if (header) {
+            header.addEventListener('mousedown', dragStart);
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('mouseup', dragEnd);
+        }
+
+        function dragStart(e) {
+            if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+
+            initialX = e.clientX - (modal.offsetLeft || 0);
+            initialY = e.clientY - (modal.offsetTop || 0);
+
+            if (e.target === header || header.contains(e.target)) {
+                isDragging = true;
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                modal.style.left = currentX + 'px';
+                modal.style.top = currentY + 'px';
+                modal.style.transform = 'none';
+            }
+        }
+
+        function dragEnd(e) {
+            isDragging = false;
+        }
+    }
+})();
+</script>

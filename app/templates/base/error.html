@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Erreur - Accès refusé</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: rgb(238, 239, 240);
+            --secondary: #de0000;
+            --accent: #1a1a1a;
+            --text: #333333;
+            --light: #ffffff;
+            --gray: #e0e0e0;
+            --shadow: rgba(0, 0, 0, 0.1);
+            --border-radius: 8px;
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--primary);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Animation de fond */
+        body::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(222, 0, 0, 0.05) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: moveBackground 20s linear infinite;
+        }
+
+        @keyframes moveBackground {
+            0% {
+                transform: translate(0, 0);
+            }
+            100% {
+                transform: translate(50px, 50px);
+            }
+        }
+
+        .error-container {
+            background: var(--light);
+            border-radius: var(--border-radius);
+            box-shadow: 0 10px 40px var(--shadow);
+            max-width: 600px;
+            width: 100%;
+            padding: 60px 40px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .error-icon {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, var(--secondary) 0%, #a00000 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 30px;
+            box-shadow: 0 8px 20px rgba(222, 0, 0, 0.3);
+            animation: pulse 2s ease-in-out infinite;
+            position: relative;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                box-shadow: 0 8px 20px rgba(222, 0, 0, 0.3);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 12px 30px rgba(222, 0, 0, 0.4);
+            }
+        }
+
+        .error-icon::before {
+            content: '';
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            border: 3px solid var(--secondary);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: ripple 2s ease-out infinite;
+        }
+
+        @keyframes ripple {
+            0% {
+                transform: scale(1);
+                opacity: 0.3;
+            }
+            100% {
+                transform: scale(1.5);
+                opacity: 0;
+            }
+        }
+
+        .error-icon i {
+            font-size: 60px;
+            color: var(--light);
+        }
+
+        .error-code {
+            font-size: 72px;
+            font-weight: 800;
+            color: var(--accent);
+            margin-bottom: 10px;
+            line-height: 1;
+            text-shadow: 2px 2px 4px var(--shadow);
+        }
+
+        .error-title {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--secondary);
+            margin-bottom: 20px;
+        }
+
+        .error-message {
+            font-size: 16px;
+            color: var(--text);
+            line-height: 1.6;
+            margin-bottom: 40px;
+            padding: 0 20px;
+        }
+
+        .error-details {
+            background: var(--primary);
+            border-left: 4px solid var(--secondary);
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+            border-radius: var(--border-radius);
+        }
+
+        .error-details-title {
+            font-weight: 600;
+            color: var(--accent);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .error-details-text {
+            color: var(--text);
+            font-size: 14px;
+            line-height: 1.6;
+            font-family: 'Courier New', monospace;
+            word-break: break-word;
+        }
+
+        .actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-primary {
+            background: var(--secondary);
+            color: var(--light);
+            box-shadow: 0 4px 15px rgba(222, 0, 0, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: #c00000;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(222, 0, 0, 0.4);
+        }
+
+        .btn-secondary {
+            background: var(--accent);
+            color: var(--light);
+            box-shadow: 0 4px 15px rgba(26, 26, 26, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: #2a2a2a;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(26, 26, 26, 0.3);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text);
+            border: 2px solid var(--gray);
+        }
+
+        .btn-outline:hover {
+            background: var(--gray);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .help-text {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid var(--gray);
+            font-size: 14px;
+            color: var(--text);
+        }
+
+        .help-text i {
+            color: var(--secondary);
+            margin-right: 5px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .error-container {
+                padding: 40px 20px;
+            }
+
+            .error-code {
+                font-size: 56px;
+            }
+
+            .error-title {
+                font-size: 24px;
+            }
+
+            .error-icon {
+                width: 100px;
+                height: 100px;
+            }
+
+            .error-icon i {
+                font-size: 50px;
+            }
+
+            .actions {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Animation pour les boutons */
+        .btn i {
+            transition: var(--transition);
+        }
+
+        .btn:hover i {
+            transform: translateX(5px);
+        }
+
+        .btn-outline:hover i {
+            transform: scale(1.2);
+        }
+
+        /* Effet de survol sur le conteneur */
+        .error-container:hover {
+            box-shadow: 0 15px 50px var(--shadow);
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">
+            <i class="fas {{ error_icon if error_icon else 'fa-lock' }}"></i>
+        </div>
+
+        <div class="error-code">{{ error_code if error_code else 403 }}</div>
+        <h1 class="error-title">{{ error_title if error_title else 'Accès Refusé' }}</h1>
+        
+        <p class="error-message">
+            {{ error_message if error_message else 'Désolé, vous n\'avez pas les permissions nécessaires pour accéder à cette ressource.' }}
+        </p>
+
+        {% if error %}
+        <div class="error-details">
+            <div class="error-details-title">
+                <i class="fas fa-info-circle"></i>
+                Détails de l'erreur
+            </div>
+            <div class="error-details-text">
+                {{ error }}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="actions">
+            <a href="javascript:history.back()" class="btn btn-outline">
+                <i class="fas fa-arrow-left"></i>
+                Retour
+            </a>
+            <a href="{{ main_app_url if main_app_url else '/' }}" class="btn btn-secondary">
+                <i class="fas fa-home"></i>
+                Accueil
+            </a>
+            <a href="mailto:etudes@solakvan.com" class="btn btn-primary">
+                <i class="fas fa-envelope"></i>
+                Contacter le support
+            </a>
+        </div>
+
+        <div class="help-text">
+            <i class="fas fa-question-circle"></i>
+            <strong>Besoin d'aide ?</strong><br>
+            Si vous pensez qu'il s'agit d'une erreur, veuillez contacter votre administrateur système.
+        </div>
+    </div>
+
+    <script>
+        // Animation au chargement
+        document.addEventListener('DOMContentLoaded', () => {
+            // Ajouter un effet de shake à l'icône
+            const icon = document.querySelector('.error-icon');
+            setTimeout(() => {
+                icon.style.animation = 'pulse 2s ease-in-out infinite, shake 0.5s ease-in-out';
+            }, 500);
+        });
+
+        // Animation shake
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0) scale(1); }
+                25% { transform: translateX(-10px) scale(1.05); }
+                75% { transform: translateX(10px) scale(1.05); }
+            }
+        `;
+        document.head.appendChild(style);
+
+        // Copier le message d'erreur au clic
+        const errorDetails = document.querySelector('.error-details-text');
+        if (errorDetails) {
+            errorDetails.style.cursor = 'pointer';
+            errorDetails.title = 'Cliquer pour copier';
+            
+            errorDetails.addEventListener('click', () => {
+                navigator.clipboard.writeText(errorDetails.textContent.trim());
+                
+                // Feedback visuel
+                const originalBg = errorDetails.style.background;
+                errorDetails.style.background = 'rgba(222, 0, 0, 0.1)';
+                
+                setTimeout(() => {
+                    errorDetails.style.background = originalBg;
+                }, 200);
+                
+                // Notification
+                showNotification('Message d\'erreur copié !');
+            });
+        }
+
+        // Fonction de notification
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.textContent = message;
+            notification.style.cssText = `
+                position: fixed;
+                bottom: 30px;
+                right: 30px;
+                background: var(--accent);
+                color: var(--light);
+                padding: 15px 25px;
+                border-radius: var(--border-radius);
+                box-shadow: 0 4px 15px var(--shadow);
+                z-index: 1000;
+                animation: slideInRight 0.3s ease-out;
+            `;
+            
+            document.body.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.style.animation = 'slideOutRight 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }, 2000);
+        }
+
+        // Animations supplémentaires
+        const slideInRight = document.createElement('style');
+        slideInRight.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOutRight {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(slideInRight);
+    </script>
+</body>
+</html>

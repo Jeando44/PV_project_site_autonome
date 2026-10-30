@@ -1,0 +1,1265 @@
+<link href='https://unpkg.com/boxicons@2.1.1/css/boxicons.min.css' rel='stylesheet'>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+<link href='/static/concevoir_mon_projet/CSS/Menu.css?v=2' rel='stylesheet'>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<!-- Données de permissions pour JavaScript -->
+<div id="permissions-data" data-permissions='{{ user_permissions|tojson if user_permissions else "[]" }}'
+  data-is-admin="{{ 'true' if is_admin else 'false' }}" style="display: none;"></div>
+
+<div class="MENU">
+  <div class="sidebar">
+    <div class="navbar-brand">
+      <a href="{{ url_for('main.index') }}" aria-label="Accueil Socalts">
+        <img class="m-1" src="{{ url_for('static', filename='concevoir_mon_projet/medias/icons/LogoSocalts.png') }}"
+          width="" alt="Solakvan - Solutions d'énergie solaire">
+      </a>
+    </div>
+    <div class="logo-details">
+      <center>
+        <div class="logo_name">Socalts</div>
+      </center>
+      <i class="bx bx-menu" id="btn"></i>
+    </div>
+    <ul class="nav-list">
+      {% if request.path == '/concevoir_mon_projet/systeme' %}
+      <!-- Menu spécifique à la page Système -->
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-show"></i>
+          <span class="links_name">Vue calep...</span>
+        </a>
+        <span class="tooltip">Vue de calepinage</span>
+      </li>
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-table"></i>
+          <span class="links_name">Données calep...</span>
+        </a>
+        <span class="tooltip">Données calepinage</span>
+      </li>
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-git-branch"></i>
+          <span class="links_name">Chaines PV</span>
+        </a>
+        <span class="tooltip">Tableau des chaines PV</span>
+      </li>
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-plug"></i>
+          <span class="links_name">Câble AC</span>
+        </a>
+        <span class="tooltip">Dimensionnement câble AC</span>
+      </li>
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-transfer-alt"></i>
+          <span class="links_name">HTA/BT</span>
+        </a>
+        <span class="tooltip">Poste de transformation HTA/BT</span>
+      </li>
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-network-chart"></i>
+          <span class="links_name">Réseaux...</span>
+        </a>
+        <span class="tooltip">Réseaux & CDC</span>
+      </li>
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-sitemap"></i>
+          <span class="links_name">Schéma...</span>
+        </a>
+        <span class="tooltip">Schéma unifilaire</span>
+      </li>
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-package"></i>
+          <span class="links_name">Liste...</span>
+        </a>
+        <span class="tooltip">Liste de matériels</span>
+      </li>
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-category"></i>
+          <span class="links_name">Autres</span>
+        </a>
+        <span class="tooltip">Autres</span>
+      </li>
+      {% else %}
+      <!-- Menu général pour toutes les autres pages -->
+      <li>
+        <!-- CORRECTIF (demande explicite) : href="" (chaîne vide) navigue vers l'URL courante — un
+             rechargement plein page de la page Calepinage, perçu comme "renvoie sur la page
+             Calepinage" — sans jamais laisser sauvegarder() (MesProjetsModal.js) agir. Ce lien doit
+             désormais ouvrir le modal "Mes projets" (même bouton que le menu horizontal). -->
+        <a class="nav-item nav-link" href="#" onclick="document.getElementById('open-modal').click(); return false;">
+          <i class="bx bx-task"></i>
+          <span class="links_name">Mes projets</span>
+        </a>
+        <span class="tooltip">Suivre mes projets</span>
+      </li>
+      <li id="les_reglements">
+        <a class="nav-item nav-link" href="#">
+          <i class="bi bi-book"></i>
+          <span class="links_name">Règlementation</span>
+        </a>
+        <span class="tooltip">Règlementation</span>
+      </li>
+      <li class="menu-item-hidden">
+        <a class="nav-item nav-link" href="#" id="bd-materiels-link" onclick="openBDMateriels(event)">
+          <i class="bi bi-ev-front"></i>
+          <span class="links_name">IRVE-Autoconsommation</span>
+        </a>
+        <span class="tooltip">IRVE-Autoconsommation</span>
+      </li>
+
+
+      <li class="menu-item-hidden">
+        <a class="nav-item nav-link" href="#" id="prestations-link" onclick="return false;">
+          <i class="bx bx-bar-chart-alt"></i>
+          <span class="links_name">Autoconsommation</span>
+        </a>
+        <span class="tooltip">Autoconsommation</span>
+      </li>
+
+
+      
+
+      <li id="etudes-economiques-item" class="menu-item-hidden">
+        <a class="nav-item nav-link" href="#" id="etudes-economiques-link"
+          onclick="openEtudesEconomiqueModal(); return false;">
+          <i class="bx bx-dollar"></i>
+          <span class="links_name">Analyse Eco.</span>
+        </a>
+        <span class="tooltip">Analyse économique</span>
+      </li>
+
+      <li class="menu-item-hidden">
+        <a class="nav-item nav-link" href="#" id="pre-etudes-link" onclick="openPreEtudes(event)">
+          <i class="bx bx-search-alt"></i>
+          <span class="links_name">Geocoding</span>
+        </a>
+        <span class="tooltip">Geocoding</span>
+      </li>
+      <li{{ ' class="skv-masque-parcours"'|safe if 'loi_aper' in parcours_projet.masquer }}>
+        <a class="nav-item nav-link" href="#" onclick="openLoiAperModal(); return false;">
+          <i class="bi bi-calculator"></i>
+          <span class="links_name">Calculateur APER</span>
+        </a>
+        <span class="tooltip"> Calculateur APER</span>
+      </li>
+
+      <!-- <li>
+        <a class="nav-item nav-link" href="#" id="autoconsommation-link" onclick="openModalAutoconso(); return false;">
+          <i class="bx bx-building"></i>
+          <span class="links_name">Mon potentiel...</span>
+        </a>
+        <span class="tooltip">Mon potentiel d'autoconsommation</span>
+      </li> -->
+      <li class="menu-item-hidden">
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bi bi-buildings"></i>
+          <span class="links_name">Dossier d'EXE</span>
+        </a>
+        <span class="tooltip">Dossier d'EXE</span>
+      </li>
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="return false;">
+          <i class="bx bx-file"></i>
+          <span class="links_name">Dossier de demande de raccordement</span>
+        </a>
+        <span class="tooltip">Dossier de demande de raccordement</span>
+      </li>
+
+      <li class="masque-chiffrage">
+        <a class="nav-item nav-link" href="#" onclick="openSystemeElecModal(event)">
+          <i class="bx bx-bolt-circle"></i>
+          <span class="links_name">Dimension électrique</span>
+        </a>
+        <span class="tooltip">Dimensionnement électrique</span>
+      </li>
+
+      <!--<li>
+        <a class="nav-item nav-link" href="#" onclick="openCalculateurAPER(event); return false;">
+          <i class="bi bi-calculator"></i>
+          <span class="links_name">Calculateur APER</span>
+        </a>
+        <span class="tooltip">Calculateur APER</span>
+      </li>-->
+
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="openListeMaterielsModal(event); return false;">
+          <i class="bi bi-card-checklist"></i>
+          <span class="links_name">Liste de matériels</span>
+        </a>
+        <span class="tooltip">Liste de matériels</span>
+      </li>
+
+     <!-- <li>
+        <a class="nav-item nav-link" href="#" id="pre-etudes-link" onclick="openPreEtudes(event)">
+          <i class="bx bx-search-alt"></i>
+          <span class="links_name">Liste de matériels</span>
+        </a>
+        <span class="tooltip">Liste de matériels</span>
+      </li> -->
+
+      {% if is_materiels_admin %}
+      <!-- Outil interne réservé (app/__init__.py::inject_user, app/routes/admin_materiels.py) —
+           n'apparaît que pour le compte listé dans MATERIELS_ADMIN_EMAILS (config.py). Ouvert en
+           modal plein écran (iframe, cf. menu_list.js::openAdminMaterielsModal) pour rester sur la
+           page calepinage, comme les autres modals de l'application (Schéma unifilaire, etc.). -->
+      <li>
+        <a class="nav-item nav-link" href="#" onclick="openAdminMaterielsModal(event)">
+          <i class="bx bx-cog"></i>
+          <span class="links_name">Admin matériels</span>
+        </a>
+        <span class="tooltip">Administration des matériels (BD)</span>
+      </li>
+      {% endif %}
+
+      {% endif %}
+
+        <!-- Nouveaux boutons : Tutoriels et Versions du logiciel -->
+        <li>
+          <a class="nav-item nav-link" href="#" onclick="openPdfViewer('{{ url_for('main.serve_tutoriels', filename='tutoriel.pdf') }}', 'Tutoriels'); return false;">
+            <i class="bx bx-book-open"></i>
+            <span class="links_name">Tutoriels</span>
+          </a>
+          <span class="tooltip">Tutoriels</span>
+        </li>
+        <li>
+          <a class="nav-item nav-link" href="#" onclick="openPdfViewer('{{ url_for('main.serve_tutoriels', filename='versions.pdf') }}', 'Versions du logiciel'); return false;">
+            <i class="bx bx-history"></i>
+            <span class="links_name">Versions</span>
+          </a>
+          <span class="tooltip">Versions du logiciel</span>
+        </li>
+    </ul>
+  </div>
+</div>
+
+<!-- Modal Universal (pour BD Matériels et Prestations) -->
+<!-- NOUVEAU (demande explicite) : fond transparent (au lieu de rgba(0,0,0,0.6)) pour laisser voir
+     le menu horizontal derrière — notamment son étape mise en évidence en jaune doré, cf.
+     window.setActiveMainNavStep (menu_list.html) — tout en conservant l'élément lui-même pour le
+     clic "fermer en cliquant en dehors" (cf. closeUniversalModal ci-dessous). -->
+<div id="universal-modal-backdrop"
+  style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: transparent; z-index: 10000;">
+</div>
+<div id="universal-modal"
+  style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90vw; height: calc(90vw * 0.8); max-width: 1700px; min-width: 600px; min-height: 480px; max-height: 90vh; background-color: #ffffff; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 100000; border: 2px solid #dc2626; overflow: hidden; flex-direction: column;">
+  <div id="universal-modal-header"
+    style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.5rem; background-color: #dc2626; color: white; border-bottom: 1px solid #991b1b; cursor: default;">
+    <h1 id="universal-modal-title" style="font-size: 1.25rem; margin: 0; font-weight: 600;">Base de Données Matériels
+      IRVE</h1>
+    <div style="display: flex; align-items: center; gap: 1rem;">
+      <!-- Réduire : masque la modale SANS la fermer (l'iframe reste chargée, aucun rechargement
+           au réaffichage) et fait apparaître la poignée #universal-modal-poignee. -->
+      <button id="reduire-universal-modal" type="button"
+        style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: white; opacity: 0.8; padding: 0; line-height: 1;"
+        title="Réduire (la modale reste ouverte)" aria-label="Réduire la modale">&#8211;</button>
+      <button id="close-universal-modal"
+        style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: white; opacity: 0.8; padding: 0; line-height: 1;"
+        title="Fermer">×</button>
+    </div>
+  </div>
+  <iframe id="universal-iframe" src="" style="width: 100%; height: 100%; border: none; flex: 1;"></iframe>
+  <!-- Parcours (demande explicite) : navigation de l'étape « Consommation » — Précédent (Paramètres
+       projet) et Suivant (Calepinage), côte à côte au centre. Pied affiché pour cette seule étape
+       (data-nav-step="cons-energie", posé par openBDMateriels), pas pour les autres outils de la modale. -->
+  <div id="universal-modal-footer">
+    <button type="button" id="universal-modal-precedent" title="Paramètres projet">← Précédent</button>
+    <button type="button" id="universal-modal-suivant" title="Calepinage">Suivant →</button>
+  </div>
+</div>
+<style>
+  #universal-modal-footer {
+    /* Boutons centrés (demande explicite : trop éloignés aux deux bords, puis trop proches à 56 px). */
+    display: none; justify-content: center; gap: 160px; align-items: center; flex: 0 0 auto;
+    padding: 0.6rem 1.5rem; background-color: #f8f9fa; border-top: 1px solid #e9ecef;
+  }
+  #universal-modal[data-nav-step="cons-energie"] #universal-modal-footer { display: flex; }
+  #universal-modal-footer button {
+    padding: 8px 22px; border-radius: 6px; border: 1px solid #de0000; color: #ffffff;
+    background-color: #de0000; font-weight: 500; cursor: pointer; transition: background-color 0.2s ease;
+  }
+  #universal-modal-footer button:hover { background-color: #b00000; }
+  /* Même gris que « Précédent » de Paramètres projet (cf. ParametresProjet.css). */
+  #universal-modal-footer #universal-modal-precedent { background-color: #6c757d; border-color: #e2726d; }
+  #universal-modal-footer #universal-modal-precedent:hover { background-color: #5a6268; }
+</style>
+<!-- Poignée de la modale universelle réduite : un clic la réaffiche telle qu'elle était (aucun
+     rechargement). Ouverte depuis le menu horizontal (ex. « Consommation d'énergie »), elle est placée
+     juste devant l'entrée de menu correspondante (classe .poignee-menu, cf. reduireUniversalModal) ;
+     sinon, en bas à droite de l'écran. -->
+<style>
+  #universal-modal-poignee {
+    display: none; position: fixed; right: 1.5rem; bottom: 0; z-index: 100000;
+    align-items: center; gap: 0.5rem; padding: 0.45rem 1rem; border: none;
+    border-radius: 0.5rem 0.5rem 0 0; background-color: #dc2626; color: white;
+    font-size: 0.9rem; font-weight: 600; cursor: pointer; box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.2);
+  }
+  #universal-modal-poignee.poignee-menu {
+    position: static; display: inline-flex; vertical-align: middle; gap: 0.35rem;
+    margin-right: 0.35rem; padding: 0.25rem 0.6rem; border-radius: 999px;
+    background-color: #ffffff; color: #dc2626; font-size: 0.8rem; line-height: 1.2;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  }
+  #universal-modal-poignee.poignee-menu:hover { background-color: #fde68a; }
+  #universal-modal-poignee.poignee-menu #universal-modal-poignee-titre { display: none; }
+</style>
+<button id="universal-modal-poignee" type="button" title="Réafficher la modale">
+  <span aria-hidden="true">&#9650;</span>
+  <span id="universal-modal-poignee-texte-menu" style="display: none;">Réafficher</span>
+  <span id="universal-modal-poignee-titre"></span>
+</button>
+
+<!-- Modal Loi APER -->
+<div id="loi-aper-modal-backdrop"
+  style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 100000;">
+</div>
+<div id="loi-aper-modal"
+  style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90vw; height: calc(90vw * 0.8); max-width: 1700px; min-width: 600px; min-height: 480px; max-height: 90vh; background-color: #ffffff; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 100000; border: 2px solid #dc2626; overflow: hidden; flex-direction: column;">
+  <div id="loi-aper-modal-header"
+    style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.5rem; background-color: #dc2626; color: white; border-bottom: 1px solid #dc2626;">
+    <h1 style="font-size: 1.25rem; margin: 0; font-weight: 600;">
+      <i class="bx bx-grid-alt"></i> Calculateur de Surface Solarisable - Loi APER
+    </h1>
+    <button id="close-loi-aper-modal"
+      style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: white; opacity: 0.8; padding: 0; line-height: 1;"
+      title="Fermer">×</button>
+  </div>
+  <div style="width: 100%; height: 100%; position: relative;">
+    {% include 'concevoir_mon_projet/modals/loi_aper_content.html' %}
+  </div>
+</div>
+
+<!-- Modal Études Économiques -->
+<div id="etudes-economique-backdrop"
+  style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.6); z-index: 100000;">
+</div>
+<div id="etudes-economique-modal"
+  style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 90vw; height: calc(90vw * 0.8); max-width: 1700px; min-width: 600px; min-height: 480px; max-height: 90vh; background-color: #ffffff; border-radius: 0.75rem; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); z-index: 100000; border: 2px solid #dc2626; overflow: hidden; flex-direction: column;">
+  <div
+    style="display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 1.5rem; background-color: #DC2626; color: white; border-bottom: 1px solid #dc2626;">
+    <h1 style="font-size: 1.25rem; margin: 0; font-weight: 600; color: white; border-bottom:none;">
+      <i class="bx bx-line-chart"></i> Études Économiques
+    </h1>
+    <button id="close-etudes-economique-modal"
+      style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: white; opacity: 0.8; padding: 0; line-height: 1;"
+      title="Fermer">×</button>
+  </div>
+  <div style="width: 100%; flex: 1 1 auto; min-height: 0; position: relative; overflow-y: auto;">
+    {% include 'concevoir_mon_projet/modals/etudes_economique_content.html' %}
+  </div>
+</div>
+
+<!-- Garde du projet actif : verrouille l'onglet si un autre onglet ouvre un autre projet (localStorage
+     partagé), pour qu'aucune sauvegarde n'écrive un projet dans un autre. Chargé avant tout calepinage. -->
+<script src="/static/concevoir_mon_projet/javascript/services/garde_projet_actif.js?v=2"></script>
+<!-- Sauvegarde complète du projet (icône « Sauvegarder » de la palette) + invitation à enregistrer
+     avant « Revenir à Socalts », « Paramètres », « Consommation d'énergie » et la fermeture de l'onglet. -->
+<script src="/static/concevoir_mon_projet/javascript/services/sauvegarde_projet.js?v=6"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsts@2.7.1/dist/jsts.min.js"></script>
+<script src="/static/concevoir_mon_projet/javascript/loiAperModal.js"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/shapes/polygone_aper.js"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/shapes/polygone_aper_persistence.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/calcul_APER.js?v=7"></script>
+
+<!-- Calepinage résidentiel (toiture maison individuelle) — Étape 1 : décorrélé du calepinage
+     "grands projets", même principe d'isolation que la Loi APER ci-dessus. Tous les fichiers de
+     cette fonctionnalité sont regroupés dans calepinage_systeme/Calepinage_mainson/. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/polygon_maison.js?v=33"></script>
+<!-- Orthophoto drone (JPEG/PNG + fichier de coordonnées) posée sur la carte principale — Résidentielle et
+     Professionnelle ; ouverte par le bouton « orthophoto-drone-button » de la palette (ButtonControl.js). -->
+<script src="/static/concevoir_mon_projet/javascript/components/orthophoto/orthophoto_drone.js?v=4"></script>
+<!-- Carte des participants ACC (adresse/bâtiment, cercles 2/10/20 km, contrôle du périmètre) — projets en
+     autoconsommation collective ; ouverte par le bouton « acc-participants-button » de la palette. -->
+<script src="/static/concevoir_mon_projet/javascript/components/acc_participants/acc_participants_carte.js?v=3"></script>
+<!-- Persistance localStorage des calepinages (contour/panneaux/réglages) — chargée avant le moteur
+     principal qui l'utilise via window.CalepinagePersistence. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_persistence.js?v=3"></script>
+<!-- Persistance en base de données (complète, sans la remplacer, la persistance localStorage
+     ci-dessus) : sauvegarde sur le clic "Calculer et Visualiser", chargement au démarrage si le
+     localStorage est vide pour ce module — cf. window.CalepinageMaisonPersistenceDB. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_persistence_db.js?v=12"></script>
+<!-- Puissance projet de « Mes projets » : enregistre le calepinage à l'export et à « Sauvegarder le projet ». -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/puissance_projet_sync.js?v=5"></script>
+<!-- Calepinage résidentiel : scindé en 4 fichiers (calculs / dessin / formulaires / orchestrateur)
+     reliés par le namespace partagé window.CalepinageMaisonIndiv (cf. calepinage_maison_calculs.js
+     pour le détail) — ordre de chargement reflétant la profondeur de dépendance (calculs n'a
+     aucune dépendance sur les 3 autres ; orchestrateur dépend des 3 autres). -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_calculs.js?v=43"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_dessin.js?v=56"></script>
+<!-- Catalogue "Système d'intégration" (espacements X/Y/dX/dY par système) — chargé avant
+     formulaires.js, qui le lit via CM.SYSTEME_INTEGRATION_CATALOG. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_systemes_integration.js?v=3"></script>
+<!-- REFONTE toolbar/entête (demande explicite : "modulariser la configuration des actions dans un
+     fichier dédié") : config structurée des boutons de #cmToolbar + des 3 toggles de l'en-tête,
+     chargée avant formulaires.js qui la lit via window.CalepinageMaisonToolbarConfig. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_toolbar_config.js?v=12"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_formulaires.js?v=115"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_orchestrateur.js?v=104"></script>
+<!-- Inclinaison / pertes partagées avec le pompage solaire (après l'orchestrateur : CM.listerChampsCarte). -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_parametres_pompage.js?v=3"></script>
+<!-- Panneaux du canevas reportés sur la carte + données des plans (situation/masse), puis matériels
+     électriques et marqueurs de coordonnées posés depuis le canevas. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_carte_plans.js?v=12"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_annotations.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_dimensions_ombriere.js?v=11"></script>
+<!-- Poteaux d'ombrière : entraxes transversaux, excentrement, axes et ancrages sur la carte. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_poteaux_ombriere.js?v=5"></script>
+<!-- Configurateur Calepinage des ombrières (iframe imbriquée calepinage_ombriere.html) alimenté
+     depuis le champ PV du module résidentiel ; appelé par l'iframe elle-même. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_configurateur_ombriere.js?v=4"></script>
+<!-- Étape 3 de l'unification du calepinage : polygone libre -> modal "Petit champ solaire" (sheds)
+     + tableau sheds. Injecté par geometrieModal.js à l'ouverture du modal, aiguillé selon l'URL. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_dimensions_petit_champ.js?v=8"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_terrain.js?v=3"></script>
+<!-- Tables de petit champ face au terrain (calcul unique carte + 3D) et leur signalement carte/canevas. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_terrain_tables.js?v=6"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_terrain_carte.js?v=7"></script>
+<!-- Boutons "Calculer" / "Résultats" / "Optimisation" du petit champ solaire (sheds). -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_sheds_actions.js?v=11"></script>
+<!-- "Type de calepinage" + "Géométrie de la toiture" dans le formulaire PRO/Grand projet, en
+     synchronisation avec le formulaire résidentiel (ombrières et petit champ solaire). -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_form_pro.js?v=23"></script>
+<!-- Génération 3D (Phase 1 : Monopente + Bipente) — géométrie pure (polygones 3D depuis
+     CM.state.roofLocal/pans) puis visionneuse Babylon.js (2e canevas superposé au canevas 2D,
+     bascule via #cmView2D3DBtn). Chargés après orchestrateur.js (dépendent de CM.packPanelsForPan /
+     CM.getOtherHousesReprojected / CM.modalBody). Babylon.js est chargé à la demande depuis le CDN
+     (version figée) par le viewer, uniquement au 1er passage en 3D. -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_geometry.js?v=25"></script>
+<!-- Phase A objets 3D de contexte : bibliothèque Babylon partagée (arbre, bâtiment, mât...) +
+     gestion de la liste d'objets posés dans la scène de la maison active (CM.state.sceneObjects3D). -->
+<!-- Générateurs d'ombrières métal + bois (réutilisés tels quels depuis geometrie_3D/) : exposent
+     window.buildOmbriere3D / window.buildOmbriereBois3D, consommés par le viewer 3D pour les objets
+     "Ombrière Métal/Bois - <modèle>" de la palette. Chargés AVANT scene_objects_library.js. -->
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_single_post.js?v=3"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_offset_post.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_double_post.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_inclined_post.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_linked_post.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_y_shape.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_double_y_shape.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/ombriere_3d_orchestrator.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/ombriere_bois_shared.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_inclined_post_bois.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_y_shape_bois.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_double_post_bois.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_offset_post_bois.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_simple_azelan.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_simple_travolta.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_simple_travolta_2.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/ombriere_3d_orchestrator_bois.js?v=1"></script>
+<!-- Générateurs "Petit champ solaire" (dent de scie / shed) — window.buildPetitChampSolaire3D,
+     consommé par le viewer 3D pour typeMontage = "Petit champ solaire". Dépend des helpers
+     window.parsePostDistancesSimple etc. exposés par ombriere_metal/model_single_post.js (chargé ci-dessus). -->
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/petit_champ_solaire_shared.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_poteau_centre.js?v=3"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_poteau_excentre.js?v=3"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_doublepoteau.js?v=4"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_bipente.js?v=3"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/petit_champ_solaire_3d_orchestrator.js?v=4"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/petit_champ_solaire_3d_rapide.js?v=1"></script>
+<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/scene_objects_library.js?v=6"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_objects.js?v=24"></script>
+<!-- Scène d'ombrage proche (panneaux, bâtiments, objets 3D) envoyée au calcul de production
+     (solarProjectData.shadingScene -> /calculate_pv, cf. calcul_ombrage_proche.py). -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_ombrage_scene.js?v=6"></script>
+<!-- Fenêtres de personnalisation 3D (portage des formulaires de test_3d.html) :
+     ombrière (métal + bois) et petit champ solaire (dent de scie / shed). -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_ombriere_form.js?v=7"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_petitchamp_form.js?v=6"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_terrain.js?v=42"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_textures_toit.js?v=2"></script>
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_viewer.js?v=59"></script>
+<!-- Calepinage sur image importée : clic droit sur le bouton "Calepinage résidentiel" (#draw-maison-polygon-button)
+     — importe une image, la calibre à l'échelle, puis délègue au moteur ci-dessus via
+     window.openCalepinageMaisonModal({type:'image', ...}). Chargé après lui (dépendance). -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_image_source.js?v=3"></script>
+<!-- DIAGNOSTIC TEMPORAIRE (double-vérification backend du calepinage résidentiel, étape 1 : cf.
+     app/models/calepinage_maison_verification/residentiel_engine.py) : ajoute un bouton "Vérif
+     Python (test)" dans l'en-tête du modal Calepinage Maison. 100% additif, à retirer/étendre une
+     fois shed/dôme portés côté backend. Chargé après orchestrateur.js (dépend de CM.modal/CM.state). -->
+<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_verif_test.js?v=16"></script>
+
+{% include 'concevoir_mon_projet/modals/liste_de_materiels.html' %}
+<!-- Helper partagé "+ détails" (bouton par ligne des modales favoris panneaux/onduleurs/batteries) :
+     chargé avant bd_onduleurs.js/bd_batteries.js, qui l'utilisent via window.toggleDetailRow. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/calepinage_systeme/equipements_details_card.js') }}"></script>
+<!-- CORRECTIF (bug rapporté : "les panneaux ne s'affichent pas dans la liste déroulante" — sélecteur
+     catalogue #cmPanelCatalogSelect du formulaire résidentiel, cf. calepinage_maison_formulaires.js)
+     — cause racine : bd_panneaux_pv.js (window.fetchPanelCatalog/window.panelCatalogFromApi) n'était
+     chargé QUE par calepinage.html (Pro/Grand-projet), jamais par menu.html — donc absent sur toute
+     page où le modal "Calepinage multi typologie" est ouvert SANS que calepinage.html soit aussi
+     présent sur la même page (Géométrie, Système, Paramètre, Autoconsommation...), contrairement à
+     bd_onduleurs.js/bd_batteries.js/bd_optimiseurs.js/bd_pompes_solaires.js déjà chargés ici. Sans
+     déclaration top-level const/let (cf. son propre commentaire d'en-tête et celui de calepinage.html
+     à l'endroit où il est aussi chargé) : un second chargement sur les pages qui incluent les deux
+     (ex. index.html) ne casse rien. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/calepinage_systeme/bd_panneaux_pv.js') }}?v=1"></script>
+<!-- Base de données "Onduleurs" partagée avec le calepinage (cf. bd_onduleurs.js) : chargée AVANT
+     liste_de_materiels.js, qui référence désormais window.inverterDB au lieu d'en déclarer sa propre copie. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/calepinage_systeme/bd_onduleurs.js') }}?v=9"></script>
+<!-- Onduleurs génériques hors réseau (pompage solaire / site autonome) et régulateurs de charge :
+     catalogue virtuel aux valeurs saisies par l'utilisateur, injecté dans window.inverterDB et
+     window.onduleurCatalogFromApi — chargé juste après bd_onduleurs.js, qui le réinjecte après
+     chaque rafraîchissement du catalogue (cf. onduleurs_hors_reseau.js). -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/calepinage_systeme/onduleurs_hors_reseau.js') }}?v=4"></script>
+<!-- Import de fiche technique PDF pour la BD onduleurs (bouton par ligne dans #favoritesOnduleursModal,
+     cf. bd_onduleurs.js:buildOnduleurRow) : chargé après bd_onduleurs.js, avant liste_de_materiels.js. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/calepinage_systeme/import_donnee_ft_ond.js') }}"></script>
+<!-- Base de données "Batteries" (bouton "Batterie" dans calepinage.html, section Config. Onduleur AC) :
+     chargée ici et UNIQUEMENT ici (retirée de calepinage.html) — ses <script> font partie du
+     contenu de <template id="calepinageTemplate"> (index.html) et, contrairement à ce qu'on
+     pourrait attendre d'un <template>, SONT réexécutés à chaque clonage (un par forme PV créée,
+     cf. TabsManager.createTab) : une balise dupliquée y provoquait "Identifier
+     'BATTERIE_STORAGE_KEY' has already been declared" dès la 2e forme PV. -->
+<!-- Pont de sélection de batterie entre le calepinage et le modal de stockage (page séparée
+     chargée en iframe) : chargé AVANT bd_batteries.js, qui publie la sélection au moment du
+     choix. Contrat d'unités unique (rendement en fraction, capacité en kWh, chimie en code
+     PySAM) — sans lui, brancher les deux mondes injecterait un pourcentage dans un champ
+     borné à 1. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/batterie/batterieSelection.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/calepinage_systeme/bd_batteries.js') }}?v=8"></script>
+<!-- Base de données "Optimiseurs" (NOUVEAU, demande explicite : ajout matériels BD) : lecture seule
+     (pas de "favoris"/édition, cf. bd_optimiseurs.js), consommée par chaines_pertes_modal.js (sélecteur
+     optimiseur dans la modale Chaînes/Pertes) et calepinage_maison_formulaires.js (carte résidentielle). -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/calepinage_systeme/bd_optimiseurs.js') }}?v=1"></script>
+<!-- Base de données "Pompes solaires" (NOUVEAU, demande explicite : ajout matériels BD) : même
+     principe que bd_optimiseurs.js (lecture seule), consommée par calepinage_maison_formulaires.js. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/components/calepinage_systeme/bd_pompes_solaires.js') }}?v=1"></script>
+<!-- Calculs de chaînes/pertes système : regroupés dans javascript/systeme/ (au même endroit que
+     systeme_elec.js) pour faciliter la maintenance, plutôt qu'éparpillés dans calepinage_systeme/.
+     StringSizingUtils (dimensionnement de chaînes) + la modale globale "Configuration des chaînes
+     et perte système" ouverte depuis le Summary Modal (chaines_pertes_modal.js) : chargées ici,
+     contexte global réel, au même titre que bd_onduleurs.js/bd_batteries.js. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/systeme/string_sizing_utils.js') }}?v=8"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/systeme/chaines_pertes_modal.js') }}?v=22"></script>
+<!-- Section "Perte système détaillée à STC" intégrée dans la modale ci-dessus : chargée après
+     elle, dont elle utilise le conteneur #chainesPertesLossesSection. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/systeme/perte_systeme.js') }}?v=6"></script>
+<!-- Section "Câblage DC" (résidentiel uniquement) intégrée dans la modale Chaînes/Pertes ci-dessus :
+     chargée après elle et perte_systeme.js, dont elle réutilise le conteneur
+     #chainesPertesCablageSection et les helpers de validation partagés. -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/systeme/cablage_dc.js') }}?v=31"></script>
+<!-- Aperçu des PDF avant téléchargement (plans de calepinage et de câblage) : module ES rendu
+     accessible aux scripts classiques ci-dessus. -->
+<script type="module">
+  import { ouvrirApercuPdf } from '/static/concevoir_mon_projet/javascript/services/PdfPreview.js?v=1';
+  window.ouvrirApercuPdf = ouvrirApercuPdf;
+</script>
+<!-- Palette « Exports » du pompage solaire, à droite de la modale « Consommation d'énergie ». -->
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/pompage_solaire/pompage_solaire_exports.js') }}?v=2"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Liste_de_materiel/liste_de_materiels.js') }}"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Liste_de_materiel/chiffrage_liste_de_materiel.js') }}"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Liste_de_materiel/verif_calcul_liste_de_materiels.js') }}"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Tuto_version/tutoriel_version.js') }}"></script>
+
+
+
+<!-- <script src="/static/concevoir_mon_projet/javascript/menu.js"></script> -->
+<script>
+  async function openLoiAperModal() {
+    const modal = document.getElementById('loi-aper-modal');
+    const backdrop = document.getElementById('loi-aper-modal-backdrop');
+
+    if (!modal || !backdrop) {
+      console.error('Éléments du modal Loi APER non trouvés');
+      return;
+    }
+
+    // Afficher le modal
+    modal.style.display = 'flex';
+    backdrop.style.display = 'block';
+
+    // Sauvegarder l'état pour persistance au refresh
+    sessionStorage.setItem('openModalState', JSON.stringify({ type: 'loi-aper' }));
+
+    // Initialiser la carte si elle n'existe pas
+    if (!mapAper) {
+      await initMapAper();
+    } else {
+      // Redimensionner la carte existante
+      google.maps.event.trigger(mapAper, 'resize');
+      const center = mapAper.getCenter();
+      if (center) {
+        mapAper.setCenter(center);
+      }
+    }
+
+    console.log('✅ Modal Loi APER ouvert');
+  }
+
+  function closeLoiAperModal() {
+    const modal = document.getElementById('loi-aper-modal');
+    const backdrop = document.getElementById('loi-aper-modal-backdrop');
+
+    if (!modal || !backdrop) return;
+
+    // Masquer le modal
+    modal.style.display = 'none';
+    backdrop.style.display = 'none';
+
+    // Supprimer l'état de persistance
+    sessionStorage.removeItem('openModalState');
+  }
+
+  // Attacher les événements
+  document.addEventListener('DOMContentLoaded', function () {
+    const closeBtn = document.getElementById('close-loi-aper-modal');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeLoiAperModal);
+    }
+
+    const backdrop = document.getElementById('loi-aper-modal-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', closeLoiAperModal);
+    }
+
+    // Restaurer le modal ouvert après un refresh de page
+    const savedModalState = sessionStorage.getItem('openModalState');
+    if (savedModalState) {
+      try {
+        const state = JSON.parse(savedModalState);
+        // Petit délai pour laisser le DOM se charger complètement
+        setTimeout(function () {
+          switch (state.type) {
+            case 'universal':
+              openUniversalModal(state.title, state.url, state.color);
+              if (state.navStep) {
+                document.getElementById('universal-modal').dataset.navStep = state.navStep;
+                majEtatUniversalModal({ navStep: state.navStep });
+              }
+              if (state.minimized) reduireUniversalModal();
+              break;
+            case 'loi-aper':
+              openLoiAperModal();
+              break;
+            case 'etudes-economique':
+              if (window.etudesEconomiqueModal) {
+                window.etudesEconomiqueModal.open();
+              }
+              break;
+            case 'geometrie':
+              if (window.geometrieModal) {
+                window.geometrieModal.open(state.url, state.title);
+              }
+              break;
+          }
+        }, 500);
+      } catch (e) {
+        console.error('Erreur lors de la restauration du modal:', e);
+        sessionStorage.removeItem('openModalState');
+      }
+    }
+  });
+
+  // Gestion du modal Études Économiques
+  document.addEventListener('DOMContentLoaded', function () {
+    const closeBtn = document.getElementById('close-etudes-economique-modal');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', closeEtudesEconomiqueModal);
+    }
+
+    const backdrop = document.getElementById('etudes-economique-backdrop');
+    if (backdrop) {
+      backdrop.addEventListener('click', closeEtudesEconomiqueModal);
+    }
+  });
+</script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    let sidebar = document.querySelector(".sidebar");
+    let closeBtn = document.querySelector("#btn");
+    let searchBtn = document.querySelector(".bx-search");
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", () => {
+        sidebar.classList.toggle("open");
+        menuBtnChange();
+      });
+    }
+
+    // Tooltips en position fixe (Menu.css) : alignés ici sur l'icône survolée, pour rester
+    // visibles même quand la liste défile sur un écran de faible hauteur.
+    if (sidebar) {
+      sidebar.querySelectorAll('.nav-list > li').forEach((li) => {
+        const tooltip = li.querySelector(':scope > .tooltip');
+        if (!tooltip) return;
+        li.addEventListener('mouseenter', () => {
+          const r = li.getBoundingClientRect();
+          tooltip.style.top = (r.top + r.height / 2) + 'px';
+          tooltip.style.left = (sidebar.getBoundingClientRect().right + 6) + 'px';
+        });
+      });
+    }
+
+    // Change sidebar button icon
+    function menuBtnChange() {
+      if (sidebar && sidebar.classList.contains("open")) {
+        closeBtn.classList.replace("bx-menu", "bx-menu-alt-right");
+      } else if (closeBtn) {
+        closeBtn.classList.replace("bx-menu-alt-right", "bx-menu");
+      }
+    }
+  });
+
+  // Script pour le toggle du menu vertical (page système uniquement)
+  const menuToggle = document.getElementById('menu-toggle');
+  const appContainer = document.querySelector('.app-container');
+
+  if (menuToggle && appContainer) {
+    menuToggle.addEventListener('click', () => {
+      appContainer.classList.toggle('menu-collapsed');
+    });
+  }
+
+  // Script pour ouvrir/fermer le modal universel
+  function openUniversalModal(title, url, color) {
+    const modal = document.getElementById('universal-modal');
+    const backdrop = document.getElementById('universal-modal-backdrop');
+    const iframe = document.getElementById('universal-iframe');
+    const modalTitle = document.getElementById('universal-modal-title');
+    const modalHeader = document.getElementById('universal-modal-header');
+
+    // Configurer le titre et la couleur
+    modalTitle.textContent = title;
+    modalHeader.style.backgroundColor = color;
+    modal.style.borderColor = color;
+
+    // CORRECTIF (bug "il faut cliquer une dizaine de fois, le contenu apparaît puis disparaît
+    // instantanément") : réaffecter iframe.src provoque une VRAIE navigation/rechargement de
+    // l'iframe même quand la valeur assignée est rigoureusement identique à celle déjà en place
+    // (vérifié en conditions réelles : chaque clic déclenchait une nouvelle requête réseau et un
+    // nouvel événement de navigation) — ce n'est PAS un no-op silencieux comme le code le supposait
+    // jusqu'ici. Un clic répété sur le même bouton (avant que la 1ère ouverture ait fini de charger)
+    // interrompait donc systématiquement le chargement en cours pour en redémarrer un nouveau —
+    // seul le TOUT DERNIER clic, si l'utilisateur cessait enfin de cliquer assez longtemps pour le
+    // laisser aboutir, affichait un contenu qui "tenait". On ne réaffecte donc plus iframe.src que
+    // si la cible demandée diffère réellement de celle déjà chargée (nouvel outil, ou rouverture
+    // après fermeture — closeUniversalModal() vide alors src, donc différent de toute URL réelle).
+    // iframe.src (lecture) renvoie toujours une URL absolue résolue par le navigateur, alors que
+    // `url` (paramètre, généré par url_for() côté Jinja) est relatif : comparer les deux chaînes
+    // brutes échouait donc à détecter un rechargement redondant (elles ne sont jamais égales), d'où
+    // le passage par new URL(...) pour comparer sur la même base.
+    const targetSrc = new URL(url + '?autoOpen=true', window.location.href).href;
+    if (iframe.src !== targetSrc) {
+      iframe.src = targetSrc;
+    }
+
+    // Afficher le modal (y compris s'il était réduit : même outil = iframe conservée telle quelle)
+    modal.style.display = 'flex';
+    modal.style.visibility = '';
+    modal.dataset.navStep = '';
+    backdrop.style.display = 'block';
+    masquerPoigneeUniversalModal();
+
+    // Sauvegarder l'état pour persistance au refresh
+    sessionStorage.setItem('openModalState', JSON.stringify({
+      type: 'universal',
+      title: title,
+      url: url,
+      color: color
+    }));
+  }
+
+  function closeUniversalModal() {
+    const modal = document.getElementById('universal-modal');
+    const backdrop = document.getElementById('universal-modal-backdrop');
+    const iframe = document.getElementById('universal-iframe');
+
+    modal.style.display = 'none';
+    modal.style.visibility = '';
+    backdrop.style.display = 'none';
+    masquerPoigneeUniversalModal();
+    // CORRECTIF (modal parfois vide/figé à la réouverture) : openUniversalModal() réaffecte
+    // iframe.src à la MÊME url (+ ?autoOpen=true) si on rouvre le même outil — une affectation à
+    // une valeur déjà identique ne déclenche aucune navigation (pas de rechargement, pas de nouveau
+    // DOMContentLoaded), donc l'iframe restait figée sur son dernier état avant fermeture. Vider
+    // src ici force une vraie renavigation à la prochaine ouverture.
+    iframe.src = '';
+
+    // Supprimer l'état de persistance
+    sessionStorage.removeItem('openModalState');
+
+    // NOUVEAU WORKFLOW (demande explicite) : ce modal universel héberge "Consommation d'énergie"
+    // (mais aussi d'autres outils, ex. Geocoding) — sa fermeture révèle la page/étape précédemment
+    // active en dessous. CORRECTIF (bug rapporté : mise en évidence figée sur l'étape qu'on quitte) :
+    // restorePreviousMainNavStep() rétablit l'étape réellement quittée avant l'ouverture, pas
+    // toujours 'calepinage' (cf. menu_list.html).
+    if (typeof window.restorePreviousMainNavStep === 'function') window.restorePreviousMainNavStep();
+    else if (typeof window.setActiveMainNavStep === 'function') window.setActiveMainNavStep('calepinage');
+  }
+
+  // Réduire : la modale est masquée SANS être fermée — l'iframe garde son contenu chargé et son état
+  // (onglet, saisies, défilement), donc aucun rechargement ni appel serveur au réaffichage par la
+  // poignée. visibility (et non display) : la mise en page de l'iframe est conservée telle quelle
+  // (graphiques non redimensionnés à 0), et un élément invisible ne capte pas les clics.
+  function reduireUniversalModal() {
+    const modal = document.getElementById('universal-modal');
+    if (!modal || modal.style.display === 'none') return;
+    modal.style.visibility = 'hidden';
+    document.getElementById('universal-modal-backdrop').style.display = 'none';
+
+    const poignee = document.getElementById('universal-modal-poignee');
+    const titre = document.getElementById('universal-modal-title').textContent;
+    document.getElementById('universal-modal-poignee-titre').textContent = titre;
+    poignee.title = 'Réafficher « ' + titre + ' »';
+    // Modale ouverte depuis le menu horizontal : poignée insérée juste devant son entrée de menu,
+    // là où l'utilisateur cliquerait pour la rouvrir. Entrée absente ou masquée : en bas à droite.
+    const lienMenu = modal.dataset.navStep
+      ? document.querySelector('.demo-nav nav ul li a[data-nav-step="' + modal.dataset.navStep + '"]')
+      : null;
+    const dansMenu = !!(lienMenu && lienMenu.offsetParent);
+    if (dansMenu) {
+      lienMenu.parentNode.insertBefore(poignee, lienMenu);
+    } else if (poignee.parentNode !== document.body) {
+      document.body.appendChild(poignee);
+    }
+    poignee.classList.toggle('poignee-menu', dansMenu);
+    document.getElementById('universal-modal-poignee-texte-menu').style.display = dansMenu ? '' : 'none';
+    poignee.style.backgroundColor = dansMenu
+      ? '' : document.getElementById('universal-modal-header').style.backgroundColor;
+    poignee.style.display = dansMenu ? 'inline-flex' : 'flex';
+
+    majEtatReductionUniversalModal(true);
+    // La page en dessous redevient l'étape en cours dans le menu horizontal.
+    if (modal.dataset.navStep && typeof window.restorePreviousMainNavStep === 'function') {
+      window.restorePreviousMainNavStep();
+    }
+  }
+
+  function reafficherUniversalModal() {
+    const modal = document.getElementById('universal-modal');
+    if (!modal || modal.style.display === 'none') return;
+    modal.style.visibility = '';
+    document.getElementById('universal-modal-backdrop').style.display = 'block';
+    masquerPoigneeUniversalModal();
+    majEtatReductionUniversalModal(false);
+    if (modal.dataset.navStep && typeof window.setActiveMainNavStep === 'function') {
+      window.setActiveMainNavStep(modal.dataset.navStep);
+    }
+  }
+
+  function masquerPoigneeUniversalModal() {
+    const poignee = document.getElementById('universal-modal-poignee');
+    if (poignee) poignee.style.display = 'none';
+  }
+
+  // Après un rafraîchissement de la page, une modale réduite est rouverte réduite (et sa poignée
+  // replacée devant son entrée de menu, d'où navStep).
+  function majEtatUniversalModal(partiel) {
+    try {
+      const etat = JSON.parse(sessionStorage.getItem('openModalState') || 'null');
+      if (etat && etat.type === 'universal') {
+        sessionStorage.setItem('openModalState', JSON.stringify(Object.assign(etat, partiel)));
+      }
+    } catch (e) { /* état de rafraîchissement non mis à jour : sans conséquence */ }
+  }
+
+  function majEtatReductionUniversalModal(reduite) {
+    majEtatUniversalModal({ minimized: reduite });
+  }
+
+  // Site autonome : la modale n'affiche que la page de la typologie du système du projet (cf.
+  // irve_nav_menu.js, sans barre d'onglets) ; son nom complète le titre.
+  const PAGES_PROFIL_CONSOMMATION = {
+    'Habitation': 'Créer un profil de charge',
+    'Système hybride': 'Système hybride',
+    'Solaire thermique': 'Solaire thermique',
+    'Pompage solaire': 'Pompage solaire',
+  };
+
+  function titreModaleConsommation() {
+    const titre = {{ parcours_projet.titre_consommation|tojson }};
+    {% if parcours_projet.code == 'site_autonome' %}
+    const page = PAGES_PROFIL_CONSOMMATION[window.ACTIVE_PROJECT_MODE_VALORISATION] || PAGES_PROFIL_CONSOMMATION['Habitation'];
+    return titre + ' – ' + page;
+    {% else %}
+    return titre;
+    {% endif %}
+  }
+
+  // Script pour ouvrir BD Matériels
+  function openBDMateriels(event) {
+    event.preventDefault();
+    openUniversalModal(
+      titreModaleConsommation(),
+      '{{ url_for("main.bd_materiels_irve") }}',
+      '#dc2626'
+    );
+    document.getElementById('universal-modal').dataset.navStep = 'cons-energie';
+    majEtatUniversalModal({ navStep: 'cons-energie' });
+    if (typeof window.setActiveMainNavStep === 'function') window.setActiveMainNavStep('cons-energie');
+  }
+
+  // Script pour ouvrir Prestations
+  function openPrestations(event) {
+    event.preventDefault();
+    openUniversalModal(
+      "Résultats de la simulation énergétique",
+    //'{{ url_for("main.prestations_autoconso") }}',
+      '{{ url_for("prodsolaire.index_autoconso") }}',
+      '#dc2626'
+    );
+  }
+
+  // Script pour ouvrir Pré-études (Géocodage)
+  function openPreEtudes(event) {
+    event.preventDefault();
+    openUniversalModal(
+      'Pré-études de faisabilité - Géocodage Multi-Points',
+      '{{ url_for("main.pre_etudes_geocoding") }}',
+      '#dc2626'
+    );
+  }
+
+  // Script pour ouvrir le modal Autoconsommation
+  function openModalAutoconso(event) {
+    if (event) event.preventDefault();
+    openUniversalModal(
+      "Résultats de la simulation énergétique",
+      '{{ url_for("prodsolaire.index_autoconso") }}',
+      '#ef4444'
+    );
+  }
+
+  // Script pour ouvrir le modal Liste de matériels
+  function openListeMaterielsModal(event) {
+      if (event) event.preventDefault();
+      const modal = document.getElementById('mainAppModal');
+      const backdrop = document.getElementById('liste-materiels-backdrop');
+      if (modal && backdrop) {
+          modal.style.display = 'flex';
+          backdrop.style.display = 'block';
+      }
+  }
+
+  function closeListeMaterielsModal() {
+      const modal = document.getElementById('mainAppModal');
+      const backdrop = document.getElementById('liste-materiels-backdrop');
+      if (modal && backdrop) {
+          modal.style.display = 'none';
+          backdrop.style.display = 'none';
+      }
+  }
+
+  // Fermer le modal avec le bouton X
+  const closeModalBtn = document.getElementById('close-universal-modal');
+  if (closeModalBtn) {
+    closeModalBtn.addEventListener('click', closeUniversalModal);
+  }
+
+  // Calepinage depuis une modale : même chemin qu'un clic sur l'entrée du menu horizontal (pas de
+  // rechargement si l'on est déjà sur la page de calepinage, cf. handleCalepinageClick).
+  window.allerAuCalepinage = function () {
+    const lien = document.querySelector('.demo-nav a[data-nav-step="calepinage"]');
+    if (lien) lien.click();
+    else if (window.SKV_URL_ACCUEIL) window.location.href = window.SKV_URL_ACCUEIL;
+  };
+
+  // Pied de l'étape « Consommation » : Précédent -> Paramètres projet, Suivant -> Calepinage.
+  const precedentConsoBtn = document.getElementById('universal-modal-precedent');
+  if (precedentConsoBtn) {
+    precedentConsoBtn.addEventListener('click', () => {
+      closeUniversalModal();
+      if (typeof window.openParametresProjet === 'function') window.openParametresProjet();
+    });
+  }
+  const suivantConsoBtn = document.getElementById('universal-modal-suivant');
+  if (suivantConsoBtn) {
+    suivantConsoBtn.addEventListener('click', () => {
+      closeUniversalModal();
+      window.allerAuCalepinage();
+    });
+  }
+
+  const reduireModalBtn = document.getElementById('reduire-universal-modal');
+  if (reduireModalBtn) {
+    reduireModalBtn.addEventListener('click', reduireUniversalModal);
+  }
+  const poigneeUniversalModal = document.getElementById('universal-modal-poignee');
+  if (poigneeUniversalModal) {
+    poigneeUniversalModal.addEventListener('click', reafficherUniversalModal);
+  }
+
+  // Fermer le modal en cliquant sur le backdrop
+  const universalBackdrop = document.getElementById('universal-modal-backdrop');
+  if (universalBackdrop) {
+    universalBackdrop.addEventListener('click', closeUniversalModal);
+  }
+
+
+  // Script pour ouvrir le modal de dimensionnement électrique
+  function openSystemeElecModal(event) {
+    event.preventDefault();
+    openUniversalModal(
+      'Dimensionnement électrique',
+      '{{ url_for("main.systeme_electrique") }}',
+      '#dc2626'
+    );
+  }
+
+
+
+  // Écouter les messages postMessage depuis les iframes pour fermer le modal
+  window.addEventListener('message', function (event) {
+    if (event.data && event.data.action === 'closeModal') {
+      closeUniversalModal();
+    }
+  });
+</script>
+
+<!-- Script de gestion des permissions -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="/static/concevoir_mon_projet/javascript/menuPermissions.js"></script>
+
+<!-- ===== Gestion de l'inactivité (déconnexion auto 20 min) ===== -->
+<div id="inactivity-warning" style="
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.55); z-index: 99999; align-items: center; justify-content: center;">
+  <div style="
+      background: #fff; border-radius: 12px; padding: 2rem 2.5rem; max-width: 420px; width: 90%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center;">
+    <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">⏳</div>
+    <h3 style="margin: 0 0 0.5rem; color: #1f2937; font-size: 1.2rem;">Session sur le point d'expirer</h3>
+    <p style="color: #6b7280; margin: 0 0 1.25rem; font-size: 0.95rem;">
+      Vous serez déconnecté dans <strong id="inactivity-countdown" style="color:#ef4444;">120</strong> secondes en raison d'inactivité.
+    </p>
+    <button onclick="window._resetInactivityTimer()" style="
+        background: #3b82f6; color: #fff; border: none; border-radius: 8px;
+        padding: 0.6rem 1.5rem; font-size: 1rem; cursor: pointer; width: 100%; font-weight: 600;">
+      Rester connecté
+    </button>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const INACTIVITY_MS   = 20 * 60 * 1000;  // 20 minutes
+  const WARNING_BEFORE  = 2  * 60 * 1000;  // avertissement à T-2 min
+  const HEARTBEAT_EVERY = 5  * 60 * 1000;  // heartbeat toutes les 5 min si actif
+  const LOGIN_URL = '{{ config.MAIN_APP_URL if config else "https://solakvan.com" }}/authentification/login';
+
+  let inactivityTimer    = null;
+  let warningTimer       = null;
+  let countdownInterval  = null;
+  let heartbeatInterval  = null;
+  let warningVisible     = false;
+  let lastActivityTime   = Date.now();
+  let lastEventThrottled = 0;
+
+  const warningEl    = document.getElementById('inactivity-warning');
+  const countdownEl  = document.getElementById('inactivity-countdown');
+
+  function showWarning() {
+    if (warningVisible) return;
+    warningVisible = true;
+    if (warningEl) warningEl.style.display = 'flex';
+    let secs = Math.round(WARNING_BEFORE / 1000);
+    if (countdownEl) countdownEl.textContent = secs;
+    countdownInterval = setInterval(function () {
+      secs -= 1;
+      if (countdownEl) countdownEl.textContent = secs;
+      if (secs <= 0) clearInterval(countdownInterval);
+    }, 1000);
+  }
+
+  function hideWarning() {
+    warningVisible = false;
+    if (warningEl) warningEl.style.display = 'none';
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  }
+
+  function logout() {
+    clearTimers();
+    // Déconnexion : caches locaux du projet oubliés, seule la version enregistrée en base est
+    // conservée (services/version_projet.js, section 3 ; la sauvegarde auto tourne toutes les 2 min).
+    try {
+      if (window.SauvegardeProjet) window.SauvegardeProjet.autoriserSortie();
+      if (window.SkvVersionProjet && window.SkvVersionProjet.oublierCachesProjet) {
+        window.SkvVersionProjet.oublierCachesProjet(localStorage.getItem('current_projet_id'));
+      }
+    } catch (e) { /* stockage indisponible : la prochaine session écartera les caches */ }
+    // Appel backend pour invalider la session côté serveur
+    fetch('/concevoir_mon_projet/api/session/expire', { method: 'POST' }).catch(function(){});
+    window.location.href = LOGIN_URL;
+  }
+
+  function clearTimers() {
+    if (inactivityTimer)   { clearTimeout(inactivityTimer);     inactivityTimer   = null; }
+    if (warningTimer)      { clearTimeout(warningTimer);         warningTimer      = null; }
+    if (countdownInterval) { clearInterval(countdownInterval);   countdownInterval = null; }
+    if (heartbeatInterval) { clearInterval(heartbeatInterval);   heartbeatInterval = null; }
+  }
+
+  function sendHeartbeat() {
+    fetch('/concevoir_mon_projet/api/session/heartbeat', { method: 'POST' }).catch(function(){});
+  }
+
+  // Réinitialise les timers d'inactivité
+  window._resetInactivityTimer = function (sendImmediateHeartbeat) {
+    if (sendImmediateHeartbeat === undefined) sendImmediateHeartbeat = true;
+    if (inactivityTimer) clearTimeout(inactivityTimer);
+    if (warningTimer)    clearTimeout(warningTimer);
+    hideWarning();
+    lastActivityTime = Date.now();
+
+    if (sendImmediateHeartbeat) {
+      sendHeartbeat();
+    }
+
+    warningTimer    = setTimeout(showWarning, INACTIVITY_MS - WARNING_BEFORE);
+    inactivityTimer = setTimeout(logout,      INACTIVITY_MS);
+  };
+
+  // Heartbeat régulier toutes les 5 min tant que l'utilisateur est actif
+  function startHeartbeatLoop() {
+    if (heartbeatInterval) clearInterval(heartbeatInterval);
+    heartbeatInterval = setInterval(function () {
+      // Envoyer le heartbeat seulement si l'utilisateur est actif (pas en modal d'avertissement et actif récemment)
+      if (!warningVisible && (Date.now() - lastActivityTime < INACTIVITY_MS)) {
+        sendHeartbeat();
+      }
+    }, HEARTBEAT_EVERY);
+  }
+
+  // Écouter toute interaction utilisateur avec throttling (max 1 fois toutes les 5 secondes)
+  ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll', 'click'].forEach(function (evt) {
+    document.addEventListener(evt, function () {
+      if (warningVisible) return;
+      const now = Date.now();
+      if (now - lastEventThrottled > 5000) {
+        lastEventThrottled = now;
+        window._resetInactivityTimer(false);
+      }
+    }, { passive: true });
+  });
+
+  // Démarrage initial
+  window._resetInactivityTimer(true);
+  startHeartbeatLoop();
+})();
+</script>
+
+<script>
+// =====================================================================
+// Contrôle des quotas de licence photovoltaïque (Puissance max + tolérance)
+// =====================================================================
+window.USER_LICENCE = {
+  max_kwc: {{ licence_pv.get('max_kwc')|tojson if licence_pv and licence_pv.get('max_kwc') is not none else 'null' }},
+  tolerance_percent: {{ licence_power_tolerance_percent|tojson if licence_power_tolerance_percent is defined else 10.0 }},
+  max_kwc_allowed: {{ licence_max_kwc_allowed|tojson if licence_max_kwc_allowed is not none else 'null' }},
+  is_admin: {{ 'true' if (current_user and current_user.get('is_admin')) else 'false' }}
+};
+// Champ solaire depuis le cadastre (bouton de décalage) : accès réglé dans config.py
+// (DECALAGE_PARCELLES_POUR_TOUS / DECALAGE_PARCELLES_EMAILS), revérifié à la sauvegarde.
+window.DECALAGE_PARCELLES_AUTORISE = {{ 'true' if decalage_parcelles_autorise else 'false' }};
+window.DISTANCE_SEUIL_PROJET ={{ distance_seuil_projet|tojson if distance_seuil_projet is defined else 300 }};
+window.DISTANCE_MAX_CALEPINAGE = {{ distance_max_calepinage|tojson if distance_max_calepinage is defined else 2000 }};
+// Surface maximale (m²) d'un contour de calepinage maison, par outil de tracé — config.py
+// (CALEPINAGE_SURFACE_MAX_RECT_M2 / _POLYGONE_M2), revérifiée par le backend à la sauvegarde.
+window.CALEPINAGE_SURFACE_MAX_M2 = {
+  rect: {{ calepinage_surface_max_rect_m2|tojson if calepinage_surface_max_rect_m2 is defined else 25000 }},
+  polygon: {{ calepinage_surface_max_polygone_m2|tojson if calepinage_surface_max_polygone_m2 is defined else 50000 }}
+};
+
+
+window.checkPowerLicenceCompliance = function (requestedKwc) {
+  const requested = Number(requestedKwc || 0);
+  const tolerance = (window.USER_LICENCE && window.USER_LICENCE.tolerance_percent !== undefined) 
+    ? Number(window.USER_LICENCE.tolerance_percent) 
+    : 10.0;
+
+  if (window.USER_LICENCE && window.USER_LICENCE.is_admin) {
+    return {
+      allowed: true,
+      compliant: true,
+      max_kwc: null,
+      maxKwc: null,
+      max_allowed_kwc: null,
+      maxAllowedKwc: null,
+      tolerance_percent: tolerance,
+      tolerancePercent: tolerance,
+      requested_kwc: requested,
+      requestedKwc: requested,
+      message: ''
+    };
+  }
+  const maxKwc = window.USER_LICENCE ? window.USER_LICENCE.max_kwc : null;
+  if (maxKwc === null || maxKwc === undefined) {
+    return {
+      allowed: true,
+      compliant: true,
+      max_kwc: null,
+      maxKwc: null,
+      max_allowed_kwc: null,
+      maxAllowedKwc: null,
+      tolerance_percent: tolerance,
+      tolerancePercent: tolerance,
+      requested_kwc: requested,
+      requestedKwc: requested,
+      message: ''
+    };
+  }
+
+  const maxAllowed = (window.USER_LICENCE && window.USER_LICENCE.max_kwc_allowed !== null && window.USER_LICENCE.max_kwc_allowed !== undefined)
+    ? Number(window.USER_LICENCE.max_kwc_allowed)
+    : Math.round(Number(maxKwc) * (1 + tolerance / 100) * 100) / 100;
+
+  if (requested > maxAllowed) {
+    const msg = `Refus strict de calcul : la puissance demandée (${requested.toFixed(2)} kWc) dépasse la puissance maximale autorisée par projet par votre licence (${maxKwc} kWc + ${tolerance}% tolérance = ${maxAllowed.toFixed(2)} kWc).`;
+    return {
+      allowed: false,
+      compliant: false,
+      max_kwc: Number(maxKwc),
+      maxKwc: Number(maxKwc),
+      max_allowed_kwc: maxAllowed,
+      maxAllowedKwc: maxAllowed,
+      tolerance_percent: tolerance,
+      tolerancePercent: tolerance,
+      requested_kwc: requested,
+      requestedKwc: requested,
+      message: msg
+    };
+  }
+  return {
+    allowed: true,
+    compliant: true,
+    max_kwc: Number(maxKwc),
+    maxKwc: Number(maxKwc),
+    max_allowed_kwc: maxAllowed,
+    maxAllowedKwc: maxAllowed,
+    tolerance_percent: tolerance,
+    tolerancePercent: tolerance,
+    requested_kwc: requested,
+    requestedKwc: requested,
+    message: ''
+  };
+};
+
+window.setCalculerVisualiserDisabled = function (disabled, reason) {
+  const btnIds = ['calculerVisualiserBtn', 'cmCalculerVisualiserBtn', 'calcVisButton'];
+  btnIds.forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.disabled = !!disabled;
+      if (disabled) {
+        btn.classList.add('disabled');
+        btn.style.opacity = '0.5';
+        btn.style.cursor = 'not-allowed';
+        btn.setAttribute('title', reason || 'Calcul désactivé : dépassement du seuil de licence');
+      } else {
+        btn.classList.remove('disabled');
+        btn.style.opacity = '1';
+        btn.style.cursor = 'pointer';
+        btn.removeAttribute('title');
+      }
+    }
+  });
+};
+</script>

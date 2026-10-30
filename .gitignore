@@ -1,0 +1,110 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+/venv
+monenv
+.monenv
+Skvenv
+Skvenv313
+.Skvenv
+Nkvenv
+appcopy.yaml
+
+
+# Variables d'environnement
+env/
+.env
+/.env
+user_code.py
+instance/*
+instance/.*
+instance/concevoir_mon_projet.db
+*.db
+
+
+
+# configuration du sso.
+/app/__init__.py
+app/__init__.py 
+__init.py
+requirements_Copy.txt
+# calcul_prodsolaire/
+# calepinage_systeme/
+#  calepinage_systeme_routes.py
+#  ombriere_liasonnee.js
+#  Irve/
+#  calcul_consommation/
+#  main_calcul_consommation.py
+#  calcul_pompage_solaire.js
+#  pompage_solaire.js
+#  calepinage_shed.js
+#  petit_champ_solaire/
+
+# Fichiers de logique économique dupliquée (JS/Python) à ne pas versionner
+#  app/models/etude_economique.py
+#  app/static/concevoir_mon_projet/javascript/EtudesEconomiqueLogic.js
+ requirements_V1.txtcalcul_prodsolaire/
+#  ombriere_liasonnee.jscalcul_prodsolaire/
+#  ombriere_liasonnee.js
+
+requirements_V1.txt
+.Dockerfile_backup
+# Base de données matériels (classeur Excel de travail, avec images) : jamais envoyée sur GitHub.
+# L'ancienne règle portait un accent (« Matériels_BD.xlsx ») que le nom réel du fichier n'a pas :
+# elle ne s'appliquait donc à rien. Les deux orthographes sont désormais couvertes, où que le fichier soit.
+Materiels_BD.xlsx
+Matériels_BD.xlsx
+**/Materiels_BD.xlsx
+**/Matériels_BD.xlsx
+
+# Tests locaux (non necessaires en production)
+/tests/
+app/static/concevoir_mon_projet/javascript/components/orthophoto_source/
+
+# ---------------------------------------------------------------------------
+# Orthophotos drone : données de chantier (clients), lourdes et privées.
+# Le CODE reste versionné : app/models/orthophoto_georef.py, app/routes/orthophoto.py,
+# app/static/.../components/orthophoto/orthophoto_drone.js, scripts/orthophoto_*.py.
+# ---------------------------------------------------------------------------
+app/static/concevoir_mon_projet/javascript/components/orthophoto_source/
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.jpg
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.jpeg
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.png
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.tif
+app/static/concevoir_mon_projet/javascript/components/orthophoto/*.tiff
+app/static/concevoir_mon_projet/javascript/components/calepinage_systeme/explication_solakvan.md.pdf
+app/static/concevoir_mon_projet/javascript/Irve/pompage_solaire/grundfos.pdf
+app/static/concevoir_mon_projet/docs/tuto_version/donnees_enedis_36f3bd6c_2026-10-12.xlsx
+app/static/concevoir_mon_projet/docs/tuto_version/test50B_R63_5min.xlsx
+app/static/concevoir_mon_projet/javascript/etude_economique/Verif_calcul_rentabilité.xlsx
+
+# Fichiers de géoréférencement et formats SIG, où qu'ils soient déposés dans le projet
+*.jgw
+*.jpgw
+*.jpegw
+*.pgw
+*.pngw
+*.tfw
+*.tifw
+*.wld
+*.prj
+*.jp2
+*.kmz
+*.kml
+*.dxf
+*.rsInfo
+
+# Fichiers produits par les vérifications d'orthophoto (KMZ/GeoTIFF/référence IGN)
+*_verification.*
+# ... sauf le CODE des contrôles de calcul (routes Python et scripts du navigateur), qui doit être suivi :
+# app/__init__.py importe app/routes/*_verification.py et les modales chargent les *_verification.js.
+!app/routes/*_verification.py
+!app/static/**/*_verification.js
+IGN_reference_*
