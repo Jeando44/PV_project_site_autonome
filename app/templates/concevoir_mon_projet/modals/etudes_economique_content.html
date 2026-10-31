@@ -718,6 +718,28 @@
             padding-bottom: 15px;
             border-bottom: 1px solid var(--border-color, #ddd);
         }
+        /* Paramètres à gauche, devise + convertisseur à droite (ChiffrageModeView.js::placerEntete). */
+        #chiffrage-entete,
+        .chiffrage-entete-gauche,
+        .chiffrage-entete-droite {
+            display: contents;
+        }
+        .eco-mode-chiffrage #chiffrage-entete {
+            display: grid;
+            grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+            gap: 30px;
+            align-items: start;
+        }
+        .eco-mode-chiffrage .chiffrage-entete-gauche,
+        .eco-mode-chiffrage .chiffrage-entete-droite {
+            display: block;
+            min-width: 0;
+        }
+        @media (max-width: 900px) {
+            .eco-mode-chiffrage #chiffrage-entete {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
         .chiffrage-bandeau-grille {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -2005,7 +2027,7 @@ document.addEventListener('solarProjectDataSaved', injectProjectDataToEconomicSt
 <!-- Vue PRO / Grand projet : affichage vertical + Chiffrage CAPEX (Devis) du résidentiel. -->
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/pro/ProEtudeEcoView.js') }}?v=1"></script>
 <!-- Parcours Chiffrage (avant-projet) : même modal, sections réduites au devis (cf. fichier). -->
-<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/ChiffrageModeView.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/ChiffrageModeView.js') }}?v=4"></script>
 
 <!-- Autoconsommation embarquée (résidentiel uniquement, cf. ResidentielAutoconsoEmbed.js) : le
      modal Autoconsommation existant (index_autoconso.html/main_autoconso.js, non modifié) est

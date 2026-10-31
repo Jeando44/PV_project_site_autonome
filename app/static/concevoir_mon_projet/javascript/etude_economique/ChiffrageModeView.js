@@ -170,7 +170,7 @@
         const bandeau = document.createElement('div');
         bandeau.id = 'chiffrage-bandeau';
         bandeau.innerHTML = `
-            <h2>Chiffrage avant-projet</h2>
+            <h2>Paramètres de chiffrage</h2>
             <div class="chiffrage-bandeau-grille">
                 <div class="form-group">
                     <label for="chiffrage-puissance-calepinage">Puissance du calepinage (kWc)</label>
@@ -254,12 +254,56 @@
         const titreModal = document.querySelector('#etudes-economique-modal h1');
         if (titreModal) titreModal.innerHTML = '<i class="fas fa-euro-sign"></i> Chiffrage';
 
+        // Vue résidentielle / site autonome : titre « Chiffrage & Devis » inutile en chiffrage.
+        masquer(document.querySelector('#etudes-eco-residentiel-view > h2'));
+
         const conteneur = contenu.querySelector('.container-eco');
         if (conteneur && !document.getElementById('chiffrage-bandeau')) {
             conteneur.insertBefore(construireBandeau(), conteneur.firstChild);
             conteneur.appendChild(construireActions());
         }
+        placerEntete();
         return true;
+    }
+
+    /**
+     * Vue résidentielle / site autonome : paramètres à gauche (bandeau + « Paramètres projet »),
+     * choix de la devise et convertisseur à droite. Le groupe devise quitte la grille de
+     * « Paramètres projet » ; un repère permet de l'y remettre (restaurerDevise) quand le modal
+     * ressort du mode chiffrage (cf. openModalForPompage). Hors mode chiffrage, l'en-tête et ses
+     * colonnes sont en display:contents (etudes_economique_content.html).
+     */
+    function placerEntete() {
+        const ancre = document.getElementById('resi-production-anchor');
+        const devise = document.getElementById('form-group-choix-devise');
+        const bandeau = document.getElementById('chiffrage-bandeau');
+        if (!ancre || !devise || !bandeau) return;
+        let entete = document.getElementById('chiffrage-entete');
+        if (!entete) {
+            entete = document.createElement('div');
+            entete.id = 'chiffrage-entete';
+            entete.innerHTML = '<div class="chiffrage-entete-gauche"></div><div class="chiffrage-entete-droite"></div>';
+            ancre.parentNode.insertBefore(entete, ancre);
+        }
+        const gauche = entete.querySelector('.chiffrage-entete-gauche');
+        const droite = entete.querySelector('.chiffrage-entete-droite');
+        if (bandeau.parentNode !== gauche) gauche.appendChild(bandeau);
+        if (ancre.parentNode !== gauche) gauche.appendChild(ancre);
+        if (devise.parentNode !== droite) {
+            if (!document.getElementById('chiffrage-devise-repere')) {
+                const repere = document.createElement('span');
+                repere.id = 'chiffrage-devise-repere';
+                repere.hidden = true;
+                devise.parentNode.insertBefore(repere, devise);
+            }
+            droite.appendChild(devise);
+        }
+    }
+
+    function restaurerDevise() {
+        const repere = document.getElementById('chiffrage-devise-repere');
+        const devise = document.getElementById('form-group-choix-devise');
+        if (repere && devise) repere.replaceWith(devise);
     }
 
     /**
@@ -320,6 +364,7 @@
                 if (!estChiffrage() && contenu) {
                     contenu.classList.remove('eco-mode-chiffrage');
                     contenu.querySelectorAll('.chiffrage-masque').forEach((el) => el.classList.remove('chiffrage-masque'));
+                    restaurerDevise();
                     const titreModal = document.querySelector('#etudes-economique-modal h1');
                     if (titreModal) titreModal.innerHTML = '<i class="bx bx-line-chart"></i> Études Économiques';
                     const resiProduction = document.getElementById('resi-production-container');
