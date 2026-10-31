@@ -462,6 +462,11 @@
             const btn = CM.modalBody.querySelector('#' + id);
             if (btn) btn.style.display = (residentielle && !chiffrage) ? '' : 'none';
         });
+        const parcoursResi = typeof window.isResidentialPath === 'function' ? window.isResidentialPath() : residentielle;
+        ['cmExporterPlanCablageBtn', 'cmExporterDevisDetailleBtn', 'cmExporterDevisSynthetiqueBtn'].forEach((id) => {
+            const btn = CM.modalBody.querySelector('#' + id);
+            if (btn) btn.style.display = parcoursResi ? '' : 'none';
+        });
         // Déclaration préalable : même critère que l'entrée du menu horizontal (menu_list.html).
         const dpBtn = CM.modalBody.querySelector('#cmOpenDeclarationPrealableBtn');
         if (dpBtn) {
@@ -2908,8 +2913,17 @@
                      (exportToPDFJS() du modal Autoconsommation embarqué, cf.
                      ResidentielAutoconsoEmbed.js::window.cmDownloadAutoconsoRapport) — nécessite
                      qu'un calcul ait déjà été lancé au moins une fois via le bouton ci-dessus. -->
-                <button type="button" id="cmTelechargerRapportBtn" class="cm-btn" style="width:100%; margin-bottom:12px; background:#fff; color:var(--success-color, #16a34a); border-color:var(--success-color, #16a34a);">
+                <button type="button" id="cmTelechargerRapportBtn" class="cm-btn" style="width:100%; margin-bottom:8px; background:#fff; color:var(--success-color, #16a34a); border-color:var(--success-color, #16a34a);">
                     <i class="fas fa-file-pdf"></i> Télécharger le rapport
+                </button>
+                <button type="button" id="cmExporterPlanCablageBtn" class="cm-btn" style="width:100%; margin-bottom:8px; background:#fff; color:#005A9E; border-color:#005A9E;">
+                    <i class="fas fa-project-diagram"></i> Exporter le plan de câblage
+                </button>
+                <button type="button" id="cmExporterDevisDetailleBtn" class="cm-btn" style="width:100%; margin-bottom:8px; background:#fff; color:#1E8449; border-color:#1E8449;">
+                    <i class="fas fa-file-invoice-dollar"></i> Exporter le devis détaillé en PDF/Excel
+                </button>
+                <button type="button" id="cmExporterDevisSynthetiqueBtn" class="cm-btn" style="width:100%; margin-bottom:12px; background:#fff; color:#1E8449; border-color:#1E8449;">
+                    <i class="fas fa-file-invoice"></i> Exporter le devis synthétique en PDF/Excel
                 </button>
 
                 <!-- RETIRÉ (demande explicite : "la carte Planning de réalisation doit être placée
@@ -3141,6 +3155,58 @@
                 window.cmDownloadAutoconsoRapport();
             } else {
                 console.warn('[CalepinageMaison] cmDownloadAutoconsoRapport indisponible (ResidentielAutoconsoEmbed.js non chargé ?).');
+            }
+        });
+
+        const exporterPlanCablageBtn = CM.modalBody.querySelector('#cmExporterPlanCablageBtn');
+        if (exporterPlanCablageBtn) exporterPlanCablageBtn.addEventListener('click', () => {
+            if (typeof window.exporterPlanCablageDcProjet !== 'function') {
+                alert("Le plan de câblage n'est pas disponible sur cette page.");
+                return;
+            }
+            const champs = typeof CM.getPvFieldsForChainesPertes === 'function' ? (CM.getPvFieldsForChainesPertes() || []) : [];
+            if (!champs.length) {
+                alert("Aucun champ PV calepiné : veuillez d'abord dessiner les panneaux sur la toiture.");
+                return;
+            }
+            if (!window.exporterPlanCablageDcProjet(champs)) {
+                alert("Aucun pan câblé : veuillez d'abord configurer les chaînes dans « Ouvrir Dimensionnement ».");
+            }
+        });
+
+        const exporterDevisDetailleBtn = CM.modalBody.querySelector('#cmExporterDevisDetailleBtn');
+        if (exporterDevisDetailleBtn) exporterDevisDetailleBtn.addEventListener('click', async () => {
+            const PDF = window.ResidentielChiffrage && window.ResidentielChiffrage.PDF;
+            if (!PDF || typeof PDF.previewAndExport !== 'function') {
+                alert("Le module d'export de devis n'est pas disponible sur cette page.");
+                return;
+            }
+            exporterDevisDetailleBtn.disabled = true;
+            try {
+                await PDF.previewAndExport({ detailed: true });
+            } catch (err) {
+                console.error('[cmExporterDevisDetailleBtn] Échec export devis détaillé :', err);
+                alert(err.message || "Échec de l'export du devis détaillé.");
+            } finally {
+                exporterDevisDetailleBtn.disabled = false;
+            }
+        });
+
+        const exporterDevisSynthetiqueBtn = CM.modalBody.querySelector('#cmExporterDevisSynthetiqueBtn');
+        if (exporterDevisSynthetiqueBtn) exporterDevisSynthetiqueBtn.addEventListener('click', async () => {
+            const PDF = window.ResidentielChiffrage && window.ResidentielChiffrage.PDF;
+            if (!PDF || typeof PDF.previewAndExport !== 'function') {
+                alert("Le module d'export de devis n'est pas disponible sur cette page.");
+                return;
+            }
+            exporterDevisSynthetiqueBtn.disabled = true;
+            try {
+                await PDF.previewAndExport({ detailed: false });
+            } catch (err) {
+                console.error('[cmExporterDevisSynthetiqueBtn] Échec export devis synthétique :', err);
+                alert(err.message || "Échec de l'export du devis synthétique.");
+            } finally {
+                exporterDevisSynthetiqueBtn.disabled = false;
             }
         });
 

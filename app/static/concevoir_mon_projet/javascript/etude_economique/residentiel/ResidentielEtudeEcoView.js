@@ -77,6 +77,17 @@
                      que le calcul ci-dessus n'a pas été lancé au moins une fois (cf. init() plus bas). -->
                 <button type="button" id="resi-download-rapport-btn" class="btn-export" style="background:#fff; color:var(--accent-green, #16a34a); border:1px solid var(--accent-green, #16a34a);">Télécharger le rapport</button>
             </div>
+            <div class="resi-export-actions" style="margin:0 0 25px; display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap;">
+                <button type="button" id="resi-export-cablage-btn" class="btn-export" style="background:#fff; color:#005A9E; border:1px solid #005A9E;">
+                    <i class="fas fa-project-diagram"></i> Exporter le plan de câblage
+                </button>
+                <button type="button" id="resi-export-devis-detaille-btn" class="btn-export" style="background:#fff; color:#1E8449; border:1px solid #1E8449;">
+                    <i class="fas fa-file-invoice-dollar"></i> Exporter le devis détaillé en PDF/Excel
+                </button>
+                <button type="button" id="resi-export-devis-synthetique-btn" class="btn-export" style="background:#fff; color:#1E8449; border:1px solid #1E8449;">
+                    <i class="fas fa-file-invoice"></i> Exporter le devis synthétique en PDF/Excel
+                </button>
+            </div>
         `;
     }
 
@@ -292,13 +303,12 @@
         button.disabled = true;
         statusEl.textContent = 'Génération en cours...';
         try {
-            const result = await window.ResidentielChiffrage.PDF.generate({
+            await window.ResidentielChiffrage.PDF.previewAndExport({
                 capexOverride: Capex ? Capex.getData() : undefined,
                 detailed: !!(detailCheckbox && detailCheckbox.checked),
                 onProgress: (msg) => { statusEl.textContent = msg; }
             });
-            window.ResidentielChiffrage.PDF.triggerBlobDownload(result.blob, result.filename);
-            statusEl.textContent = 'Devis PDF généré avec succès.';
+            statusEl.textContent = 'Aperçu du devis ouvert.';
         } catch (e) {
             console.error('[ResidentielEtudeEcoView] Échec génération devis PDF :', e);
             statusEl.textContent = e.message || 'Échec de la génération du devis PDF.';
@@ -415,6 +425,67 @@
                     window.cmDownloadAutoconsoRapport();
                 } else {
                     console.warn('[ResidentielEtudeEcoView] cmDownloadAutoconsoRapport indisponible (ResidentielAutoconsoEmbed.js non chargé ?).');
+                }
+            });
+        }
+
+        const exportCablageBtn = document.getElementById('resi-export-cablage-btn');
+        if (exportCablageBtn) {
+            exportCablageBtn.addEventListener('click', () => {
+                if (typeof window.exporterPlanCablageDcProjet !== 'function') {
+                    alert("Le plan de câblage n'est pas disponible sur cette page.");
+                    return;
+                }
+                const CM = window.CalepinageMaisonIndiv;
+                const champs = CM && typeof CM.getPvFieldsForChainesPertes === 'function'
+                    ? (CM.getPvFieldsForChainesPertes() || [])
+                    : (Array.isArray(window.__chainesPertesChampsProjet) ? window.__chainesPertesChampsProjet : []);
+                if (!champs.length) {
+                    alert("Aucun champ PV calepiné : veuillez d'abord dessiner les panneaux sur la toiture.");
+                    return;
+                }
+                if (!window.exporterPlanCablageDcProjet(champs)) {
+                    alert("Aucun pan câblé : veuillez d'abord configurer les chaînes dans « Ouvrir Dimensionnement ».");
+                }
+            });
+        }
+
+        const exportDevisDetailleBtn = document.getElementById('resi-export-devis-detaille-btn');
+        if (exportDevisDetailleBtn) {
+            exportDevisDetailleBtn.addEventListener('click', async () => {
+                const PDF = window.ResidentielChiffrage && window.ResidentielChiffrage.PDF;
+                const Capex = window.ResidentielChiffrage && window.ResidentielChiffrage.Capex;
+                if (!PDF || typeof PDF.previewAndExport !== 'function') return;
+                exportDevisDetailleBtn.disabled = true;
+                try {
+                    await PDF.previewAndExport({
+                        capexOverride: Capex ? Capex.getData() : undefined,
+                        detailed: true,
+                    });
+                } catch (e) {
+                    alert(e.message || "Échec de l'export du devis détaillé.");
+                } finally {
+                    exportDevisDetailleBtn.disabled = false;
+                }
+            });
+        }
+
+        const exportDevisSynthetiqueBtn = document.getElementById('resi-export-devis-synthetique-btn');
+        if (exportDevisSynthetiqueBtn) {
+            exportDevisSynthetiqueBtn.addEventListener('click', async () => {
+                const PDF = window.ResidentielChiffrage && window.ResidentielChiffrage.PDF;
+                const Capex = window.ResidentielChiffrage && window.ResidentielChiffrage.Capex;
+                if (!PDF || typeof PDF.previewAndExport !== 'function') return;
+                exportDevisSynthetiqueBtn.disabled = true;
+                try {
+                    await PDF.previewAndExport({
+                        capexOverride: Capex ? Capex.getData() : undefined,
+                        detailed: false,
+                    });
+                } catch (e) {
+                    alert(e.message || "Échec de l'export du devis synthétique.");
+                } finally {
+                    exportDevisSynthetiqueBtn.disabled = false;
                 }
             });
         }

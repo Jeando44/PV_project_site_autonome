@@ -28,7 +28,7 @@ from app.services.irve_controle import (
 from app.schemas.pompage_solaire_schemas import PompageSolaireSauvegarde, TAILLE_MAX_SAUVEGARDE_POMPAGE
 from app.schemas.residentiel_chiffrage_schemas import (
     ResidentielCapexSchema, ResidentielOpexSchema, ResidentielRuleError, validate_capex_business_rules,
-    calculer_totaux_capex, TOLERANCE_TOTAUX_EUR
+    calculer_totaux_capex, TOLERANCE_TOTAUX_EUR, extraire_taux_conversion, valider_taux_conversion
 )
 from app.models.parametre_projet import normaliser_typologie, normaliser_type_etude
 from app.schemas.calepinage_dimensionnement_schemas import (
@@ -539,6 +539,10 @@ def save_etude_economique_config(projet_id):
         # Mise à jour des attributs — les saisies des modales éco ACC, rangées dans le même blob
         # (CLE_ACC_PARAMETRES_ECO), ne sont jamais écrasées par l'étude économique.
         nouvelles = dict(req_data.get('data') or {})
+        try:
+            extraire_taux_conversion(nouvelles)
+        except ValueError as err_conv:
+            return jsonify({'success': False, 'message': str(err_conv)}), 400
         nouvelles.pop(CLE_ACC_PARAMETRES_ECO, None)
         if config.data and CLE_ACC_PARAMETRES_ECO in config.data:
             nouvelles[CLE_ACC_PARAMETRES_ECO] = config.data[CLE_ACC_PARAMETRES_ECO]
@@ -579,6 +583,7 @@ def load_etude_economique_config(projet_id):
         return jsonify({
             'success': True,
             'config_exists': True,
+            'nom_projet': projet.nom_projet,
             'config': config_dict
         })
     except Exception as e:
@@ -804,16 +809,22 @@ def save_residentiel_chiffrage_config(projet_id):
         opex_payload = data_blob.get('opex')
         profil = _profil_chiffrage(projet)
         try:
+            taux_conv = extraire_taux_conversion(data_blob, capex_payload if isinstance(capex_payload, dict) else None)
             if capex_payload:
-                capex = ResidentielCapexSchema.model_validate(capex_payload)
+                capex_with_rate = {**capex_payload, 'tauxConversion': taux_conv} if isinstance(capex_payload, dict) else capex_payload
+                capex = ResidentielCapexSchema.model_validate(capex_with_rate)
                 validate_capex_business_rules(
                     [p.model_dump() for p in capex.postes], capex.conversionType,
                     profil=profil, lignes_exclues=capex.lignesExclues or (),
                     inclure_main_oeuvre=capex.inclureMainOeuvre,
+                    taux_conversion=taux_conv,
                 )
             # PRO / Grand projet : l'OPEX reste celui du formulaire standard (etude-economique/save).
             if opex_payload and profil == 'residentiel':
-                ResidentielOpexSchema.model_validate(opex_payload)
+                opex_with_rate = {**opex_payload, 'tauxConversion': taux_conv} if isinstance(opex_payload, dict) else opex_payload
+                ResidentielOpexSchema.model_validate(opex_with_rate)
+        except ValueError as e:
+            return jsonify({'success': False, 'message': str(e)}), 400
         except pydantic.ValidationError as e:
             first_error = e.errors()[0] if e.errors() else None
             field = '.'.join(str(p) for p in first_error['loc']) if first_error else '?'
@@ -872,6 +883,7 @@ def load_residentiel_chiffrage_config(projet_id):
         return jsonify({
             'success': True,
             'config_exists': True,
+            'nom_projet': projet.nom_projet,
             'config': config_dict
         })
     except Exception as e:
@@ -920,12 +932,17 @@ def verifier_totaux_chiffrage(projet_id):
     if not isinstance(capex_payload, dict) or not isinstance(totaux, dict):
         return jsonify({'success': False, 'message': 'Devis absent ou mal formé.'}), 400
     try:
-        capex = ResidentielCapexSchema.model_validate(capex_payload)
+        taux_conv = extraire_taux_conversion(req_data, capex_payload)
+        capex_with_rate = {**capex_payload, 'tauxConversion': taux_conv}
+        capex = ResidentielCapexSchema.model_validate(capex_with_rate)
         validate_capex_business_rules(
             [p.model_dump() for p in capex.postes], capex.conversionType,
             profil=_profil_chiffrage(projet), lignes_exclues=capex.lignesExclues or (),
             inclure_main_oeuvre=capex.inclureMainOeuvre,
+            taux_conversion=taux_conv,
         )
+    except ValueError as e:
+        return jsonify({'success': False, 'message': str(e)}), 400
     except pydantic.ValidationError as e:
         first_error = e.errors()[0] if e.errors() else None
         field = '.'.join(str(p) for p in first_error['loc']) if first_error else '?'

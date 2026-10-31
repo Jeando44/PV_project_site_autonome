@@ -284,5 +284,61 @@
 
     window.addEventListener('load', () => setTimeout(init, 800));
 
-    window.ChiffrageModeView = { ensureInit: init, rafraichir: rafraichirBandeau };
+    /**
+     * Ouvre la modale d'Études économiques en mode « Chiffrage » (Paramètres projet + Convertisseur
+     * de devises + Chiffrage CAPEX & Devis résidentiel) par-dessus la modale de Pompage solaire
+     * (#universal-modal), et synchronise les données à la fermeture.
+     */
+    function openModalForPompage(options = {}) {
+        if (window.ResidentielEtudeEcoView && typeof window.ResidentielEtudeEcoView.ensureInit === 'function') {
+            window.ResidentielEtudeEcoView.ensureInit();
+        }
+        const contenu = document.getElementById('etudes-economique-content');
+        const modal = document.getElementById('etudes-economique-modal');
+        const backdrop = document.getElementById('etudes-economique-backdrop');
+        const etaitChiffrage = estChiffrage();
+
+        appliquer();
+        rafraichirBandeau();
+        const actions = document.getElementById('chiffrage-actions');
+        if (actions && !etaitChiffrage) actions.style.display = 'none';
+
+        if (backdrop) backdrop.style.zIndex = '100001';
+        if (modal) modal.style.zIndex = '100002';
+
+        if (typeof window.openEtudesEconomiqueModal === 'function') {
+            window.openEtudesEconomiqueModal();
+        } else if (modal) {
+            if (backdrop) backdrop.style.display = 'block';
+            modal.style.display = 'flex';
+        }
+
+        if (modal && !modal.dataset.pompageCloseHooked) {
+            modal.dataset.pompageCloseHooked = '1';
+            new MutationObserver(() => {
+                if (modal.style.display !== 'none') return;
+                if (!estChiffrage() && contenu) {
+                    contenu.classList.remove('eco-mode-chiffrage');
+                    contenu.querySelectorAll('.chiffrage-masque').forEach((el) => el.classList.remove('chiffrage-masque'));
+                    const titreModal = document.querySelector('#etudes-economique-modal h1');
+                    if (titreModal) titreModal.innerHTML = '<i class="bx bx-line-chart"></i> Études Économiques';
+                    const resiProduction = document.getElementById('resi-production-container');
+                    if (resiProduction) {
+                        const titre = resiProduction.querySelector('h2');
+                        if (titre) titre.textContent = 'Paramètres projet & Production';
+                    }
+                }
+                if (typeof modal.__onPompageChiffrageClose === 'function') {
+                    const cb = modal.__onPompageChiffrageClose;
+                    modal.__onPompageChiffrageClose = null;
+                    try { cb(); } catch (e) { console.warn('[ChiffrageModeView] Callback fermeture pompage :', e); }
+                }
+            }).observe(modal, { attributes: true, attributeFilter: ['style'] });
+        }
+        if (modal) {
+            modal.__onPompageChiffrageClose = options.onClose || null;
+        }
+    }
+
+    window.ChiffrageModeView = { ensureInit: init, rafraichir: rafraichirBandeau, openModalForPompage };
 })();

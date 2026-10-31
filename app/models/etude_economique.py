@@ -162,6 +162,40 @@ class EtudeEconomiqueService:
         else:
             hors_calcul |= {"factureHiverBV", "abonnementBV"}
 
+        # Extraction et validation stricte du taux de conversion (0 < taux < 1000)
+        facteur_conversion = 1.0
+        conv_info = data.get("conversionDevise")
+        if isinstance(conv_info, dict) and conv_info.get("active"):
+            raw_rate = conv_info.get("rawRate", conv_info.get("rate"))
+            if raw_rate in (None, "") or isinstance(raw_rate, bool):
+                raise ValueError("Rejet : le taux de conversion est obligatoire (0 < taux < 1000).")
+            try:
+                facteur_conversion = float(str(raw_rate).replace(",", "."))
+            except (TypeError, ValueError):
+                raise ValueError("Rejet : le taux de conversion doit être numérique.")
+            if not math.isfinite(facteur_conversion) or facteur_conversion <= 0 or facteur_conversion >= 1000:
+                raise ValueError(f"Rejet : le taux de conversion ({facteur_conversion}) doit être strictement compris entre 0 et 1000.")
+        elif data.get("tauxConversion") not in (None, "", 1, 1.0):
+            raw_tc = data.get("tauxConversion")
+            if isinstance(raw_tc, bool):
+                raise ValueError("Rejet : tauxConversion invalide.")
+            try:
+                facteur_conversion = float(raw_tc)
+            except (TypeError, ValueError):
+                raise ValueError("Rejet : tauxConversion doit être numérique.")
+            if not math.isfinite(facteur_conversion) or facteur_conversion <= 0 or facteur_conversion >= 1000:
+                raise ValueError(f"Rejet : tauxConversion ({facteur_conversion}) doit être strictement compris entre 0 et 1000.")
+
+        champs_monetaires = {
+            "palT1", "palT2", "palT3", "prixAchatMWh", "prixAchatHP",
+            "prixAchatHPHiver", "prixAchatHPEte", "capexWc", "opexWc",
+            "capexEtudes", "capexAdmin", "capexPanneaux", "capexElec",
+            "capexCharpente", "capexVrd", "capexRacco", "capexAmo",
+            "capexSubvention", "capexBatterie", "capexAutres",
+            "opexConnexion", "opexPrev", "opexCura", "opexLoyer", "opexAutres",
+            "ond10", "bat10", "ond20", "prixRechargeReseau", "factureHiverBV", "abonnementBV"
+        }
+
         for key, (b_min, b_max, min_incl, max_incl) in bounds.items():
             if key in hors_calcul:
                 continue
@@ -170,12 +204,15 @@ class EtudeEconomiqueService:
                     val = float(data[key])
                 except ValueError:
                     raise ValueError(f"Le champ '{key}' doit être de type numérique.")
+
+                eff_min = round(b_min * facteur_conversion, 4) if (key in champs_monetaires and facteur_conversion < 1.0) else b_min
+                eff_max = round(b_max * facteur_conversion, 2) if key in champs_monetaires else b_max
+
+                if min_incl and val < eff_min: raise ValueError(f"Rejet : {key} ({val}) doit être >= {eff_min}")
+                elif not min_incl and val <= eff_min: raise ValueError(f"Rejet : {key} ({val}) doit être > {eff_min}")
                 
-                if min_incl and val < b_min: raise ValueError(f"Rejet : {key} ({val}) doit être >= {b_min}")
-                elif not min_incl and val <= b_min: raise ValueError(f"Rejet : {key} ({val}) doit être > {b_min}")
-                
-                if max_incl and val > b_max: raise ValueError(f"Rejet : {key} ({val}) doit être <= {b_max}")
-                elif not max_incl and val >= b_max: raise ValueError(f"Rejet : {key} ({val}) doit être < {b_max}")
+                if max_incl and val > eff_max: raise ValueError(f"Rejet : {key} ({val}) doit être <= {eff_max}")
+                elif not max_incl and val >= eff_max: raise ValueError(f"Rejet : {key} ({val}) doit être < {eff_max}")
 
         # Stockage : prix de recharge réseau obligatoire quand la recharge sur le réseau est active ;
         # année de remplacement cohérente avec l'horizon quand elle est personnalisée.

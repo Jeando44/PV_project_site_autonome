@@ -25,9 +25,41 @@
      * le cas lorsque ce fichier est appelé depuis ExportPlansModal.js (page index.html, où le
      * fragment étude économique et son #devise n'existent pas).
      */
-    function getDeviseSymbol() {
+    function getDeviseSymbol(savedConfig) {
         const checked = document.querySelector('input[name="devise"]:checked');
-        return (checked && checked.value) || '€';
+        if (checked && checked.value) return checked.value;
+        if (savedConfig && savedConfig.devise) return savedConfig.devise;
+        if (savedConfig && savedConfig.conversionDevise && savedConfig.conversionDevise.to) {
+            return savedConfig.conversionDevise.to;
+        }
+        return '€';
+    }
+
+    function getNomProjetCourant(savedConfig) {
+        if (savedConfig && savedConfig.nom_projet) return String(savedConfig.nom_projet).trim();
+        if (typeof window.getNomProjetCourantEco === 'function') {
+            const n = window.getNomProjetCourantEco();
+            if (n) return n;
+        }
+        try {
+            const el = document.getElementById('current_project_name') || document.getElementById('nom_projet');
+            if (el && el.value && el.value.trim()) return el.value.trim();
+            const ls = localStorage.getItem('current_projet_nom') || localStorage.getItem('nom_projet_courant');
+            if (ls && ls.trim()) return ls.trim();
+            const solar = JSON.parse(localStorage.getItem('solarProjectData') || '{}');
+            if (solar.projectName) return String(solar.projectName).trim();
+            if (solar.nom_projet) return String(solar.nom_projet).trim();
+        } catch (e) { /* ignore */ }
+        return '';
+    }
+
+    function resolveConversionDevise(capexData, savedConfig) {
+        if (typeof window.getConversionDeviseState === 'function' && document.querySelector('.conv-devise-checkbox')) {
+            return window.getConversionDeviseState();
+        }
+        if (capexData && capexData.conversionDevise) return capexData.conversionDevise;
+        if (savedConfig && savedConfig.conversionDevise) return savedConfig.conversionDevise;
+        return null;
     }
 
     /**
@@ -74,7 +106,7 @@
             const res = await fetch(`/concevoir_mon_projet/parametre-projet/${projetId}/residentiel-chiffrage/load`);
             const result = await res.json();
             if (result.success && result.config_exists && result.config && result.config.data) {
-                return result.config.data;
+                return { ...result.config.data, nom_projet: result.nom_projet || result.config.data.nom_projet };
             }
         } catch (e) {
             console.warn('[DevisPdfGenerator] Chargement des données résidentielles impossible :', e);
@@ -169,20 +201,28 @@
     async function generate(options = {}) {
         const { onProgress } = options;
         let capexData = options.capexOverride;
+        let saved = null;
         const detailed = !!options.detailed;
 
         if (!capexData) {
             if (onProgress) onProgress('Chargement des données du devis...');
-            const saved = await fetchSavedConfig();
+            saved = await fetchSavedConfig();
             capexData = (saved && saved.capex) || { postes: [] };
+        }
+
+        const conv = options.conversionDevise || resolveConversionDevise(capexData, saved);
+        if (conv && conv.active && conv.valid === false) {
+            throw new Error(conv.error || 'Taux de conversion invalide (0 < taux < 1000).');
         }
 
         if (onProgress) onProgress('Construction du PDF...');
 
         const puissanceKwc = options.puissanceKwc > 0 ? options.puissanceKwc : await lirePuissanceProjetKwc();
+        const devise = options.devise || getDeviseSymbol(saved);
+        const nomProjet = options.nomProjet || getNomProjetCourant(saved);
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        dessiner(doc, { capexData, detailed, puissanceKwc });
+        dessiner(doc, { capexData, detailed, puissanceKwc, devise, nomProjet, conversionDevise: conv });
 
         if (onProgress) onProgress("Ajout de l'en-tête et du pied de page...");
         try {
@@ -194,7 +234,8 @@
             console.warn('[DevisPdfGenerator] En-tête/pied de page indisponibles :', e);
         }
 
-        return { blob: doc.output('blob'), filename: 'Devis.pdf' };
+        const filename = detailed ? 'Devis_detaille.pdf' : 'Devis_synthetique.pdf';
+        return { blob: doc.output('blob'), filename, capexData, puissanceKwc, devise, nomProjet, conversionDevise: conv };
     }
 
     /**
@@ -210,23 +251,41 @@
         const capexData = (options && options.capexData) || { postes: [] };
         const detailed = !!(options && options.detailed);
         const devise = (options && options.devise) || getDeviseSymbol();
+        const nomProjet = (options && options.nomProjet) || getNomProjetCourant();
+        const conv = (options && options.conversionDevise) || resolveConversionDevise(capexData, null);
         const premierePage = doc.getCurrentPageInfo().pageNumber;
 
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(22);
         doc.setTextColor(0, 0, 0);
-        doc.text('Devis', doc.internal.pageSize.getWidth() / 2, 50, { align: 'center' });
+        doc.text('Devis', doc.internal.pageSize.getWidth() / 2, 48, { align: 'center' });
+
+        let infoY = 58;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        if (nomProjet) {
+            doc.text('Nom du projet : ' + nomProjet, 15, infoY);
+            infoY += 6;
+        }
 
         // Puissance du projet, juste avant le tableau (devis détaillé comme synthétique).
         const puissanceKwc = (options && options.puissanceKwc > 0) ? options.puissanceKwc : null;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(11);
         doc.text(
             'Puissance du projet : ' + (puissanceKwc
                 ? puissanceKwc.toLocaleString('fr-FR', { maximumFractionDigits: 2, useGrouping: false }) + ' kWc'
                 : 'non renseignée'),
-            15, 62
+            15, infoY
         );
+        infoY += 6;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(10);
+        if (conv && conv.active && conv.rate && conv.from && conv.to) {
+            doc.text(`Devise : ${devise} (1${conv.from}=${conv.rate} ${conv.to}) — Taux de conversion : 1${conv.from}=${conv.rate} ${conv.to}`, 15, infoY);
+        } else {
+            doc.text(`Devise : ${devise}`, 15, infoY);
+        }
+        infoY += 5;
 
         // Le tableau des charges annuelles (OPEX) n'est volontairement pas inclus dans le devis
         // (point 8 des correctifs) : seul le chiffrage CAPEX y figure.
@@ -235,7 +294,7 @@
         const totalTva = capexTotals.totalTtc - capexTotals.totalHt;
 
         doc.autoTable({
-            startY: 67,
+            startY: infoY,
             head: [['Poste / Désignation', 'Référence', 'Qté', 'PU HT', 'TVA', 'Total HT', 'Total TTC']],
             body: buildCapexRows(postes, detailed, devise),
             foot: [['', '', '', '', 'Total CAPEX', capexTotals.totalHt.toFixed(2) + ' ' + devise, capexTotals.totalTtc.toFixed(2) + ' ' + devise]],
@@ -293,16 +352,178 @@
         setTimeout(() => URL.revokeObjectURL(url), 1000);
     }
 
+    function escapeHtml(str) {
+        return String(str == null ? '' : str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    /**
+     * Exporte le devis (détaillé ou synthétique) au format Excel (.xls compatible Microsoft Excel / Calc).
+     */
+    async function exportExcel(options = {}) {
+        let capexData = options.capexOverride;
+        let saved = null;
+        const detailed = !!options.detailed;
+
+        if (!capexData) {
+            const Capex = window.ResidentielChiffrage && window.ResidentielChiffrage.Capex;
+            if (Capex && document.querySelector('#resi-capex-container .resi-section-header, #pro-capex-container .resi-section-header')) {
+                capexData = Capex.getData();
+            } else {
+                saved = await fetchSavedConfig();
+                capexData = (saved && saved.capex) || { postes: [] };
+            }
+        }
+
+        const conv = options.conversionDevise || resolveConversionDevise(capexData, saved);
+        if (conv && conv.active && conv.valid === false) {
+            throw new Error(conv.error || 'Taux de conversion invalide (0 < taux < 1000).');
+        }
+
+        const puissanceKwc = options.puissanceKwc > 0 ? options.puissanceKwc : await lirePuissanceProjetKwc();
+        const devise = options.devise || getDeviseSymbol(saved);
+        const nomProjet = options.nomProjet || getNomProjetCourant(saved);
+        const postes = postesAffiches(capexData);
+        const capexTotals = grandCapexTotals(postes);
+        const totalTva = capexTotals.totalTtc - capexTotals.totalHt;
+
+        const tauxInfo = (conv && conv.active && conv.rate && conv.from && conv.to)
+            ? `1${conv.from}=${conv.rate} ${conv.to}`
+            : 'Aucune conversion';
+
+        let bodyRowsHtml = '';
+        postes.forEach((poste) => {
+            const pt = posteTotals(poste);
+            const signe = poste.deduction ? -1 : 1;
+            if (!detailed) {
+                bodyRowsHtml += `<tr>
+                    <td>${escapeHtml(poste.label)}</td>
+                    <td></td><td></td><td></td><td></td>
+                    <td style="text-align:right;">${(signe * pt.totalHt).toFixed(2)} ${escapeHtml(devise)}</td>
+                    <td style="text-align:right;">${(signe * pt.totalTtc).toFixed(2)} ${escapeHtml(devise)}</td>
+                </tr>`;
+            } else {
+                bodyRowsHtml += `<tr style="background:#f0f0f0; font-weight:bold;">
+                    <td colspan="7">${escapeHtml(poste.label)}</td>
+                </tr>`;
+                (poste.lines || []).forEach((line) => {
+                    const t = lineTotals(line);
+                    bodyRowsHtml += `<tr>
+                        <td>${escapeHtml(line.designation || '')}</td>
+                        <td>${escapeHtml(line.reference || '')}</td>
+                        <td style="text-align:center;">${Number(line.qte || 0)}</td>
+                        <td style="text-align:right;">${(Number(line.puHt) || 0).toFixed(2)} ${escapeHtml(devise)}</td>
+                        <td style="text-align:center;">${Number(line.tvaPct) || 0} %</td>
+                        <td style="text-align:right;">${(signe * t.totalHt).toFixed(2)} ${escapeHtml(devise)}</td>
+                        <td style="text-align:right;">${(signe * t.totalTtc).toFixed(2)} ${escapeHtml(devise)}</td>
+                    </tr>`;
+                });
+            }
+        });
+
+        const htmlContent = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="UTF-8"><style>
+table { border-collapse: collapse; font-family: Arial, sans-serif; font-size: 10pt; }
+th, td { border: 1px solid #888; padding: 5px 8px; }
+th { background-color: #1e293b; color: #ffffff; font-weight: bold; }
+</style></head>
+<body>
+<h2>Devis ${detailed ? 'détaillé' : 'synthétique'}</h2>
+<p><strong>Nom du projet :</strong> ${escapeHtml(nomProjet || 'Non renseigné')}<br>
+<strong>Puissance du projet :</strong> ${puissanceKwc ? puissanceKwc.toFixed(2) + ' kWc' : 'Non renseignée'}<br>
+<strong>Devise :</strong> ${escapeHtml(devise)} (${escapeHtml(tauxInfo)})</p>
+<table>
+<thead><tr>
+<th>Poste / Désignation</th><th>Référence</th><th>Qté</th><th>PU HT (${escapeHtml(devise)})</th><th>TVA</th><th>Total HT (${escapeHtml(devise)})</th><th>Total TTC (${escapeHtml(devise)})</th>
+</tr></thead>
+<tbody>${bodyRowsHtml}</tbody>
+<tfoot><tr style="background:#e5e7eb; font-weight:bold;">
+<td colspan="5" style="text-align:right;">Total CAPEX</td>
+<td style="text-align:right;">${capexTotals.totalHt.toFixed(2)} ${escapeHtml(devise)}</td>
+<td style="text-align:right;">${capexTotals.totalTtc.toFixed(2)} ${escapeHtml(devise)}</td>
+</tr></tfoot>
+</table>
+<br>
+<table>
+<thead><tr><th>Total TVA</th><th>Prix HT</th><th>Prix TTC</th></tr></thead>
+<tbody><tr style="font-weight:bold; text-align:center;">
+<td>${totalTva.toFixed(2)} ${escapeHtml(devise)}</td>
+<td>${capexTotals.totalHt.toFixed(2)} ${escapeHtml(devise)}</td>
+<td>${capexTotals.totalTtc.toFixed(2)} ${escapeHtml(devise)}</td>
+</tr></tbody>
+</table>
+</body></html>`;
+
+        const blob = new Blob(['\uFEFF' + htmlContent], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+        const filename = detailed ? 'Devis_detaille.xls' : 'Devis_synthetique.xls';
+        triggerBlobDownload(blob, filename);
+        return { blob, filename };
+    }
+
+    /**
+     * Génère le devis PDF et l'ouvre dans la visionneuse PDF (preview pdf) avec possibilité
+     * de télécharger en PDF ou en Excel.
+     */
+    async function previewAndExport(options = {}) {
+        const detailed = !!options.detailed;
+        let capexOverride = options.capexOverride;
+        if (!capexOverride) {
+            const Capex = window.ResidentielChiffrage && window.ResidentielChiffrage.Capex;
+            if (Capex && document.querySelector('#resi-capex-container .resi-section-header, #pro-capex-container .resi-section-header')) {
+                capexOverride = Capex.getData();
+            }
+        }
+        const result = await generate({ ...options, capexOverride, detailed });
+
+        let ouvrirApercu = window.ouvrirApercuPdf || (window.parent && window.parent.ouvrirApercuPdf);
+        if (typeof ouvrirApercu !== 'function') {
+            try {
+                const mod = await import('/static/concevoir_mon_projet/javascript/services/PdfPreview.js');
+                ouvrirApercu = mod.ouvrirApercuPdf;
+            } catch (e) {
+                console.warn('[DevisPdfGenerator] PdfPreview indisponible, téléchargement direct :', e);
+            }
+        }
+
+        const titre = detailed
+            ? 'Prévisualisation — Devis détaillé (PDF / Excel)'
+            : 'Prévisualisation — Devis synthétique (PDF / Excel)';
+
+        if (typeof ouvrirApercu === 'function') {
+            ouvrirApercu(result.blob, result.filename, {
+                titre,
+                excelLabel: 'Télécharger en Excel',
+                onExcel: () => exportExcel({
+                    detailed,
+                    capexOverride: result.capexData,
+                    puissanceKwc: result.puissanceKwc,
+                    devise: result.devise,
+                    nomProjet: result.nomProjet,
+                    conversionDevise: result.conversionDevise
+                })
+            });
+        } else {
+            triggerBlobDownload(result.blob, result.filename);
+        }
+        return result;
+    }
+
     window.ResidentielChiffrage.PDF = {
         generate,
         dessiner,
         totauxDevis,
         chargerDevisEnregistre: fetchSavedConfig,
         getDeviseSymbol,
+        getNomProjetCourant,
         getPuissanceProjetKwc,
         lirePuissanceProjetKwc,
         triggerBlobDownload,
+        exportExcel,
+        previewAndExport,
         // Adaptateur au contrat des exporters ExportPlansModal.js : static async exportPdf({indice, onProgress}) -> {blob, filename}
-        exportPdf: (opts) => generate({ detailed: true, onProgress: opts && opts.onProgress })
+        exportPdf: (opts) => generate({ detailed: !opts || opts.detailed !== false, onProgress: opts && opts.onProgress })
     };
 })();

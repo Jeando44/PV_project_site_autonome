@@ -99,6 +99,54 @@ export default class ExportPlansModal {
       return section;
     }
 
+    if (tab.id === 'devis') {
+      section.innerHTML = `
+        <p class="export-plans-desc">${tab.description || ''}</p>
+        <div class="export-plans-actions" style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button type="button" class="export-plans-btn export-plans-btn-pdf" data-action="devis-detaille">
+            <i class="fas fa-file-invoice-dollar"></i> Exporter le devis détaillé en PDF/Excel
+          </button>
+          <button type="button" class="export-plans-btn export-plans-btn-pdf" data-action="devis-synthetique">
+            <i class="fas fa-file-invoice"></i> Exporter le devis synthétique en PDF/Excel
+          </button>
+        </div>
+        <div class="export-plans-status"></div>
+      `;
+      const statusEl = section.querySelector('.export-plans-status');
+      const btnDetaille = section.querySelector('[data-action="devis-detaille"]');
+      const btnSynthetique = section.querySelector('[data-action="devis-synthetique"]');
+      const runDevisExport = async (detailed) => {
+        btnDetaille.disabled = true;
+        btnSynthetique.disabled = true;
+        statusEl.textContent = 'Génération de la prévisualisation du devis en cours...';
+        statusEl.classList.remove('error');
+        try {
+          const PDF = window.ResidentielChiffrage && window.ResidentielChiffrage.PDF;
+          const Capex = window.ResidentielChiffrage && window.ResidentielChiffrage.Capex;
+          if (!PDF || typeof PDF.previewAndExport !== 'function') {
+            throw new Error("Module d'export de devis indisponible.");
+          }
+          const result = await PDF.previewAndExport({
+            capexOverride: Capex && typeof Capex.getData === 'function' ? Capex.getData() : undefined,
+            detailed,
+            onProgress: (msg) => { statusEl.textContent = msg; },
+          });
+          this._lastGenerated[tab.id] = result;
+          statusEl.textContent = `Aperçu ouvert : ${result.filename}`;
+        } catch (e) {
+          console.error('[ExportPlansModal] Échec export devis:', e);
+          statusEl.textContent = e.message || "Échec de l'export du devis.";
+          statusEl.classList.add('error');
+        } finally {
+          btnDetaille.disabled = false;
+          btnSynthetique.disabled = false;
+        }
+      };
+      btnDetaille.addEventListener('click', () => runDevisExport(true));
+      btnSynthetique.addEventListener('click', () => runDevisExport(false));
+      return section;
+    }
+
     section.innerHTML = `
       <p class="export-plans-desc">${tab.description || ''}</p>
       <label class="export-plans-field">
@@ -137,6 +185,9 @@ export default class ExportPlansModal {
         this._lastGenerated[tab.id] = result;
         downloadBtn.disabled = false;
         statusEl.textContent = `${kind.toUpperCase()} généré : ${result.filename}`;
+        if (kind === 'pdf' && result && result.blob && typeof window.ouvrirApercuPdf === 'function') {
+          window.ouvrirApercuPdf(result.blob, result.filename, { titre: `Prévisualisation — ${tab.label}` });
+        }
       } catch (e) {
         console.error(`[ExportPlansModal] Échec export ${kind}:`, e);
         statusEl.textContent = e.message || `Échec de l'export ${kind.toUpperCase()}.`;

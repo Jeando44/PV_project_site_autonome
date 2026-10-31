@@ -51,6 +51,14 @@
         const projetId = projetCharge;
         if (!projetId || typeof window.collecterSaisiesEco !== 'function') return Promise.resolve();
 
+        if (typeof window.getConversionDeviseState === 'function') {
+            const conv = window.getConversionDeviseState();
+            if (conv && conv.active && !conv.valid) {
+                echecEnregistrement = true;
+                return Promise.resolve({ success: false, message: conv.error || 'Taux de conversion invalide.' });
+            }
+        }
+
         const data = window.collecterSaisiesEco();
         if (!data) return Promise.resolve();
 

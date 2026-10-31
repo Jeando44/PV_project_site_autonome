@@ -887,7 +887,7 @@
                     <span class="resi-poste-total">${totalPoste}</span>
                 </div>
                 ${poste.key === 'materiels_pv' ? renderConversionSelect() : ''}
-                <table class="resi-lines-table"><thead><tr>
+                <table class="resi-lines-table ${showReference ? 'has-ref' : 'no-ref'}"><thead><tr>
                     <th>Désignation</th>${showReference ? '<th>Référence</th>' : ''}<th>Qté</th><th>PU HT (${devise})</th><th>TVA</th>
                     <th>Total HT (${devise})</th><th>Total TTC (${devise})</th><th></th>
                 </tr></thead><tbody>`;
@@ -1240,6 +1240,12 @@
     function erreursValidation() {
         const rules = Rules();
         const erreurs = [];
+        if (typeof window.getConversionDeviseState === 'function') {
+            const conv = window.getConversionDeviseState();
+            if (conv && conv.active && !conv.valid) {
+                erreurs.push(conv.error || 'Taux de conversion invalide (0 < taux < 1000).');
+            }
+        }
         state.postes.forEach((poste) => {
             if (posteExclu(poste)) return;
             (poste.lines || []).forEach((line) => {
@@ -1264,13 +1270,16 @@
     }
 
     function getData() {
+        const conv = (typeof window.getConversionDeviseState === 'function') ? window.getConversionDeviseState() : null;
         const data = {
             postes: state.postes, viewMode: state.viewMode, conversionType: state.conversionType,
             tvaMode: state.tvaMode, tvaGlobale: state.tvaGlobale,
             prixCible: { mode: state.prixCible.mode, valeur: state.prixCible.valeur },
             margeCible: state.margeCible,
             // Lu par DevisPdfGenerator.js (poste retiré du devis) et par le recalcul serveur des totaux.
-            inclureMainOeuvre: state.inclureMainOeuvre
+            inclureMainOeuvre: state.inclureMainOeuvre,
+            tauxConversion: (conv && conv.active && conv.valid) ? conv.rate : 1,
+            conversionDevise: conv
         };
         if (state.profil === 'pro') {
             data.profil = 'pro';

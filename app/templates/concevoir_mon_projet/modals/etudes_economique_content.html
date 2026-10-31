@@ -166,12 +166,27 @@
                 margin-left: 0;
             }
         }
+        /* Grille 2x2 pour les 4 postes CAPEX (Fourniture Matériel, Main d'œuvre, Études, Frais divers) */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-postes-list {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+            align-items: start;
+        }
+        @media (max-width: 1100px) {
+            :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-postes-list {
+                grid-template-columns: 1fr;
+            }
+        }
         :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-poste-block {
             border: 1px solid var(--border-color, #ddd);
             border-radius: 6px;
-            padding: 10px 15px;
-            margin-bottom: 12px;
+            padding: 8px 10px;
+            margin-bottom: 0;
             background: var(--bg-panel, #fff);
+            min-width: 0;
+            overflow-x: auto;
         }
         :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-poste-title {
             display: flex;
@@ -212,24 +227,46 @@
             background-color: #e9ecef;
             cursor: not-allowed;
         }
-        /* Largeurs de colonnes : Désignation/Référence gardent l'essentiel de la place, Qté/PU HT
-           sont resserrées pour laisser plus d'air à TVA / Total HT / Total TTC. */
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(1),
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(1) { width: 24%; }
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(2),
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(2) { width: 13%; }
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(3),
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(3) { width: 7%; }
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(4),
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(4) { width: 9%; }
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(5),
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(5) { width: 11%; }
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(6),
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(6) { width: 15%; }
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(7),
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(7) { width: 15%; }
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table th:nth-child(8),
-        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table td:nth-child(8) { width: 6%; }
+        /* Largeurs de colonnes : Qté et PU HT élargies pour saisir confortablement de grands nombres
+           (ex: FCFA / HTG) ; distinction explicite entre tableau 8 colonnes (.has-ref) et 7 colonnes (.no-ref). */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table .resi-qte {
+            min-width: 72px;
+        }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table .resi-pu, :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table .resi-puht {
+            min-width: 92px;
+        }
+        /* Tableau avec colonne Référence (8 colonnes : Fourniture Matériel) */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref th:nth-child(1),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref td:nth-child(1) { width: 22%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref th:nth-child(2),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref td:nth-child(2) { width: 11%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref th:nth-child(3),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref td:nth-child(3) { width: 13%; min-width: 78px; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref th:nth-child(4),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref td:nth-child(4) { width: 16%; min-width: 98px; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref th:nth-child(5),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref td:nth-child(5) { width: 9%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref th:nth-child(6),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref td:nth-child(6) { width: 12%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref th:nth-child(7),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref td:nth-child(7) { width: 12%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref th:nth-child(8),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.has-ref td:nth-child(8) { width: 5%; }
+        /* Tableau sans colonne Référence (7 colonnes : Main d'œuvre, Études, Frais divers) */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref th:nth-child(1),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref td:nth-child(1) { width: 28%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref th:nth-child(2),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref td:nth-child(2) { width: 14%; min-width: 82px; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref th:nth-child(3),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref td:nth-child(3) { width: 18%; min-width: 102px; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref th:nth-child(4),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref td:nth-child(4) { width: 10%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref th:nth-child(5),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref td:nth-child(5) { width: 13%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref th:nth-child(6),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref td:nth-child(6) { width: 13%; }
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref th:nth-child(7),
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-lines-table.no-ref td:nth-child(7) { width: 4%; }
         :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-poste-total {
             font-size: 0.9em;
             color: var(--text-secondary, #555);
@@ -828,6 +865,103 @@
             text-align: center;
             color: var(--text-secondary, #666);
         }
+        /* Convertisseur de devises et colonnes Paramètres projet */
+        .parametres-projet-col-left {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .parametres-projet-col-right {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #resi-production-container .grid > #form-group-choix-devise {
+            grid-column: 1 / -1;
+        }
+        #devise-converter-container {
+            margin-top: 8px;
+            padding: 10px 12px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+        .devise-converter-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            gap: 8px;
+        }
+        .devise-converter-title {
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .devise-conversion-badge {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #86efac;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        .devise-converter-options {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px 14px;
+            margin-bottom: 6px;
+        }
+        .devise-conv-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #334155;
+        }
+        .devise-converter-custom-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+            margin-bottom: 6px;
+        }
+        .devise-converter-custom-row select {
+            width: auto;
+            min-width: 75px;
+            padding: 4px 8px;
+        }
+        .devise-converter-rate-row {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #cbd5e1;
+        }
+        .devise-converter-rate-input-group {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .devise-converter-rate-input-group input {
+            width: 120px !important;
+            padding: 4px 8px;
+        }
+        .devise-rate-inline {
+            font-weight: 600;
+            color: #0369a1;
+            background: #e0f2fe;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.9em;
+        }
+        .devise-rate-error {
+            color: #dc2626;
+            font-size: 0.85em;
+            font-weight: 600;
+            margin-top: 4px;
+        }
 </style>
 
 <div id="etudes-economique-content" class="modal-content-eco">
@@ -847,55 +981,112 @@
         <div id="Production" class="tab-content active">
             <h2>Paramètres projet</h2>
             <div class="grid">
-                <div class="form-group">
-                    <label for="pays">Localisation / Pays</label>
-                    <select id="pays" onchange="handlePaysChange()">
-                        <option value="France" selected>France</option>
-                        <option value="Espagne">Espagne</option>
-                        <option value="Allemagne">Allemagne</option>
-                        <option value="Italie">Italie</option>
-                        <option value="Portugal">Portugal</option>
-                        <option value="Haïti">Haïti</option>
-                        <option value="Autre">Autre</option>
-                    </select>
-                </div>
-                <div id="pays_autre_container" class="form-group" style="display:none;">
-                    <label for="pays_autre">Nom du pays</label>
-                    <input type="text" id="pays_autre" placeholder="Saisir le pays">
-                </div>
-                <div class="form-group">
-                    <label for="type_projet">Type de projet</label>
-                    <select id="type_projet" disabled style="background-color: #e9ecef; cursor: not-allowed;" onchange="handleTypeProjetChange()">
-                        <option value="Toiture">Toiture</option>
-                        <option value="Ombrière">Ombrière</option>
-                        <option value="Petit champ solaire">Petit champ solaire</option>
-                        <option value="Autres">Autres</option>
-                    </select>
-                </div>
+                <div class="parametres-projet-col-left">
+                    <div class="form-group">
+                        <label for="pays">Localisation / Pays</label>
+                        <select id="pays" onchange="handlePaysChange()">
+                            <option value="France" selected>France</option>
+                            <option value="Espagne">Espagne</option>
+                            <option value="Allemagne">Allemagne</option>
+                            <option value="Italie">Italie</option>
+                            <option value="Portugal">Portugal</option>
+                            <option value="Haïti">Haïti</option>
+                            <option value="Autre">Autre</option>
+                        </select>
+                    </div>
+                    <div id="pays_autre_container" class="form-group" style="display:none;">
+                        <label for="pays_autre">Nom du pays</label>
+                        <input type="text" id="pays_autre" placeholder="Saisir le pays">
+                    </div>
+                    <div class="form-group">
+                        <label for="type_projet">Type de projet</label>
+                        <select id="type_projet" disabled style="background-color: #e9ecef; cursor: not-allowed;" onchange="handleTypeProjetChange()">
+                            <option value="Toiture">Toiture</option>
+                            <option value="Ombrière">Ombrière</option>
+                            <option value="Petit champ solaire">Petit champ solaire</option>
+                            <option value="Autres">Autres</option>
+                        </select>
+                    </div>
 
-                <div class="form-group">
-                    <label>Type de système</label>
-                    <div class="radio-group" style="display: flex; gap: 15px;">
-                        <label><input type="radio" name="type_systeme" value="reseau" checked
-                                onclick="toggleSystemeFields()"> Connecté au réseau</label>
-                        <label><input type="radio" name="type_systeme" value="hybride" onclick="toggleSystemeFields()">
-                            Site autonome/Hybride (PV+ Groupe électrogène)</label>
+                    <div class="form-group">
+                        <label>Type de système</label>
+                        <div class="radio-group" style="display: flex; gap: 15px;">
+                            <label><input type="radio" name="type_systeme" value="reseau" checked
+                                    onclick="toggleSystemeFields()"> Connecté au réseau</label>
+                            <label><input type="radio" name="type_systeme" value="hybride" onclick="toggleSystemeFields()">
+                                Site autonome/Hybride (PV+ Groupe électrogène)</label>
+                        </div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label>Choix de la devise</label>
-                    <div class="radio-group" style="display: flex; gap: 15px;">
-                        <label><input type="radio" name="devise" value="€" checked onclick="updateDeviseLabels()">
-                            €</label>
-                        <label><input type="radio" name="devise" value="$" onclick="updateDeviseLabels()"> $</label>
-                        <label><input type="radio" name="devise" value="FCFA" onclick="updateDeviseLabels()">
-                            FCFA</label>
-                        <!-- NOUVEAU (demande explicite) : Gourde haïtienne, disponible pour les
-                             rapports Résidentiel ET Professionnel (même liste de devises partagée
-                             par les deux). -->
-                        <label><input type="radio" name="devise" value="HTG" onclick="updateDeviseLabels()">
-                            HTG</label>
+                <div class="parametres-projet-col-right">
+                    <div class="form-group" id="form-group-choix-devise">
+                        <label>Choix de la devise</label>
+                        <div class="radio-group" style="display: flex; gap: 15px;">
+                            <label><input type="radio" name="devise" value="€" checked onclick="updateDeviseLabels(true)">
+                                €</label>
+                            <label><input type="radio" name="devise" value="$" onclick="updateDeviseLabels(true)"> $</label>
+                            <label><input type="radio" name="devise" value="FCFA" onclick="updateDeviseLabels(true)">
+                                FCFA</label>
+                            <!-- NOUVEAU (demande explicite) : Gourde haïtienne, disponible pour les
+                                 rapports Résidentiel ET Professionnel (même liste de devises partagée
+                                 par les deux). -->
+                            <label><input type="radio" name="devise" value="HTG" onclick="updateDeviseLabels(true)">
+                                HTG</label>
+                        </div>
+
+                        <!-- Convertisseur de devise dynamique (inclus dans #form-group-choix-devise pour suivre le déplacement vers la vue Résidentiel / Site autonome) -->
+                        <div id="devise-converter-container">
+                            <div class="devise-converter-header">
+                                <span class="devise-converter-title"><i class="fas fa-exchange-alt"></i> Convertisseur de devise</span>
+                                <span id="devise-conversion-active-badge" class="devise-conversion-badge" style="display:none;">Conversion active</span>
+                            </div>
+                            <div class="devise-converter-options">
+                                <label class="devise-conv-option">
+                                    <input type="checkbox" class="conv-devise-checkbox" value="EUR_FCFA" onchange="onConversionCheckboxChange(this)">
+                                    <span>€ vers FCFA</span>
+                                </label>
+                                <label class="devise-conv-option">
+                                    <input type="checkbox" class="conv-devise-checkbox" value="USD_FCFA" onchange="onConversionCheckboxChange(this)">
+                                    <span>$ vers FCFA</span>
+                                </label>
+                                <label class="devise-conv-option">
+                                    <input type="checkbox" class="conv-devise-checkbox" value="USD_HTG" onchange="onConversionCheckboxChange(this)">
+                                    <span>$ vers HTG</span>
+                                </label>
+                                <label class="devise-conv-option">
+                                    <input type="checkbox" class="conv-devise-checkbox" value="EUR_HTG" onchange="onConversionCheckboxChange(this)">
+                                    <span>€ vers HTG</span>
+                                </label>
+                                <label class="devise-conv-option">
+                                    <input type="checkbox" class="conv-devise-checkbox" value="CUSTOM" onchange="onConversionCheckboxChange(this)">
+                                    <span>Option personnalisée</span>
+                                </label>
+                            </div>
+                            <div id="devise-converter-custom-currencies" class="devise-converter-custom-row" style="display:none;">
+                                <select id="conv_devise_from" onchange="onCustomCurrencySelectChange()">
+                                    <option value="€" selected>€</option>
+                                    <option value="$">$</option>
+                                    <option value="FCFA">FCFA</option>
+                                    <option value="HTG">HTG</option>
+                                </select>
+                                <span class="conv-arrow">vers</span>
+                                <select id="conv_devise_to" onchange="onCustomCurrencySelectChange()">
+                                    <option value="FCFA" selected>FCFA</option>
+                                    <option value="HTG">HTG</option>
+                                    <option value="$">$</option>
+                                    <option value="€">€</option>
+                                </select>
+                            </div>
+                            <div id="devise-converter-rate-row" class="devise-converter-rate-row" style="display:none;">
+                                <div class="devise-converter-rate-input-group">
+                                    <label for="taux_conversion_devise">Taux de conversion :</label>
+                                    <input type="number" id="taux_conversion_devise" min="0.0001" max="999.99" step="any" placeholder="Ex: 655.96" oninput="onTauxConversionInput()">
+                                    <span id="taux_conversion_inline_info" class="devise-rate-inline"></span>
+                                </div>
+                                <div id="taux_conversion_error" class="devise-rate-error" style="display:none;"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -971,7 +1162,7 @@
                         <label style="margin-bottom: 0;">Facture de consommation HP (<span class="symb-devise">€</span>/MWh)</label>
                         <button type="button" class="btn btn-sm btn-secondary" onclick="openTarifPondereModal()" style="padding: 2px 8px; font-size: 12px; margin-right: 0;"><i class="fas fa-calculator"></i> Calculer</button>
                     </div>
-                    <input type="number" id="prix_achat_elec" value="0" min="10" max="1000" step="any">
+                    <input type="number" id="prix_achat_elec" value="0" min="10" max="1000" data-base-max="1000" step="any">
                 </div>
                 <div class="form-group field-reseau-only">
                     <label>Indexation facture élec. (%/an)</label>
@@ -981,13 +1172,13 @@
                      (affiché seulement case cochée, cf. majBatterieVirtuelle). -->
                 <div class="form-group" id="groupe_facture_hiver_bv" style="display:none;">
                     <label for="facture_hiver_bv" title="Prix de la facture d'hiver évitée grâce à l'énergie restituée par la batterie virtuelle, indexé comme la facture d'électricité">Facture d’hiver compensée par la batterie virtuelle (<span class="symb-devise">€</span>/MWh)</label>
-                    <input type="number" id="facture_hiver_bv" value="210" min="40" max="1000" step="any">
+                    <input type="number" id="facture_hiver_bv" value="210" min="40" max="1000" data-base-max="1000" step="any">
                 </div>
                 <!-- Visible uniquement quand la recharge sur le réseau est activée dans le stockage
                      (cf. majChampsStockageEco, EtudesEconomiqueLogic.js). -->
                 <div class="form-group" id="groupe_prix_recharge_reseau" style="display:none;">
                     <label for="prix_recharge_reseau" title="Prix de l'électricité achetée pour recharger la batterie sur le réseau (heures creuses). L'énergie restituée est valorisée au prix de la facture de consommation.">Prix de recharge sur le réseau (<span class="symb-devise">€</span>/MWh)</label>
-                    <input type="number" id="prix_recharge_reseau" value="" min="0.1" max="1000" step="any" placeholder="0,1 à 1000">
+                    <input type="number" id="prix_recharge_reseau" value="" min="0.1" max="1000" data-base-max="1000" step="any" placeholder="0,1 à 1000">
                 </div>
                 <div class="form-group field-hybride-only" style="display:none;">
                     <label>Prix d’un litre de carburant (<span class="symb-devise-unit">€/l</span>)</label>
@@ -1062,22 +1253,22 @@
                     </div>
                     <div id="capex_simple_input_div" class="form-group" style="display:block;">
                         <label>Saisie CAPEX (<span class="symb-devise">€</span>/Wc)</label>
-                        <input type="number" id="capex_simple_val" value="0" min="0" max="2.99" step="any"
+                        <input type="number" id="capex_simple_val" value="0" min="0" max="2.99" data-base-max="2.99" step="any"
                             oninput="updateCapexDisplays(); updateFinanceCalculations();">
                     </div>
                     <div id="capex_detaille_section" style="display:none;">
                         <div id="capex_list" class="grid">
-                            <div class="form-group"><label>Études & Ingénierie</label><input type="number" id="capex_etudes" class="capex-in" data-label="Études" value="0" min="0" max="49.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group"><label>Gestion administrative</label><input type="number" id="capex_admin" class="capex-in" data-label="Admin" value="0" min="0" max="99.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group"><label>Fourniture/pose panneaux</label><input type="number" id="capex_panneaux" class="capex-in" data-label="Panneaux" value="0" min="0" max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group"><label>Électricité PV</label><input type="number" id="capex_elec" class="capex-in" data-label="Élec" value="0" min="0" max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group"><label>Charpente/Intégration</label><input type="number" id="capex_integration" class="capex-in" data-label="Intégration" value="0" min="0" max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group id-fondations" style="display:none;"><label>Fondations</label><input type="number" id="capex_fondations" class="capex-in" data-label="Fondations" value="0" min="0" max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group"><label>VRD/réseaux</label><input type="number" id="capex_vrd" class="capex-in" data-label="VRD" value="0" min="0" max="199.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group"><label>Raccordement</label><input type="number" id="capex_racco" class="capex-in" data-label="Raccordement" value="0" min="0" max="4999.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group"><label>AMO/MOE</label><input type="number" id="capex_amo" class="capex-in" data-label="AMO" value="0" min="0" max="199.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group"><label>Subvention (à déduire)</label><input type="number" id="capex_subvention" class="capex-in" data-label="Subvention" value="0" min="0" max="299.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
-                            <div class="form-group"><label>Batterie</label><input type="number" id="capex_batterie" class="capex-in" data-label="Batterie" value="0" min="0" max="299.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Études & Ingénierie</label><input type="number" id="capex_etudes" class="capex-in" data-label="Études" value="0" min="0" max="49.99" data-base-max="49.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Gestion administrative</label><input type="number" id="capex_admin" class="capex-in" data-label="Admin" value="0" min="0" max="99.99" data-base-max="99.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Fourniture/pose panneaux</label><input type="number" id="capex_panneaux" class="capex-in" data-label="Panneaux" value="0" min="0" max="499.99" data-base-max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Électricité PV</label><input type="number" id="capex_elec" class="capex-in" data-label="Élec" value="0" min="0" max="499.99" data-base-max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Charpente/Intégration</label><input type="number" id="capex_integration" class="capex-in" data-label="Intégration" value="0" min="0" max="499.99" data-base-max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group id-fondations" style="display:none;"><label>Fondations</label><input type="number" id="capex_fondations" class="capex-in" data-label="Fondations" value="0" min="0" max="499.99" data-base-max="499.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>VRD/réseaux</label><input type="number" id="capex_vrd" class="capex-in" data-label="VRD" value="0" min="0" max="199.99" data-base-max="199.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Raccordement</label><input type="number" id="capex_racco" class="capex-in" data-label="Raccordement" value="0" min="0" max="4999.99" data-base-max="4999.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>AMO/MOE</label><input type="number" id="capex_amo" class="capex-in" data-label="AMO" value="0" min="0" max="199.99" data-base-max="199.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Subvention (à déduire)</label><input type="number" id="capex_subvention" class="capex-in" data-label="Subvention" value="0" min="0" max="299.99" data-base-max="299.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
+                            <div class="form-group"><label>Batterie</label><input type="number" id="capex_batterie" class="capex-in" data-label="Batterie" value="0" min="0" max="299.99" data-base-max="299.99" step="any" oninput="updateCapexDisplays(); updateFinanceCalculations();"></div>
                         </div>
                         <div id="capex_autres_container" class="dynamic-list"></div>
                         <button class="btn btn-secondary" onclick="addDynamicRow('capex_autres_container', 'capex-in', updateCapexDisplays)">+ Autre Capex</button>
@@ -1095,14 +1286,14 @@
                     </div>
                     <div id="opex_simple_div" class="form-group">
                         <label>Opex simple (<span class="symb-devise">€</span>/Wc/an)</label>
-                        <input type="number" id="opex_wc" value="0" min="0" max="0.19" step="any" oninput="updateCapexDisplays()">
+                        <input type="number" id="opex_wc" value="0" min="0" max="0.19" data-base-max="0.19" step="any" oninput="updateCapexDisplays()">
                     </div>
                     <div id="opex_detaille_div" style="display:none;">
                         <div class="grid">
-                            <div class="form-group"><label>Connexion réseau</label><input type="number" id="opex_connexion" class="opex-in" value="0" min="0" max="9.99" step="any" oninput="updateCapexDisplays()"></div>
-                            <div class="form-group"><label>Maintenance préventive</label><input type="number" id="opex_prev" class="opex-in" value="0" min="0" max="49.99" step="any" oninput="updateCapexDisplays()"></div>
-                            <div class="form-group"><label>Maintenance curative</label><input type="number" id="opex_cura" class="opex-in" value="0" min="0" max="49.99" step="any" oninput="updateCapexDisplays()"></div>
-                            <div class="form-group"><label>Loyer</label><input type="number" id="opex_loyer" class="opex-in" value="0" min="0" max="99.99" step="any" oninput="updateCapexDisplays()"></div>
+                            <div class="form-group"><label>Connexion réseau</label><input type="number" id="opex_connexion" class="opex-in" value="0" min="0" max="9.99" data-base-max="9.99" step="any" oninput="updateCapexDisplays()"></div>
+                            <div class="form-group"><label>Maintenance préventive</label><input type="number" id="opex_prev" class="opex-in" value="0" min="0" max="49.99" data-base-max="49.99" step="any" oninput="updateCapexDisplays()"></div>
+                            <div class="form-group"><label>Maintenance curative</label><input type="number" id="opex_cura" class="opex-in" value="0" min="0" max="49.99" data-base-max="49.99" step="any" oninput="updateCapexDisplays()"></div>
+                            <div class="form-group"><label>Loyer</label><input type="number" id="opex_loyer" class="opex-in" value="0" min="0" max="99.99" data-base-max="99.99" step="any" oninput="updateCapexDisplays()"></div>
                         </div>
                         <div id="opex_autres_container" class="dynamic-list"></div>
                         <button class="btn btn-secondary" onclick="addDynamicRow('opex_autres_container', 'opex-in', updateCapexDisplays)">+ Autre Opex</button>
@@ -1113,7 +1304,7 @@
                          charges (ResidentielOpexTable.js), libellé TTC. Enregistré avec les autres saisies. -->
                     <div class="form-group" id="groupe_abonnement_bv" style="display:none;">
                         <label for="abonnement_bv_kwc" id="label_abonnement_bv">Frais d’abonnement batterie virtuelle (<span class="symb-devise">€</span>/kWc/an)</label>
-                        <input type="number" id="abonnement_bv_kwc" value="1.2" min="0.5" max="5" step="any" oninput="updateCapexDisplays()">
+                        <input type="number" id="abonnement_bv_kwc" value="1.2" min="0.5" max="5" data-base-max="5" step="any" oninput="updateCapexDisplays()">
                         <small id="montant_abonnement_bv" style="color:#6b7280;"></small>
                     </div>
                     <p><strong>Total OPEX : <span id="total_opex_display">0</span> k<span class="symb-devise">€</span> | Ratio : <span id="ratio_opex_display">0</span> <span class="symb-devise">€</span>/Wc</strong></p>
@@ -1124,11 +1315,11 @@
                         </div>
                         <div class="form-group">
                             <label>Coût onduleur an 10 (report an 11) (<span class="symb-devise-k">k€</span>)</label>
-                            <input type="number" id="ond_10" value="0" min="0" max="99999.99" step="any">
+                            <input type="number" id="ond_10" value="0" min="0" max="99999.99" data-base-max="99999.99" step="any">
                         </div>
                         <div class="form-group">
                             <label id="label_bat_10">Coût batterie an 10 (report an 11) (<span class="symb-devise-k">k€</span>)</label>
-                            <input type="number" id="bat_10" value="0" min="0" max="99999.99" step="any">
+                            <input type="number" id="bat_10" value="0" min="0" max="99999.99" data-base-max="99999.99" step="any">
                         </div>
                         <!-- Stockage pris en compte : le coût batterie tombe l'année de remplacement
                              (cf. majChampsStockageEco, EtudesEconomiqueLogic.js). -->
@@ -1147,7 +1338,7 @@
                         </div>
                         <div class="form-group" id="ond_20_container">
                             <label>Coût onduleur an 20 (report an 21) (<span class="symb-devise-k">k€</span>)</label>
-                            <input type="number" id="ond_20" value="0" min="0" max="99999.99" step="any">
+                            <input type="number" id="ond_20" value="0" min="0" max="99999.99" data-base-max="99999.99" step="any">
                         </div>
                     </div>
                 </div>

@@ -172,6 +172,8 @@ export async function preparerDevis({ detaille = false } = {}) {
     capexData: JSON.parse(JSON.stringify(capexData)),
     detailed: !!detaille,
     devise: api.getDeviseSymbol(),
+    nomProjet: typeof api.getNomProjetCourant === 'function' ? api.getNomProjetCourant() : '',
+    conversionDevise: capexData.conversionDevise || (typeof window.getConversionDeviseState === 'function' ? window.getConversionDeviseState() : null),
     puissanceKwc: api.getPuissanceProjetKwc(),
     entete,
     totaux,

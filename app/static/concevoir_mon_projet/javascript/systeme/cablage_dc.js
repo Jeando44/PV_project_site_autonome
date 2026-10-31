@@ -1470,8 +1470,8 @@ window.renderCablageDcSection = function (field) {
              câblage") : même mécanique minimale que calepinage_maison_dessin.js::
              exportCanvasEtCartePdf() (canvas.toDataURL + jsPDF déjà chargé globalement), simplifiée à
              une seule page (le canevas de câblage seul, pas de capture de carte). -->
-        <button type="button" class="btn btn-sm" id="cablageDcExportBtn" title="Exporter en PDF" style="height:34px; box-sizing:border-box; padding:0 14px; font-size:0.8rem; flex-shrink:0; background:#1E8449; color:#fff; border-color:#1E8449; display:flex; align-items:center; gap:6px;">
-          <img src="/static/concevoir_mon_projet/medias/icons/pdf-export.svg" alt="" style="width:16px; height:16px; vertical-align:middle;"> Exporter PDF
+        <button type="button" class="btn btn-sm" id="cablageDcExportBtn" title="Exporter le plan de câblage" style="height:34px; box-sizing:border-box; padding:0 14px; font-size:0.8rem; flex-shrink:0; background:#1E8449; color:#fff; border-color:#1E8449; display:flex; align-items:center; gap:6px;">
+          <img src="/static/concevoir_mon_projet/medias/icons/pdf-export.svg" alt="" style="width:16px; height:16px; vertical-align:middle;"> Exporter le plan de câblage
         </button>
       </div>
 
@@ -1524,8 +1524,11 @@ async function exportCablageDcPdf(view) {
 }
 
 function apercuPdfCablageDc(doc, nomFichier) {
-  if (typeof window.ouvrirApercuPdf === 'function') window.ouvrirApercuPdf(doc.output('blob'), nomFichier);
-  else doc.save(nomFichier);
+  if (typeof window.ouvrirApercuPdf === 'function') {
+    window.ouvrirApercuPdf(doc.output('blob'), nomFichier, { titre: 'Prévisualisation — Plan de câblage DC' });
+  } else {
+    doc.save(nomFichier);
+  }
 }
 
 // Pages d'un pan (plan, répartition par onduleur, métrés), à partir de la page courante du document.
@@ -2263,8 +2266,8 @@ window.renderCablageDcSectionCombined = function (pans) {
           <input type="checkbox" id="cablageDcShowChainesCheckbox" ${activeView.showChaines !== false ? 'checked' : ''} /> Afficher les chaînes
         </label>
         <button type="button" class="btn btn-outline-danger" id="cablageDcResetBtn" style="height:34px; box-sizing:border-box; padding:0 14px; font-size:0.8rem; flex-shrink:0; white-space:nowrap;">Réinitialiser</button>
-        <button type="button" class="btn btn-sm" id="cablageDcExportBtn" title="Exporter en PDF" style="height:34px; box-sizing:border-box; padding:0 14px; font-size:0.8rem; flex-shrink:0; background:#1E8449; color:#fff; border-color:#1E8449; display:flex; align-items:center; gap:6px;">
-          <img src="/static/concevoir_mon_projet/medias/icons/pdf-export.svg" alt="" style="width:16px; height:16px; vertical-align:middle;"> Exporter PDF
+        <button type="button" class="btn btn-sm" id="cablageDcExportBtn" title="Exporter le plan de câblage" style="height:34px; box-sizing:border-box; padding:0 14px; font-size:0.8rem; flex-shrink:0; background:#1E8449; color:#fff; border-color:#1E8449; display:flex; align-items:center; gap:6px;">
+          <img src="/static/concevoir_mon_projet/medias/icons/pdf-export.svg" alt="" style="width:16px; height:16px; vertical-align:middle;"> Exporter le plan de câblage
         </button>
       </div>
 

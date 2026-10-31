@@ -228,9 +228,44 @@
      * MARGE_CIBLE_BORNES dans residentiel_chiffrage_schemas.py. Prix cible en €/Wc (multiplié par
      * la puissance du projet) ou prix de vente fixe ; marge cible en %.
      */
-    const PRIX_CIBLE_RULES = {
+    function getFacteurConversionDevise() {
+        if (typeof window.getFacteurConversionDevise === 'function') {
+            const f = Number(window.getFacteurConversionDevise());
+            return (Number.isFinite(f) && f > 0) ? f : 1;
+        }
+        return 1;
+    }
+
+    function scaleMin(val, factor) {
+        if (!Number.isFinite(val) || val === 0) return val;
+        // Si factor > 1 (ex: € -> FCFA), on garde le min d'origine ou on permet une saisie souple
+        // Si factor < 1, on réduit la borne min proportionnellement
+        return factor < 1 ? Math.round(val * factor * 10000) / 10000 : val;
+    }
+
+    function scaleMax(val, factor) {
+        if (!Number.isFinite(val)) return val;
+        return Math.round(val * factor * 100) / 100;
+    }
+
+    const PRIX_CIBLE_BASE_RULES = {
         wc: { min: 0.3, max: 10, label: 'Prix cible (€/Wc)' },
         fixe: { min: 500, max: 15000000, label: 'Prix cible (€)' }
+    };
+    function getPrixCibleRule(mode) {
+        const base = PRIX_CIBLE_BASE_RULES[mode];
+        if (!base) return null;
+        const factor = getFacteurConversionDevise();
+        const dev = getDeviseSymbol();
+        return {
+            min: scaleMin(base.min, factor),
+            max: scaleMax(base.max, factor),
+            label: mode === 'wc' ? `Prix cible (${dev}/Wc)` : `Prix cible (${dev})`
+        };
+    }
+    const PRIX_CIBLE_RULES = {
+        get wc() { return getPrixCibleRule('wc'); },
+        get fixe() { return getPrixCibleRule('fixe'); }
     };
     const MARGE_CIBLE_RULE = { min: 1, max: 100, defaut: 30, label: 'Marge cible (%)' };
 
@@ -247,7 +282,7 @@
         return { valid: true, message: '' };
     }
     function validatePrixCible(mode, valeur) {
-        const rule = PRIX_CIBLE_RULES[mode];
+        const rule = getPrixCibleRule(mode);
         return rule ? validerBorne(rule, valeur, true) : { valid: false, message: 'Mode de prix cible inconnu.' };
     }
     function validateMargeCible(valeur) {
@@ -541,7 +576,10 @@
             const tables = rulesFor(context.profil);
             const regle = (lineKey && tables.subtype[lineKey]) || tables.poste[posteKey]
                 || { qte: [CAPEX_QTE_RULE.min, CAPEX_QTE_RULE.max], puHt: [CAPEX_PU_HT_RULE.min, CAPEX_PU_HT_RULE.max] };
-            const [min, max] = regle[field];
+            const [rawMin, rawMax] = regle[field];
+            const factor = field === 'puHt' ? getFacteurConversionDevise() : 1;
+            const min = field === 'puHt' ? scaleMin(rawMin, factor) : rawMin;
+            const max = field === 'puHt' ? scaleMax(rawMax, factor) : rawMax;
             if (regle.zero && value === 0) return { valid: true, message: '' };
             if (value < min || value > max) {
                 const zero = regle.zero ? ' (ou 0 si non concerné)' : '';
@@ -551,6 +589,17 @@
         }
 
         return { valid: true, message: '' };
+    }
+
+    function getOpexRule(key) {
+        const base = OPEX_RULES[key];
+        if (!base) return null;
+        const factor = getFacteurConversionDevise();
+        return {
+            min: scaleMin(base.min, factor),
+            max: scaleMax(base.max, factor),
+            label: base.label
+        };
     }
 
     /**
@@ -564,7 +613,7 @@
      * @returns {{valid: boolean, message: string}}
      */
     function validateOpexField(key, rawValue) {
-        const rule = OPEX_RULES[key];
+        const rule = getOpexRule(key);
         if (!rule) return { valid: true, message: '' };
         const value = parseFloat(rawValue);
         if (isNaN(value)) {
@@ -574,6 +623,13 @@
             return { valid: false, message: `${rule.label} : doit être compris entre ${rule.min} et ${rule.max}.` };
         }
         return { valid: true, message: '' };
+    }
+
+    function getConversionInfo() {
+        if (typeof window.getConversionDeviseState === 'function') {
+            return window.getConversionDeviseState();
+        }
+        return { active: false, valid: true, rate: 1, inlineText: '', to: getDeviseSymbol() };
     }
 
     /**
@@ -618,6 +674,10 @@
         showAlert,
         clampWithAlert,
         getDeviseSymbol,
+        getFacteurConversionDevise,
+        getConversionInfo,
+        getOpexRule,
+        getPrixCibleRule,
         validateLigneField,
         validateOpexField
     };

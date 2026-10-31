@@ -84,9 +84,19 @@
         'ps_pa_impots', 'ps_pa_taux_impot', 'ps_pa_valeur_residuelle', 'ps_pa_methode_amortissement',
         'ps_pa_duree_amortissement', 'ps_pa_amortissement_annuel',
         'ps_pa_taux', 'ps_pa_horizon',
+        'ps_conv_option', 'ps_conv_taux', 'ps_conv_source', 'ps_conv_cible',
     ];
     const MOIS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
     const DEVISES = { EUR: '€', USD: '$', HTG: 'HTG', XOF: 'FCFA' };
+    const SYMBOLE_VERS_CODE_DEVISE = { '€': 'EUR', '$': 'USD', 'HTG': 'HTG', 'FCFA': 'XOF', 'EUR': 'EUR', 'USD': 'USD', 'XOF': 'XOF' };
+    // Options du convertisseur de devises (identiques aux projets résidentiels / PRO)
+    const PS_CONVERSION_OPTIONS = {
+        EUR_FCFA: { label: '€ → FCFA', source: 'EUR', cible: 'XOF', symbolSource: '€', symbolCible: 'FCFA', defaultRate: 655.96 },
+        USD_FCFA: { label: '$ → FCFA', source: 'USD', cible: 'XOF', symbolSource: '$', symbolCible: 'FCFA', defaultRate: 600 },
+        USD_HTG:  { label: '$ → HTG',  source: 'USD', cible: 'HTG', symbolSource: '$', symbolCible: 'HTG',  defaultRate: 132 },
+        EUR_HTG:  { label: '€ → HTG',  source: 'EUR', cible: 'HTG', symbolSource: '€', symbolCible: 'HTG',  defaultRate: 145 },
+        CUSTOM:   { label: 'Autre conversion', source: 'EUR', cible: 'USD', symbolSource: '€', symbolCible: '$', defaultRate: 1 },
+    };
     // Plafonds des montants selon la devise (bornes exprimées en euros, règles `monnaie: true`) —
     // MIROIR de FACTEUR_BORNES_DEVISE (app/schemas/pompage_solaire_schemas.py).
     const FACTEUR_BORNES_DEVISE = { EUR: 1, USD: 1, HTG: 150, XOF: 700 };
@@ -886,17 +896,74 @@
                     <div class="ps-eco-cellule">${gauche}</div><div class="ps-eco-cellule">${droite}</div></div>`;
         return `
         <div id="ps_eco_section" style="display:none; margin-top: 1.75rem; background-color: #ffffff; border: 1px solid #cbd5e1; border-radius: var(--border-radius-lg); padding: 1.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.04);">
-            <h3 class="ps-titre-section">4. Analyse économique</h3>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.75rem;">
+                <h3 class="ps-titre-section" style="margin:0;">4. Analyse économique</h3>
+                <button type="button" id="ps_btn_chiffrage_eco" class="btn-base btn-primary" style="text-transform:none; font-size:0.84rem; font-weight:600; padding:0.5rem 0.95rem; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; display:inline-flex; align-items:center; gap:0.45rem; box-shadow:0 1px 3px rgba(37,99,235,0.25);">
+                    <i class="fas fa-euro-sign"></i> Chiffrage de l'étude économique (Devis &amp; Devises)
+                </button>
+            </div>
+            <p id="ps_chiffrage_resume" style="margin:0 0 0.75rem; font-size:0.78rem; color:#1e40af; background:#eff6ff; border:1px solid #bfdbfe; border-radius:6px; padding:0.45rem 0.75rem;">
+                💡 Utilisez le bouton <strong>« Chiffrage de l'étude économique »</strong> pour composer le devis détaillé / synthétique CAPEX et synchroniser la devise avec le projet.
+            </p>
             <p id="ps_eco_description" style="display:none; margin:0 0 1rem; font-size:0.8rem; color:var(--text-secondary);"></p>
             <div class="ps-eco-lignes">
                 ${ligne('', `<div class="input-group">
-                    <label id="ps_eco_devise_label">Devise</label>
+                    <label id="ps_eco_devise_label">Devise <span id="ps_devise_rate_inline" style="font-weight:normal; font-size:0.82rem; color:#2563eb;"></span></label>
                     <input type="hidden" id="ps_eco_devise" value="EUR">
+                    <input type="hidden" id="ps_conv_option" value="">
+                    <input type="hidden" id="ps_conv_taux" value="">
+                    <input type="hidden" id="ps_conv_source" value="EUR">
+                    <input type="hidden" id="ps_conv_cible" value="XOF">
                     <div role="radiogroup" aria-labelledby="ps_eco_devise_label" style="display:flex; gap:0.4rem; flex-wrap:wrap;">
                         <button type="button" class="ps-devise-btn" role="radio" data-devise="EUR" title="Euro">€</button>
                         <button type="button" class="ps-devise-btn" role="radio" data-devise="USD" title="Dollar US">$</button>
                         <button type="button" class="ps-devise-btn" role="radio" data-devise="HTG" title="Gourde haïtienne">HTG</button>
                         <button type="button" class="ps-devise-btn" role="radio" data-devise="XOF" title="Franc CFA">FCFA</button>
+                    </div>
+                    <div id="ps_devise_converter_container" style="margin-top:0.65rem; padding:0.6rem 0.75rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+                        <div style="font-size:0.76rem; font-weight:700; color:#334155; margin-bottom:0.4rem; display:flex; align-items:center; justify-content:space-between; gap:0.4rem; flex-wrap:wrap;">
+                            <span><i class="fas fa-exchange-alt" style="color:#2563eb; margin-right:4px;"></i>Convertisseur de devise</span>
+                            <span id="ps_devise_converter_active_badge" style="display:none; font-size:0.72rem; font-weight:600; color:#1d4ed8; background:#dbeafe; padding:0.1rem 0.45rem; border-radius:999px;"></span>
+                        </div>
+                        <div style="display:flex; flex-wrap:wrap; gap:0.35rem 0.65rem; margin-bottom:0.4rem;">
+                            <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.76rem; color:#1e293b; cursor:pointer; font-weight:500;">
+                                <input type="checkbox" class="ps-conv-opt-cb" data-conv="EUR_FCFA"> € → FCFA
+                            </label>
+                            <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.76rem; color:#1e293b; cursor:pointer; font-weight:500;">
+                                <input type="checkbox" class="ps-conv-opt-cb" data-conv="USD_FCFA"> $ → FCFA
+                            </label>
+                            <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.76rem; color:#1e293b; cursor:pointer; font-weight:500;">
+                                <input type="checkbox" class="ps-conv-opt-cb" data-conv="USD_HTG"> $ → HTG
+                            </label>
+                            <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.76rem; color:#1e293b; cursor:pointer; font-weight:500;">
+                                <input type="checkbox" class="ps-conv-opt-cb" data-conv="EUR_HTG"> € → HTG
+                            </label>
+                            <label style="display:inline-flex; align-items:center; gap:0.25rem; font-size:0.76rem; color:#1e293b; cursor:pointer; font-weight:500;">
+                                <input type="checkbox" class="ps-conv-opt-cb" data-conv="CUSTOM"> Autre conversion
+                            </label>
+                        </div>
+                        <div id="ps_devise_converter_rate_row" style="display:none; align-items:center; gap:0.45rem; flex-wrap:wrap; margin-top:0.35rem; padding-top:0.35rem; border-top:1px dashed #cbd5e1;">
+                            <div id="ps_conv_custom_pair" style="display:none; align-items:center; gap:0.25rem; font-size:0.75rem;">
+                                <select id="ps_conv_custom_source" style="padding:0.2rem 0.35rem; border:1px solid #cbd5e1; border-radius:4px; font-size:0.75rem;">
+                                    <option value="EUR">€</option>
+                                    <option value="USD">$</option>
+                                    <option value="XOF">FCFA</option>
+                                    <option value="HTG">HTG</option>
+                                </select>
+                                <span>→</span>
+                                <select id="ps_conv_custom_cible" style="padding:0.2rem 0.35rem; border:1px solid #cbd5e1; border-radius:4px; font-size:0.75rem;">
+                                    <option value="USD">$</option>
+                                    <option value="EUR">€</option>
+                                    <option value="XOF">FCFA</option>
+                                    <option value="HTG">HTG</option>
+                                </select>
+                            </div>
+                            <label for="ps_taux_conversion_devise" style="font-size:0.75rem; font-weight:600; color:#475569; margin:0;">Taux :</label>
+                            <input type="number" id="ps_taux_conversion_devise" min="0.0001" max="999.9999" step="0.01" placeholder="Ex: 655.96" style="width:105px; padding:0.25rem 0.45rem; border:1px solid #cbd5e1; border-radius:5px; font-size:0.8rem; font-weight:600;">
+                        </div>
+                        <div id="ps_taux_conversion_error" style="display:none; margin-top:0.3rem; font-size:0.74rem; color:#dc2626; font-weight:600;">
+                            Le taux de conversion doit être strictement compris entre 0 et 1000 (0 &lt; taux &lt; 1000).
+                        </div>
                     </div>
                 </div>`, regleEco('ps_eco_taux', "Taux d'actualisation (%)", '0.1', '', '%'))}
                 ${ligne('', regleEco('ps_eco_capex', `Capex (centrale photovoltaïque + pompe) (${unite()})`, 'any', 'Hors batteries.'),
@@ -1308,6 +1375,10 @@
         const montage = $('ps_pompe_montage');
         if (montage && !LIBELLES_MONTAGE[montage.value]) montage.value = 'unique';
         if (!DEVISES[val('ps_eco_devise')] && $('ps_eco_devise')) $('ps_eco_devise').value = 'EUR';
+        const champTauxRestaure = $('ps_taux_conversion_devise');
+        if (champTauxRestaure) champTauxRestaure.value = val('ps_conv_taux') || '';
+        const etatRestaure = etatConversionDevise();
+        dernierFacteurConversion = (etatRestaure.actif && etatRestaure.valide) ? etatRestaure.taux : 1;
         if (!SYSTEMES[val('ps_systeme')] && $('ps_systeme')) $('ps_systeme').value = SYSTEME_DEFAUT;
         toutesRegles().forEach((r) => {
             if (r.defaut === undefined) return;
@@ -1440,9 +1511,40 @@
     const toutesRegles = () => toutesReglesFormulaire().concat(REGLES_CALCULATRICE, REGLES_ECO, REGLES_PLAN);
     const reglesEco = () => REGLES_ECO.filter(applicable);
 
-    function facteurDevise() { return FACTEUR_BORNES_DEVISE[val('ps_eco_devise')] || 1; }
-    /** Maximum d'une règle : les montants sont plafonnés dans la devise choisie. */
-    function borneMax(r) { return r.monnaie ? r.max * facteurDevise() : r.max; }
+    function etatConversionDevise() {
+        const opt = String(val('ps_conv_option') || '').trim();
+        if (!opt || !PS_CONVERSION_OPTIONS[opt]) {
+            return { actif: false, option: '', taux: 1, valide: true, source: 'EUR', cible: val('ps_eco_devise') || 'EUR', texteInline: '' };
+        }
+        const def = PS_CONVERSION_OPTIONS[opt];
+        const source = opt === 'CUSTOM' ? (val('ps_conv_source') || def.source) : def.source;
+        const cible = opt === 'CUSTOM' ? (val('ps_conv_cible') || def.cible) : def.cible;
+        const symSource = DEVISES[source] || def.symbolSource || '€';
+        const symCible = DEVISES[cible] || def.symbolCible || symSource;
+        const champTaux = $('ps_taux_conversion_devise');
+        const brut = champTaux && String(champTaux.value).trim() !== '' ? String(champTaux.value).trim() : String(val('ps_conv_taux') || '').trim();
+        const taux = brut === '' ? NaN : Number(brut.replace(',', '.'));
+        const valide = Number.isFinite(taux) && taux > 0 && taux < 1000;
+        const texteInline = valide ? `(1${symSource}=${taux} ${symCible})` : '';
+        return { actif: true, option: opt, taux: valide ? taux : NaN, valide, source, cible, symSource, symCible, texteInline };
+    }
+
+    function violationConversionDevise() {
+        const etat = etatConversionDevise();
+        if (!etat.actif || etat.valide) return null;
+        return {
+            el: $('ps_taux_conversion_devise'),
+            message: 'Taux de conversion : doit être strictement compris entre 0 et 1000 (0 < taux < 1000).',
+        };
+    }
+
+    function facteurDevise() {
+        const etat = etatConversionDevise();
+        if (etat.actif && etat.valide) return etat.taux;
+        return FACTEUR_BORNES_DEVISE[val('ps_eco_devise')] || 1;
+    }
+    /** Maximum d'une règle : les montants sont plafonnés dans la devise choisie (ou selon le taux de conversion actif). */
+    function borneMax(r) { return r.monnaie ? Math.round(r.max * facteurDevise() * 100) / 100 : r.max; }
 
     function borne(n) { return Number(n).toLocaleString('fr-FR', { maximumFractionDigits: 2 }); }
 
@@ -1543,8 +1645,11 @@
         const vRef = violationReferencePompe();
         if (vRef) vForm.push(vRef);
         const vCalc = estAffiche('ps_pertes_calculatrice') ? lister(REGLES_CALCULATRICE) : [];
-        const vEco = estAffiche('ps_eco_section') ? lister(reglesEco()) : [];
-        const vPlan = estAffiche('ps_pa_section') ? violationsPlan() : [];
+        const vConv = violationConversionDevise();
+        const vEco = estAffiche('ps_eco_section') ? (vConv ? [vConv] : []).concat(lister(reglesEco())) : [];
+        const vPlan = estAffiche('ps_pa_section') ? (vConv ? [vConv] : []).concat(violationsPlan()) : [];
+        const champTauxConv = $('ps_taux_conversion_devise');
+        if (champTauxConv && !vConv) { champTauxConv.style.borderColor = ''; champTauxConv.style.boxShadow = ''; }
 
         // Un champ obligatoire encore vide n'est pas « faux » : message, mais pas de liseré rouge.
         vForm.concat(vCalc, vEco, vPlan).filter((v) => !v.vide && v.el).forEach((v) => {
@@ -1847,8 +1952,18 @@
     }
 
     function lireEco() {
+        const conv = etatConversionDevise();
         return {
             devise: DEVISES[val('ps_eco_devise')] ? val('ps_eco_devise') : 'EUR',
+            taux_conversion: conv.actif && conv.valide ? conv.taux : null,
+            conversion_devise: conv.actif && conv.valide ? {
+                active: true,
+                option: conv.option,
+                taux: conv.taux,
+                source: conv.source,
+                cible: conv.cible,
+                texte: conv.texteInline,
+            } : null,
             capex: nombre('ps_eco_capex'),
             opex_pv: nombre('ps_eco_opex_pv'),
             indexation_opex_pv: nombre('ps_eco_indexation_opex_pv'),
@@ -3356,15 +3471,150 @@
         graphsEco.fcf = new Chart($('ps_chart_eco_fcf').getContext('2d'), configs.fcf);
     }
 
+    let dernierFacteurConversion = 1;
+
+    function convertirMontantsPompage(ancienFacteur, nouveauFacteur) {
+        const fAncien = Number(ancienFacteur) > 0 ? Number(ancienFacteur) : 1;
+        const fNouveau = Number(nouveauFacteur) > 0 ? Number(nouveauFacteur) : 1;
+        if (Math.abs(fAncien - fNouveau) < 1e-9) return;
+        const ratio = fNouveau / fAncien;
+        REGLES_ECO.concat(REGLES_PLAN).filter((r) => r.monnaie).forEach((r) => {
+            const el = $(r.id);
+            if (!el || String(el.value).trim() === '') return;
+            const v = Number(String(el.value).replace(',', '.'));
+            if (!Number.isFinite(v) || v === 0) return;
+            const converti = Math.round(v * ratio * 100) / 100;
+            el.value = String(converti);
+            el.dataset.precedent = el.value;
+        });
+    }
+
+    function majConvertisseurDeviseUI() {
+        const opt = String(val('ps_conv_option') || '').trim();
+        const actif = !!(opt && PS_CONVERSION_OPTIONS[opt]);
+        document.querySelectorAll('#ps_devise_converter_container .ps-conv-opt-cb').forEach((cb) => {
+            cb.checked = cb.dataset.conv === opt;
+        });
+        const rateRow = $('ps_devise_converter_rate_row');
+        if (rateRow) rateRow.style.display = actif ? 'flex' : 'none';
+        const customPair = $('ps_conv_custom_pair');
+        if (customPair) customPair.style.display = opt === 'CUSTOM' ? 'inline-flex' : 'none';
+        const selSrc = $('ps_conv_custom_source');
+        const selCib = $('ps_conv_custom_cible');
+        if (selSrc && val('ps_conv_source')) selSrc.value = val('ps_conv_source');
+        if (selCib && val('ps_conv_cible')) selCib.value = val('ps_conv_cible');
+        const champTaux = $('ps_taux_conversion_devise');
+        if (champTaux && actif && String(champTaux.value).trim() === '' && val('ps_conv_taux')) {
+            champTaux.value = val('ps_conv_taux');
+        }
+        const etat = etatConversionDevise();
+        const inlineEl = $('ps_devise_rate_inline');
+        if (inlineEl) inlineEl.textContent = etat.actif && etat.valide ? etat.texteInline : '';
+        const badgeEl = $('ps_devise_converter_active_badge');
+        if (badgeEl) {
+            badgeEl.style.display = etat.actif && etat.valide ? 'inline-block' : 'none';
+            badgeEl.textContent = etat.actif && etat.valide ? `1 ${etat.symSource} = ${etat.taux} ${etat.symCible}` : '';
+        }
+        const errEl = $('ps_taux_conversion_error');
+        if (errEl) errEl.style.display = etat.actif && !etat.valide ? 'block' : 'none';
+    }
+
+    function appliquerOptionConversion(optKey, cocher) {
+        const optEl = $('ps_conv_option');
+        const tauxEl = $('ps_conv_taux');
+        const srcEl = $('ps_conv_source');
+        const cibEl = $('ps_conv_cible');
+        const champTaux = $('ps_taux_conversion_devise');
+        if (!optEl) return;
+
+        const ancienFacteur = dernierFacteurConversion || 1;
+        if (!cocher || !PS_CONVERSION_OPTIONS[optKey]) {
+            optEl.value = '';
+            if (tauxEl) tauxEl.value = '';
+            if (champTaux) champTaux.value = '';
+            convertirMontantsPompage(ancienFacteur, 1);
+            dernierFacteurConversion = 1;
+            majConvertisseurDeviseUI();
+            majDevise();
+            synchroniserVersChiffrageProjet();
+            sauvegarder();
+            return;
+        }
+
+        const def = PS_CONVERSION_OPTIONS[optKey];
+        optEl.value = optKey;
+        const sourceCode = optKey === 'CUSTOM' ? (($('ps_conv_custom_source') && $('ps_conv_custom_source').value) || def.source) : def.source;
+        const cibleCode = optKey === 'CUSTOM' ? (($('ps_conv_custom_cible') && $('ps_conv_custom_cible').value) || def.cible) : def.cible;
+        if (srcEl) srcEl.value = sourceCode;
+        if (cibEl) cibEl.value = cibleCode;
+
+        const tauxDefaut = def.defaultRate;
+        if (tauxEl) tauxEl.value = String(tauxDefaut);
+        if (champTaux) champTaux.value = String(tauxDefaut);
+
+        if ($('ps_eco_devise') && DEVISES[cibleCode]) {
+            $('ps_eco_devise').value = cibleCode;
+        }
+
+        convertirMontantsPompage(ancienFacteur, tauxDefaut);
+        dernierFacteurConversion = tauxDefaut;
+        majConvertisseurDeviseUI();
+        majDevise();
+        synchroniserVersChiffrageProjet();
+        sauvegarder();
+    }
+
+    function surSaisieTauxConversion() {
+        const champTaux = $('ps_taux_conversion_devise');
+        const tauxEl = $('ps_conv_taux');
+        if (!champTaux) return;
+        const brut = String(champTaux.value).trim();
+        if (tauxEl) tauxEl.value = brut;
+        const etat = etatConversionDevise();
+        if (etat.actif && etat.valide) {
+            convertirMontantsPompage(dernierFacteurConversion || 1, etat.taux);
+            dernierFacteurConversion = etat.taux;
+        }
+        majConvertisseurDeviseUI();
+        majDevise();
+        synchroniserVersChiffrageProjet();
+        sauvegarder();
+    }
+
+    function surChangementPaireCustom() {
+        const selSrc = $('ps_conv_custom_source');
+        const selCib = $('ps_conv_custom_cible');
+        if (selSrc && $('ps_conv_source')) $('ps_conv_source').value = selSrc.value;
+        if (selCib && $('ps_conv_cible')) {
+            $('ps_conv_cible').value = selCib.value;
+            if ($('ps_eco_devise') && DEVISES[selCib.value]) $('ps_eco_devise').value = selCib.value;
+        }
+        majConvertisseurDeviseUI();
+        majDevise();
+        synchroniserVersChiffrageProjet();
+        sauvegarder();
+    }
+
     function choisirDevise(code) {
         const el = $('ps_eco_devise');
         if (!el || !DEVISES[code]) return;
         el.value = code;
+        const etat = etatConversionDevise();
+        if (etat.actif && etat.cible !== code) {
+            if ($('ps_conv_option')) $('ps_conv_option').value = '';
+            if ($('ps_conv_taux')) $('ps_conv_taux').value = '';
+            if ($('ps_taux_conversion_devise')) $('ps_taux_conversion_devise').value = '';
+            convertirMontantsPompage(dernierFacteurConversion || 1, 1);
+            dernierFacteurConversion = 1;
+        }
+        majConvertisseurDeviseUI();
         majDevise();
+        synchroniserVersChiffrageProjet();
         sauvegarder();
     }
 
     function majDevise() {
+        majConvertisseurDeviseUI();
         const sym = symboleDevise();
         document.querySelectorAll('#ps_eco_section .ps-devise-btn').forEach((b) => {
             const actif = b.dataset.devise === val('ps_eco_devise');
@@ -3381,6 +3631,118 @@
         majEtatValidation();
         if (dernierEco) afficherEco(dernierEco.resultat);
         if (dernierPlan) afficherPlan(Object.assign({}, dernierPlan, { devise: val('ps_eco_devise') }));
+    }
+
+    /** Synchronise la devise et le convertisseur du Pompage Solaire vers la modale Chiffrage de la page principale. */
+    function synchroniserVersChiffrageProjet() {
+        const P = pageProjet();
+        if (!P || typeof P.getConversionDeviseState !== 'function') return;
+        try {
+            const docP = P.document;
+            const etat = etatConversionDevise();
+            const ev = () => new P.Event('change', { bubbles: true });
+            // Devise de base (avant conversion) : la page principale applique elle-même la conversion.
+            const symBase = etat.actif && etat.valide ? etat.symSource : (DEVISES[val('ps_eco_devise')] || '€');
+            const radio = Array.from(docP.querySelectorAll('input[name="devise"]')).find((r) => r.value === symBase);
+            if (radio && !radio.checked) { radio.checked = true; radio.dispatchEvent(ev()); }
+            const courant = P.getConversionDeviseState();
+            const cible = etat.actif && etat.valide ? etat.option : null;
+            docP.querySelectorAll('.conv-devise-checkbox').forEach((cb) => {
+                const doit = cb.value === cible;
+                if (cb.checked !== doit) { cb.checked = doit; cb.dispatchEvent(ev()); }
+            });
+            if (cible) {
+                if (cible === 'CUSTOM') {
+                    const f = docP.getElementById('conv_devise_from');
+                    const t = docP.getElementById('conv_devise_to');
+                    if (f) { f.value = etat.symSource; f.dispatchEvent(ev()); }
+                    if (t) { t.value = etat.symCible; t.dispatchEvent(ev()); }
+                }
+                const taux = docP.getElementById('taux_conversion_devise');
+                if (taux && (!courant.active || Number(taux.value) !== etat.taux)) {
+                    taux.value = String(etat.taux);
+                    taux.dispatchEvent(new P.Event('input', { bubbles: true }));
+                    taux.dispatchEvent(ev());
+                }
+            }
+        } catch (e) {
+            console.warn('[PompageSolaire] Synchronisation vers Chiffrage impossible :', e);
+        }
+    }
+
+    let derniersTotauxChiffrage = null;
+
+    /** Synchronise le CAPEX total et la devise depuis la modale Chiffrage de la page principale vers Pompage Solaire. */
+    function synchroniserDepuisChiffrageProjet(afficherNotification, totaux) {
+        const P = pageProjet();
+        if (!P || !construit) return;
+        try {
+            if (totaux) derniersTotauxChiffrage = totaux;
+            let capexMisAJour = false;
+            const data = derniersTotauxChiffrage;
+            if (data && Number(data.totalHt) > 0) {
+                const totalHt = Math.round(Number(data.totalHt) * 100) / 100;
+                const champCapex = $('ps_eco_capex');
+                if (champCapex && Number(champCapex.value) !== totalHt) {
+                    champCapex.value = String(totalHt);
+                    champCapex.dataset.precedent = champCapex.value;
+                    invaliderResultats('ps_eco_capex');
+                    capexMisAJour = true;
+                }
+                const resume = $('ps_chiffrage_resume');
+                if (resume) resume.innerHTML = `✅ <strong>Devis CAPEX synchronisé :</strong> ${fr(totalHt, 2)} ${symboleDevise()} HT.`;
+            }
+            if (typeof P.getConversionDeviseState === 'function') {
+                const conv = P.getConversionDeviseState();
+                if (conv && conv.active && conv.valid && PS_CONVERSION_OPTIONS[conv.option]) {
+                    const src = SYMBOLE_VERS_CODE_DEVISE[conv.from] || 'EUR';
+                    const cib = SYMBOLE_VERS_CODE_DEVISE[conv.to] || 'XOF';
+                    if ($('ps_conv_option')) $('ps_conv_option').value = conv.option;
+                    if ($('ps_conv_taux')) $('ps_conv_taux').value = String(conv.rate);
+                    if ($('ps_taux_conversion_devise')) $('ps_taux_conversion_devise').value = String(conv.rate);
+                    if ($('ps_conv_source')) $('ps_conv_source').value = src;
+                    if ($('ps_conv_cible')) $('ps_conv_cible').value = cib;
+                    if ($('ps_eco_devise') && DEVISES[cib]) $('ps_eco_devise').value = cib;
+                    dernierFacteurConversion = Number(conv.rate);
+                } else if (conv && !conv.active) {
+                    const code = SYMBOLE_VERS_CODE_DEVISE[conv.to] || val('ps_eco_devise') || 'EUR';
+                    if ($('ps_conv_option')) $('ps_conv_option').value = '';
+                    if ($('ps_conv_taux')) $('ps_conv_taux').value = '';
+                    if ($('ps_taux_conversion_devise')) $('ps_taux_conversion_devise').value = '';
+                    if ($('ps_eco_devise') && DEVISES[code]) $('ps_eco_devise').value = code;
+                    dernierFacteurConversion = 1;
+                }
+                majDevise();
+                sauvegarder();
+            }
+            if (capexMisAJour) {
+                majBlocPlan();
+                majEtatValidation();
+                sauvegarder();
+                if (afficherNotification) {
+                    message("Chiffrage CAPEX et devise synchronisés avec l'analyse économique du pompage solaire.", 'info', 5000);
+                }
+            }
+        } catch (e) {
+            console.warn('[PompageSolaire] Synchronisation depuis Chiffrage impossible :', e);
+        }
+    }
+
+    /** Ouvre la modale de chiffrage de l'étude économique (incluant le convertisseur de devises) au-dessus du Pompage Solaire. */
+    function ouvrirChiffrageProjet() {
+        const P = pageProjet() || window;
+        if (!P || !P.ChiffrageModeView) {
+            message('Modale de chiffrage indisponible ici : ouvrez le pompage solaire depuis la page du projet.', 'error', 5000);
+            return;
+        }
+        synchroniserVersChiffrageProjet();
+        if (typeof P.ChiffrageModeView.openModalForPompage === 'function') {
+            P.ChiffrageModeView.openModalForPompage({
+                onClose: () => synchroniserDepuisChiffrageProjet(true),
+            });
+        } else if (typeof P.ChiffrageModeView.openModal === 'function') {
+            P.ChiffrageModeView.openModal();
+        }
     }
 
     // ---------------------------------------------------------------------------------------
@@ -3477,8 +3839,18 @@
         const emprunt = nombre('ps_pa_emprunt') || 0;
         const methode = val('ps_pa_methode_amortissement') === 'constant' ? 'constant' : 'lineaire';
         const r = dernierResultat || {};
+        const conv = etatConversionDevise();
         return {
             devise: DEVISES[val('ps_eco_devise')] ? val('ps_eco_devise') : 'EUR',
+            taux_conversion: conv.actif && conv.valide ? conv.taux : null,
+            conversion_devise: conv.actif && conv.valide ? {
+                active: true,
+                option: conv.option,
+                taux: conv.taux,
+                source: conv.source,
+                cible: conv.cible,
+                texte: conv.texteInline,
+            } : null,
             capex_pompe: nombre('ps_eco_capex'),
             capex_materiel_pompage: nombre('ps_pa_capex_materiel'),
             capex_genie_civil_pose: nombre('ps_pa_capex_genie_civil'),
@@ -4262,7 +4634,7 @@
 
         y = entete(y, "Hypothèses du plan d'affaires");
         const hyp = [
-            ['Devise', `${sym} (${dernierPlan.devise})`],
+            ['Devise', `${sym} (${dernierPlan.devise})${pp.conversion_devise && pp.conversion_devise.texte ? ' ' + pp.conversion_devise.texte : ''}`],
             ['Type de système', cas],
             ['Capex de la pompe solaire (analyse économique)', monnaie(pp.capex_pompe, sym)],
             ["Coût d'acquisition du terrain (non amorti)", monnaie(pp.capex_terrain || 0, sym)],
@@ -4660,7 +5032,7 @@
                             + `et l'onduleur / contrôleur de pompe est remplacé l'année ${eco.annee_remplacement_onduleur}.`, 9);
                     y = sousTitre(doc, y, 'Hypothèses');
                     y = tableau(doc, y + 1, ['Hypothèse', 'Valeur'], [
-                        ['Devise', `${sym} (${dernierEco.devise})`],
+                        ['Devise', `${sym} (${dernierEco.devise})${p.conversion_devise && p.conversion_devise.texte ? ' ' + p.conversion_devise.texte : ''}`],
                         ['Capex (centrale photovoltaïque + pompe)', monnaie(p.capex, sym)],
                         ['Opex de la centrale photovoltaïque', `${monnaie(p.opex_pv, sym)} /an`],
                         ["Indexation de l'Opex solaire", `${fr(p.indexation_opex_pv, 1)} %/an`],
@@ -4829,6 +5201,13 @@
         surEvenement('ps_btn_pa_repartir', ['click'], repartirLots);
         surEvenement('ps_btn_pa_calculate', ['click'], () => calculerPlan());
         document.querySelectorAll('.ps-devise-btn').forEach((b) => b.addEventListener('click', () => choisirDevise(b.dataset.devise)));
+        surEvenement('ps_btn_chiffrage_eco', ['click'], ouvrirChiffrageProjet);
+        document.querySelectorAll('#ps_devise_converter_container .ps-conv-opt-cb').forEach((cb) => {
+            cb.addEventListener('change', () => appliquerOptionConversion(cb.dataset.conv, cb.checked));
+        });
+        surEvenement('ps_taux_conversion_devise', ['input', 'change'], surSaisieTauxConversion);
+        surEvenement('ps_conv_custom_source', ['change'], surChangementPaireCustom);
+        surEvenement('ps_conv_custom_cible', ['change'], surChangementPaireCustom);
 
         surEvenement('ps_pompe_filtre_fabricant', ['change'], afficherPompes);
         surEvenement('ps_pompe_filtre_reco', ['change'], afficherPompes);
@@ -4871,12 +5250,15 @@
             const P = pageProjet();
             if (P) {
                 const surParametres = () => synchroniserParametresCalepinage();
+                const surCapexChiffrage = (ev) => synchroniserDepuisChiffrageProjet(false, ev && ev.detail);
                 P.document.addEventListener('calepinageParametresPompageChanged', surParametres);
                 P.document.addEventListener('calepinageExtraitPompageFerme', apresExtraitCalepinage);
+                P.document.addEventListener('residentielCapexChanged', surCapexChiffrage);
                 window.addEventListener('pagehide', () => {
                     try {
                         P.document.removeEventListener('calepinageParametresPompageChanged', surParametres);
                         P.document.removeEventListener('calepinageExtraitPompageFerme', apresExtraitCalepinage);
+                        P.document.removeEventListener('residentielCapexChanged', surCapexChiffrage);
                     } catch (e) { /* noop */ }
                 });
             }

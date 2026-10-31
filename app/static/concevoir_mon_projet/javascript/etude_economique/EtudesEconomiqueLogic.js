@@ -191,6 +191,10 @@ function collecterSaisiesEco() {
         });
     }
 
+    if (typeof getConversionDeviseState === 'function') {
+        data.conversionDevise = getConversionDeviseState();
+    }
+
     return data;
 }
 window.collecterSaisiesEco = collecterSaisiesEco;
@@ -285,6 +289,10 @@ function loadEconomicData() {
                 }
             }
         });
+    }
+
+    if (data.conversionDevise && typeof restaurerConversionDevise === 'function') {
+        restaurerConversionDevise(data.conversionDevise);
     }
 }
 
@@ -415,8 +423,292 @@ function toggleSystemeFields() {
  * @param {boolean} appliquerPrixCarburant  true au choix d'une devise par l'utilisateur : prix du
  *   carburant par défaut de cette devise. false à la restauration d'un projet : le prix saisi est gardé.
  */
+// ─────────────────────────────────────────────────────────────────────────────
+// CONVERTISSEUR DE DEVISES DYNAMIQUE (0 < taux < 1000)
+// ─────────────────────────────────────────────────────────────────────────────
+const CONVERSION_DEVISE_OPTIONS = {
+    EUR_FCFA: { from: '€', to: 'FCFA', defaultRate: 655.96, label: '€ vers FCFA' },
+    USD_FCFA: { from: '$', to: 'FCFA', defaultRate: 600, label: '$ vers FCFA' },
+    USD_HTG:  { from: '$', to: 'HTG',  defaultRate: 132, label: '$ vers HTG' },
+    EUR_HTG:  { from: '€', to: 'HTG',  defaultRate: 145, label: '€ vers HTG' },
+    CUSTOM:   { from: '€', to: 'FCFA', defaultRate: 1,   label: 'Option personnalisée' }
+};
+
+const TAUX_CONVERSION_MIN_EXCLUSIF = 0;
+const TAUX_CONVERSION_MAX_EXCLUSIF = 1000;
+
+const CHAMPS_MONETAIRES_DYNAMIQUES = [
+    'pal_t_1', 'pal_t_2', 'pal_t_3',
+    'prix_achat_elec', 'tarif_hiver_input', 'tarif_ete_input',
+    'facture_hiver_bv', 'abonnement_bv_kwc', 'prix_recharge_reseau',
+    'capex_simple_val', 'opex_wc',
+    'capex_etudes', 'capex_admin', 'capex_panneaux', 'capex_elec',
+    'capex_integration', 'capex_fondations', 'capex_vrd', 'capex_racco',
+    'capex_amo', 'capex_subvention', 'capex_batterie',
+    'opex_connexion', 'opex_prev', 'opex_cura', 'opex_loyer',
+    'ond_10', 'bat_10', 'ond_20'
+];
+
+function validateTauxConversion(rawVal) {
+    if (rawVal === undefined || rawVal === null || String(rawVal).trim() === '') {
+        return { valid: false, value: null, error: 'Le taux de conversion est obligatoire (0 < taux < 1000).' };
+    }
+    const num = Number(String(rawVal).replace(',', '.'));
+    if (!Number.isFinite(num)) {
+        return { valid: false, value: null, error: 'Veuillez saisir un taux de conversion numérique valide.' };
+    }
+    if (num <= TAUX_CONVERSION_MIN_EXCLUSIF || num >= TAUX_CONVERSION_MAX_EXCLUSIF) {
+        return {
+            valid: false,
+            value: num,
+            error: `Le taux de conversion doit être strictement supérieur à 0 et inférieur à 1000 (0 < taux < 1000). Valeur saisie : ${num}.`
+        };
+    }
+    return { valid: true, value: num, error: null };
+}
+window.validateTauxConversion = validateTauxConversion;
+
+function getConversionDeviseState() {
+    const checkedBox = document.querySelector('.conv-devise-checkbox:checked');
+    if (!checkedBox) {
+        return {
+            active: false,
+            option: null,
+            from: null,
+            to: document.querySelector('input[name="devise"]:checked')?.value || '€',
+            rate: 1,
+            valid: true,
+            error: null,
+            inlineText: ''
+        };
+    }
+    const optionKey = checkedBox.value;
+    const preset = CONVERSION_DEVISE_OPTIONS[optionKey] || CONVERSION_DEVISE_OPTIONS.CUSTOM;
+    const fromDev = optionKey === 'CUSTOM'
+        ? (document.getElementById('conv_devise_from')?.value || '€')
+        : preset.from;
+    const toDev = optionKey === 'CUSTOM'
+        ? (document.getElementById('conv_devise_to')?.value || 'FCFA')
+        : preset.to;
+
+    const rateInput = document.getElementById('taux_conversion_devise');
+    const rawRate = rateInput ? rateInput.value : '';
+    const check = validateTauxConversion(rawRate);
+    const rateVal = check.valid ? check.value : 1;
+    const inlineText = check.valid ? `(1${fromDev}=${check.value} ${toDev})` : '';
+
+    return {
+        active: true,
+        option: optionKey,
+        from: fromDev,
+        to: toDev,
+        rawRate: rawRate,
+        rate: rateVal,
+        valid: check.valid,
+        error: check.error,
+        inlineText: inlineText
+    };
+}
+window.getConversionDeviseState = getConversionDeviseState;
+
+function getFacteurConversionDevise() {
+    const state = getConversionDeviseState();
+    if (!state.active || !state.valid) return 1;
+    return state.rate > 0 ? state.rate : 1;
+}
+window.getFacteurConversionDevise = getFacteurConversionDevise;
+
+function applyDynamicCurrencyMaxAttributes() {
+    const factor = getFacteurConversionDevise();
+    CHAMPS_MONETAIRES_DYNAMIQUES.forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const baseRule = rules[id];
+        const baseMax = el.dataset.baseMax !== undefined
+            ? parseFloat(el.dataset.baseMax)
+            : (baseRule ? baseRule.max : parseFloat(el.getAttribute('max')));
+        if (Number.isFinite(baseMax)) {
+            if (el.dataset.baseMax === undefined) {
+                el.dataset.baseMax = String(baseMax);
+            }
+            const scaledMax = Math.round(baseMax * factor * 100) / 100;
+            el.setAttribute('max', String(scaledMax));
+        }
+    });
+}
+window.applyDynamicCurrencyMaxAttributes = applyDynamicCurrencyMaxAttributes;
+
+function setDeviseRadioValue(deviseSymbol, appliquerPrixCarburant = true) {
+    const radio = document.querySelector(`input[name="devise"][value="${deviseSymbol}"]`);
+    if (radio) {
+        radio.checked = true;
+        updateDeviseLabels(appliquerPrixCarburant);
+    }
+}
+
+function updateConversionInlineInfo() {
+    const state = getConversionDeviseState();
+    const badge = document.getElementById('devise-conversion-active-badge');
+    const inlineEl = document.getElementById('taux_conversion_inline_info');
+    const errEl = document.getElementById('taux_conversion_error');
+    const rateInput = document.getElementById('taux_conversion_devise');
+
+    if (!state.active) {
+        if (badge) badge.style.display = 'none';
+        if (inlineEl) inlineEl.textContent = '';
+        if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+        if (rateInput) rateInput.style.border = '';
+        return;
+    }
+
+    if (badge) {
+        badge.style.display = 'inline-block';
+        badge.textContent = state.valid ? `Actif ${state.inlineText}` : 'Taux invalide';
+    }
+    if (inlineEl) {
+        inlineEl.textContent = state.inlineText;
+    }
+    if (!state.valid) {
+        if (errEl) {
+            errEl.style.display = 'block';
+            errEl.textContent = state.error;
+        }
+        if (rateInput) rateInput.style.border = '2px solid #dc2626';
+    } else {
+        if (errEl) {
+            errEl.style.display = 'none';
+            errEl.textContent = '';
+        }
+        if (rateInput) rateInput.style.border = '';
+    }
+}
+
+function onConversionCheckboxChange(checkbox) {
+    const allBoxes = document.querySelectorAll('.conv-devise-checkbox');
+    if (checkbox && checkbox.checked) {
+        allBoxes.forEach((cb) => {
+            if (cb !== checkbox) cb.checked = false;
+        });
+    }
+
+    const activeBox = document.querySelector('.conv-devise-checkbox:checked');
+    const customRow = document.getElementById('devise-converter-custom-currencies');
+    const rateRow = document.getElementById('devise-converter-rate-row');
+    const rateInput = document.getElementById('taux_conversion_devise');
+
+    if (!activeBox) {
+        if (customRow) customRow.style.display = 'none';
+        if (rateRow) rateRow.style.display = 'none';
+        updateConversionInlineInfo();
+        applyDynamicCurrencyMaxAttributes();
+        updateDeviseLabels(false);
+        remettreResultatsEcoAZero();
+        debounceSaveEconomicData();
+        return;
+    }
+
+    const optKey = activeBox.value;
+    const preset = CONVERSION_DEVISE_OPTIONS[optKey] || CONVERSION_DEVISE_OPTIONS.CUSTOM;
+    if (customRow) customRow.style.display = (optKey === 'CUSTOM') ? 'flex' : 'none';
+    if (rateRow) rateRow.style.display = 'block';
+
+    if (rateInput) {
+        rateInput.value = String(preset.defaultRate);
+    }
+
+    const targetDevise = (optKey === 'CUSTOM')
+        ? (document.getElementById('conv_devise_to')?.value || 'FCFA')
+        : preset.to;
+    setDeviseRadioValue(targetDevise, true);
+    updateConversionInlineInfo();
+    applyDynamicCurrencyMaxAttributes();
+    remettreResultatsEcoAZero();
+    debounceSaveEconomicData();
+}
+window.onConversionCheckboxChange = onConversionCheckboxChange;
+
+function onCustomCurrencySelectChange() {
+    const toDev = document.getElementById('conv_devise_to')?.value || 'FCFA';
+    setDeviseRadioValue(toDev, true);
+    updateConversionInlineInfo();
+    applyDynamicCurrencyMaxAttributes();
+    remettreResultatsEcoAZero();
+    debounceSaveEconomicData();
+}
+window.onCustomCurrencySelectChange = onCustomCurrencySelectChange;
+
+function onTauxConversionInput() {
+    updateConversionInlineInfo();
+    applyDynamicCurrencyMaxAttributes();
+    if (window.ResidentielChiffrage) {
+        if (window.ResidentielChiffrage.Capex && typeof window.ResidentielChiffrage.Capex.render === 'function') {
+            window.ResidentielChiffrage.Capex.render();
+        }
+        if (window.ResidentielChiffrage.Opex && typeof window.ResidentielChiffrage.Opex.render === 'function') {
+            window.ResidentielChiffrage.Opex.render();
+        }
+    }
+    remettreResultatsEcoAZero();
+    debounceSaveEconomicData();
+}
+window.onTauxConversionInput = onTauxConversionInput;
+
+function restaurerConversionDevise(savedConv) {
+    const allBoxes = document.querySelectorAll('.conv-devise-checkbox');
+    allBoxes.forEach((cb) => { cb.checked = false; });
+    const customRow = document.getElementById('devise-converter-custom-currencies');
+    const rateRow = document.getElementById('devise-converter-rate-row');
+    const rateInput = document.getElementById('taux_conversion_devise');
+
+    if (!savedConv || !savedConv.active || !savedConv.option) {
+        if (customRow) customRow.style.display = 'none';
+        if (rateRow) rateRow.style.display = 'none';
+        updateConversionInlineInfo();
+        applyDynamicCurrencyMaxAttributes();
+        return;
+    }
+
+    const targetBox = document.querySelector(`.conv-devise-checkbox[value="${savedConv.option}"]`);
+    if (targetBox) targetBox.checked = true;
+    if (customRow) customRow.style.display = (savedConv.option === 'CUSTOM') ? 'flex' : 'none';
+    if (rateRow) rateRow.style.display = 'block';
+
+    if (savedConv.from && document.getElementById('conv_devise_from')) {
+        document.getElementById('conv_devise_from').value = savedConv.from;
+    }
+    if (savedConv.to && document.getElementById('conv_devise_to')) {
+        document.getElementById('conv_devise_to').value = savedConv.to;
+    }
+    if (rateInput && (savedConv.rawRate !== undefined || savedConv.rate !== undefined)) {
+        rateInput.value = String(savedConv.rawRate !== undefined ? savedConv.rawRate : savedConv.rate);
+    }
+    if (savedConv.to) {
+        setDeviseRadioValue(savedConv.to, false);
+    }
+    updateConversionInlineInfo();
+    applyDynamicCurrencyMaxAttributes();
+}
+window.restaurerConversionDevise = restaurerConversionDevise;
+
+function getNomProjetCourantEco() {
+    try {
+        const currentInput = document.getElementById('current_project_name') || document.getElementById('nom_projet');
+        if (currentInput && currentInput.value && currentInput.value.trim()) {
+            return currentInput.value.trim();
+        }
+        const lsName = localStorage.getItem('current_projet_nom') || localStorage.getItem('nom_projet_courant');
+        if (lsName && lsName.trim()) return lsName.trim();
+        const solarData = JSON.parse(localStorage.getItem('solarProjectData') || '{}');
+        if (solarData.projectName) return String(solarData.projectName).trim();
+        if (solarData.nom_projet) return String(solarData.nom_projet).trim();
+    } catch (e) { /* ignore */ }
+    return '';
+}
+window.getNomProjetCourantEco = getNomProjetCourantEco;
+
 function updateDeviseLabels(appliquerPrixCarburant = true) {
-    const dev = document.querySelector('input[name="devise"]:checked').value;
+    const devRadio = document.querySelector('input[name="devise"]:checked');
+    const dev = devRadio ? devRadio.value : '€';
     document.querySelectorAll('.symb-devise').forEach(el => el.textContent = dev);
     document.querySelectorAll('.symb-devise-unit').forEach(el => el.textContent = dev + '/l');
     document.querySelectorAll('.symb-devise-k').forEach(el => el.textContent = 'k' + dev);
@@ -430,6 +722,7 @@ function updateDeviseLabels(appliquerPrixCarburant = true) {
         else if (dev === 'HTG') pCarb.value = 300;
     }
 
+    applyDynamicCurrencyMaxAttributes();
     generatePaliers(); // Relancer pour mettre à jour les devises dans les paliers
 
     // CORRECTIF (demande explicite : "si je change de devise, cela ne modifie pas les autres
@@ -816,10 +1109,13 @@ function collectInputs() {
     const deprecPct = useDeprec ? parseFloat(document.getElementById('deprec_pct').value) : 0;
     const specFrance = document.querySelector('input[name="spec_france"]:checked').value === 'oui';
 
+    const convState = getConversionDeviseState();
     return {
         // Production
         pays: document.getElementById('pays')?.value || 'France',
         devise: dev,
+        tauxConversion: convState.active && convState.valid ? convState.rate : 1,
+        conversionDevise: convState,
         puissance: parseFloat(document.getElementById('puissance').value) || 0,
         productible: parseFloat(document.getElementById('productible').value) || 0,
         degradation: parseFloat(document.getElementById('degradation').value) || 0,
@@ -1053,13 +1349,23 @@ function validateStrictData() {
     let isValid = true;
     let errors = [];
 
+    const convState = getConversionDeviseState();
+    if (convState.active && !convState.valid) {
+        isValid = false;
+        errors.push(`[Taux de conversion] ${convState.error}`);
+    }
+    const facteurConv = getFacteurConversionDevise();
+
     function checkField(id, min, max, name, minIncl, maxIncl) {
         const el = document.getElementById(id);
         if (!el || el.disabled || champHorsCalcul(id)) return;
+        const effectiveMax = CHAMPS_MONETAIRES_DYNAMIQUES.includes(id)
+            ? Math.round(max * facteurConv * 100) / 100
+            : max;
         if (el.value === "" && CHAMPS_TARIFS_OBLIGATOIRES.includes(id)) {
             isValid = false;
             el.style.border = '2px solid red';
-            errors.push(`[${name}] obligatoire, doit être >= ${min} et <= ${max}.`);
+            errors.push(`[${name}] obligatoire, doit être >= ${min} et <= ${effectiveMax}.`);
             return;
         }
         if (el.value === "") return;
@@ -1068,13 +1374,13 @@ function validateStrictData() {
         
         let fieldValid = true;
         if (minIncl ? val < min : val <= min) fieldValid = false;
-        if (maxIncl ? val > max : val >= max) fieldValid = false;
+        if (maxIncl ? val > effectiveMax : val >= effectiveMax) fieldValid = false;
         
         if (!fieldValid) {
             isValid = false;
             el.style.border = '2px solid red';
             const minTxt = minIncl ? `>= ${min}` : `> ${min}`;
-            const maxTxt = maxIncl ? `<= ${max}` : `< ${max}`;
+            const maxTxt = maxIncl ? `<= ${effectiveMax}` : `< ${effectiveMax}`;
             errors.push(`[${name}] doit être ${minTxt} et ${maxTxt} (Saisie: ${val}).`);
         } else {
             el.style.border = ''; 
@@ -1128,10 +1434,11 @@ function validateStrictData() {
     if (champStockageVisible('groupe_prix_recharge_reseau')) {
         const el = document.getElementById('prix_recharge_reseau');
         const v = parseFloat(el?.value);
-        if (!el || el.value === '' || isNaN(v) || v < 0.1 || v > 1000) {
+        const maxRecharge = Math.round(1000 * facteurConv * 100) / 100;
+        if (!el || el.value === '' || isNaN(v) || v < 0.1 || v > maxRecharge) {
             isValid = false;
             if (el) el.style.border = '2px solid red';
-            errors.push(`[Prix de recharge sur le réseau] obligatoire, doit être >= 0.1 et <= 1000 (Saisie: ${el ? el.value || 'vide' : 'vide'}).`);
+            errors.push(`[Prix de recharge sur le réseau] obligatoire, doit être >= 0.1 et <= ${maxRecharge} (Saisie: ${el ? el.value || 'vide' : 'vide'}).`);
         } else {
             el.style.border = '';
         }
@@ -2265,6 +2572,12 @@ function lignesBatterieVirtuellePdf() {
 window.lignesBatterieVirtuellePdf = lignesBatterieVirtuellePdf;
 
 function exportPDF() {
+    const convState = getConversionDeviseState();
+    if (convState.active && !convState.valid) {
+        showCustomValidationModal(convState.error || 'Taux de conversion invalide (0 < taux < 1000).');
+        return;
+    }
+
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
 
@@ -2272,6 +2585,8 @@ function exportPDF() {
     addPageTitle(doc, "Informations projet");
     doc.setFontSize(11);
 
+    const nomProjet = getNomProjetCourantEco();
+    const dev = document.querySelector('input[name="devise"]:checked')?.value || '€';
     const typeProjet = val('type_projet');
     const typeSysteme = document.querySelector('input[name="type_systeme"]:checked').nextSibling.textContent.trim();
     const pays = val('pays') === 'Autre' ? val('pays_autre') : val('pays');
@@ -2279,7 +2594,19 @@ function exportPDF() {
     const productible = val('productible');
     const tauxAuto = val('taux_autoconsommation');
 
-    let y = 35;
+    let y = 32;
+    if (nomProjet) {
+        doc.setFont(undefined, 'bold');
+        doc.text(`Nom du projet : ${nomProjet}`, 15, y);
+        doc.setFont(undefined, 'normal');
+        y += 8;
+    }
+    const deviseLine = (convState.active && convState.valid && convState.inlineText)
+        ? `Devise : ${dev} ${convState.inlineText} — Taux de conversion : 1${convState.from}=${convState.rate} ${convState.to}`
+        : `Devise : ${dev}`;
+    doc.text(deviseLine, 15, y);
+    y += 8;
+
     doc.text(
         `C'est un projet de type "${typeProjet}" photovoltaïque et de système "${typeSysteme}". \nLe projet est localisé en "${pays}".`,
         15, y, { maxWidth: 180 }
@@ -2865,6 +3192,10 @@ document.addEventListener('DOMContentLoaded', () => {
         let isValid = true;
         let errorMessage = "";
 
+        const effectiveMax = CHAMPS_MONETAIRES_DYNAMIQUES.includes(id)
+            ? Math.round(rule.max * getFacteurConversionDevise() * 100) / 100
+            : rule.max;
+
         if (isNaN(val)) {
             isValid = false;
             errorMessage = "Veuillez entrer une valeur numérique.";
@@ -2874,9 +3205,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 isValid = false;
                 errorMessage = `La valeur doit être ${rule.minIncl ? '>=' : '>'} à ${rule.min}.`;
             }
-            if (rule.maxIncl ? val > rule.max : val >= rule.max) {
+            if (rule.maxIncl ? val > effectiveMax : val >= effectiveMax) {
                 isValid = false;
-                errorMessage = `La valeur doit être ${rule.maxIncl ? '<=' : '<'} à ${rule.max}.`;
+                errorMessage = `La valeur doit être ${rule.maxIncl ? '<=' : '<'} à ${effectiveMax}.`;
             }
         }
 

@@ -2,7 +2,8 @@
  * Aperçu d'un PDF avant téléchargement — même fenêtre que l'aperçu du rapport général
  * (ExportService.preview : voile sombre, cadre blanc, bandeau rouge « Prévisualisation du PDF »,
  * boutons Télécharger / Fermer), mais pour n'importe quel PDF déjà construit (blob + nom de
- * fichier). Utilisé par les dossiers de plans du parcours Chiffrage.
+ * fichier). Utilisé par les dossiers de plans du parcours Chiffrage, le formulaire résidentiel
+ * et les exports de devis PDF/Excel.
  *
  * Échap ou « Fermer » referment sans rien télécharger.
  */
@@ -20,10 +21,16 @@ function telecharger(blob, filename) {
 /**
  * @param {Blob} blob - PDF à afficher
  * @param {string} filename - nom proposé au téléchargement
- * @param {{titre?: string}} [options]
+ * @param {{titre?: string, onExcel?: Function, excelLabel?: string}} [options]
  */
 export function ouvrirApercuPdf(blob, filename, options = {}) {
   const pdfUrl = URL.createObjectURL(blob);
+  const hasExcel = typeof options.onExcel === 'function';
+  const excelBtnHtml = hasExcel
+    ? `<button type="button" data-apercu="excel" style="background-color:#15803d; color:white; border:none; padding:8px 16px; margin-right:10px; border-radius:4px; cursor:pointer; font-weight:bold;">${options.excelLabel || 'Télécharger Excel'}</button>`
+    : '';
+  const pdfBtnLabel = hasExcel ? 'Télécharger PDF' : 'Télécharger';
+
   const voile = document.createElement('div');
   voile.className = 'skv-apercu-pdf';
   voile.style.cssText = `position:fixed; inset:0; background-color:rgba(0,0,0,0.8); z-index:1050000;
@@ -33,7 +40,8 @@ export function ouvrirApercuPdf(blob, filename, options = {}) {
       <div style="padding:15px 20px; background-color:#f50000; color:white; display:flex; justify-content:space-between; align-items:center; border-top-left-radius:8px; border-top-right-radius:8px;">
         <h3 style="margin:0; font-size:18px; color:white;"></h3>
         <div>
-          <button type="button" data-apercu="telecharger" style="background-color:white; color:#f50000; border:none; padding:8px 16px; margin-right:10px; border-radius:4px; cursor:pointer; font-weight:bold;">Télécharger</button>
+          ${excelBtnHtml}
+          <button type="button" data-apercu="telecharger" style="background-color:white; color:#f50000; border:none; padding:8px 16px; margin-right:10px; border-radius:4px; cursor:pointer; font-weight:bold;">${pdfBtnLabel}</button>
           <button type="button" data-apercu="fermer" style="background-color:transparent; color:white; border:2px solid white; padding:8px 16px; border-radius:4px; cursor:pointer; font-weight:bold;">Fermer</button>
         </div>
       </div>
@@ -53,7 +61,17 @@ export function ouvrirApercuPdf(blob, filename, options = {}) {
     telecharger(blob, filename);
     fermer();
   });
+  const btnExcel = voile.querySelector('[data-apercu="excel"]');
+  if (btnExcel && hasExcel) {
+    btnExcel.addEventListener('click', () => {
+      options.onExcel();
+    });
+  }
   document.addEventListener('keydown', surTouche);
   document.body.appendChild(voile);
   return fermer;
+}
+
+if (typeof window !== 'undefined') {
+  window.ouvrirApercuPdf = ouvrirApercuPdf;
 }

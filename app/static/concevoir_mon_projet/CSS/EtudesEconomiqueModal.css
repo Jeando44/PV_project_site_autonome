@@ -35,7 +35,7 @@
 ───────────────────────────────────────────── */
 /* Supprime la marge grise de la modale globale (définie dans menu_list.css) */
 #etudes-economique-modal .modal-body {
-    padding: 15px !important;
+    padding: 6px 8px !important;
     margin: 0 !important;
     background-color: #ffffff !important;
 }
@@ -56,7 +56,7 @@
     max-width: 100%; /* Prend toute la largeur disponible */
     margin: auto;
     background: #ffffff;
-    padding: 10px 50px !important; /* Espacement ajusté entre les labels et le bord */
+    padding: 8px 10px !important; /* Espacement ajusté entre les labels et le bord */
     border-radius: 8px;
     box-shadow: none; /* Supprime l'ombre devenue inutile */
     width: 100%;
@@ -64,7 +64,7 @@
 }
 
 #etudes-economique-modal #Resultats.tab-content {
-    max-width: 95%;
+    max-width: 100%;
     margin: auto;
 }
 

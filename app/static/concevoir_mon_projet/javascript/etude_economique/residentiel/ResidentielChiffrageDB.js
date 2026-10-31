@@ -40,9 +40,14 @@
         const Capex = window.ResidentielChiffrage.Capex;
         const Opex = window.ResidentielChiffrage.Opex;
         const capex = Capex ? Capex.getData() : { postes: [], viewMode: 'synthetique' };
+        const conv = (typeof window.getConversionDeviseState === 'function')
+            ? window.getConversionDeviseState()
+            : null;
+        const devise = document.querySelector('input[name="devise"]:checked')?.value || '€';
+        const tauxConversion = (conv && conv.active && conv.valid) ? conv.rate : 1;
         // PRO / Grand projet : l'OPEX reste celui du formulaire standard (EtudesEconomiqueDB.js).
-        if (isPro()) return { capex };
-        return { capex, opex: Opex ? Opex.getData() : {} };
+        if (isPro()) return { capex, devise, tauxConversion, conversionDevise: conv };
+        return { capex, opex: Opex ? Opex.getData() : {}, devise, tauxConversion, conversionDevise: conv };
     }
 
     /** Messages des champs invalides du devis (CAPEX, et charges OPEX hors PRO). */
@@ -158,6 +163,16 @@
             if (!result || !result.success) throw new Error((result && result.message) || 'lecture refusée');
             const data = (result.config_exists && result.config && result.config.data) ? result.config.data : null;
             if (data || reinitialiser) {
+                const convData = data && (data.conversionDevise || (data.capex && data.capex.conversionDevise));
+                if (convData && typeof window.restaurerConversionDevise === 'function') {
+                    window.restaurerConversionDevise(convData);
+                } else if (data && data.devise) {
+                    const radio = document.querySelector(`input[name="devise"][value="${data.devise}"]`);
+                    if (radio) {
+                        radio.checked = true;
+                        if (typeof window.updateDeviseLabels === 'function') window.updateDeviseLabels(false);
+                    }
+                }
                 // Projet sans chiffrage enregistré (changement de projet) : tableaux par défaut,
                 // en vue détaillée comme un projet neuf (cf. Capex.init()).
                 if (Capex) Capex.setData(data && data.capex ? data.capex : { viewMode: 'detaille' });

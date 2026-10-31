@@ -46,8 +46,14 @@ PLAFONDS_PLAN_EUR = {
 
 
 def verifier_plafonds_devise(modele, plafonds):
-    """Plafonds des montants convertis dans la devise du modèle (champs None ignorés)."""
-    facteur = FACTEUR_BORNES_DEVISE.get(getattr(modele, 'devise', 'EUR'), 1)
+    """Plafonds des montants convertis dans la devise du modèle ou selon le taux de conversion actif (champs None ignorés)."""
+    taux_conv = getattr(modele, 'taux_conversion', None)
+    if taux_conv is not None:
+        if not (0 < taux_conv < 1000):
+            raise ValueError("Le taux de conversion doit être strictement compris entre 0 et 1000.")
+        facteur = float(taux_conv)
+    else:
+        facteur = FACTEUR_BORNES_DEVISE.get(getattr(modele, 'devise', 'EUR'), 1)
     for champ, plafond in plafonds.items():
         valeur = getattr(modele, champ, None)
         if valeur is not None and valeur > plafond * facteur:
@@ -87,6 +93,8 @@ class AnalyseEconomiqueParams(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     devise: Literal['EUR', 'USD', 'HTG', 'XOF']
+    taux_conversion: Optional[float] = None
+    conversion_devise: Optional[dict] = None
     # Montants : plafonds selon la devise (PLAFONDS_ECO_EUR), vérifiés par _plafonds.
     capex: float = Field(ge=1)
     opex_pv: float = Field(ge=0)
@@ -127,6 +135,8 @@ class PlanAffairesRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     devise: Literal['EUR', 'USD', 'HTG', 'XOF'] = 'EUR'
+    taux_conversion: Optional[float] = None
+    conversion_devise: Optional[dict] = None
     # Capex de la pompe solaire (analyse économique) et ses trois lots, dont la somme doit l'égaler.
     # Montants : plafonds selon la devise (PLAFONDS_PLAN_EUR), vérifiés dans _coherence.
     capex_pompe: float = Field(ge=1)
@@ -333,11 +343,15 @@ CHAMPS_NUMERIQUES_POMPAGE = frozenset({
     'ps_pa_rempl_onduleur', 'ps_pa_rempl_ge', 'ps_pa_rempl_batterie', 'ps_pa_subvention', 'ps_pa_emprunt',
     'ps_pa_taux_emprunt', 'ps_pa_duree_emprunt', 'ps_pa_taux_impot', 'ps_pa_duree_amortissement',
     'ps_pa_amortissement_annuel',
+    'ps_conv_taux',
 })
 CHAMPS_TEXTE_POMPAGE = {
     'ps_systeme': re.compile(r"^(fil_soleil|groupe|batteries)?$"),
     'ps_pump_type': re.compile(r"^(forage|surface)?$"),
     'ps_eco_devise': re.compile(r"^(EUR|USD|HTG|XOF)?$"),
+    'ps_conv_option': re.compile(r"^(EUR_FCFA|USD_FCFA|USD_HTG|EUR_HTG|CUSTOM)?$"),
+    'ps_conv_source': re.compile(r"^(EUR|USD|FCFA|HTG|XOF)?$"),
+    'ps_conv_cible': re.compile(r"^(EUR|USD|FCFA|HTG|XOF)?$"),
     'ps_reference_pompe_installee': re.compile(r"^[A-Za-zÀ-ÖØ-öø-ÿ0-9\- ]{0,30}$"),
     # Identifiant catalogue (entier) ou choix « référence personnalisée ».
     'ps_pompe_choix': re.compile(r"^(\d{1,10}|__perso__)?$"),

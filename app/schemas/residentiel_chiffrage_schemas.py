@@ -31,6 +31,46 @@ TVA_MODES = ('par_ligne', 'unique')
 # (ResidentielValidationRules.js). Prix en €/Wc (x puissance du projet) ou prix de vente fixe.
 PRIX_CIBLE_BORNES = {'wc': (0.3, 10.0), 'fixe': (500.0, 15_000_000.0)}
 MARGE_CIBLE_BORNES = (1.0, 100.0)
+TAUX_CONVERSION_MIN_EXCLUSIF = 0.0
+TAUX_CONVERSION_MAX_EXCLUSIF = 1000.0
+
+
+def valider_taux_conversion(taux, nom_champ: str = "tauxConversion") -> float:
+    """Valide strictement le taux de conversion : 0 < taux < 1000."""
+    if taux is None:
+        return 1.0
+    if isinstance(taux, bool):
+        raise ValueError(f"{nom_champ} : valeur booléenne interdite.")
+    try:
+        val = float(taux)
+    except (TypeError, ValueError):
+        raise ValueError(f"{nom_champ} : valeur numérique attendue.")
+    import math
+    if not math.isfinite(val) or val <= TAUX_CONVERSION_MIN_EXCLUSIF or val >= TAUX_CONVERSION_MAX_EXCLUSIF:
+        raise ValueError(
+            f"{nom_champ} : le taux de conversion doit être strictement compris entre 0 et 1000 (0 < taux < 1000), reçu {taux}."
+        )
+    return val
+
+
+def extraire_taux_conversion(data_blob: dict, capex_payload: Optional[dict] = None) -> float:
+    """Extrait et valide le taux de conversion depuis le payload de sauvegarde."""
+    if not isinstance(data_blob, dict):
+        return 1.0
+    conv = data_blob.get("conversionDevise")
+    if not isinstance(conv, dict) and isinstance(capex_payload, dict):
+        conv = capex_payload.get("conversionDevise")
+    if isinstance(conv, dict) and conv.get("active"):
+        raw = conv.get("rawRate", conv.get("rate"))
+        if raw in (None, ""):
+            raise ValueError("tauxConversion : le taux de conversion est obligatoire lorsque la conversion est activée.")
+        return valider_taux_conversion(raw, "tauxConversion")
+    raw_top = data_blob.get("tauxConversion")
+    if raw_top is None and isinstance(capex_payload, dict):
+        raw_top = capex_payload.get("tauxConversion")
+    if raw_top not in (None, "", 1, 1.0):
+        return valider_taux_conversion(raw_top, "tauxConversion")
+    return 1.0
 
 # Longueur/nombre de mots maximum pour tout champ "Désignation"/"Référence" (règle de texte globale).
 TEXTE_MAX_CARACTERES = 30
@@ -124,16 +164,6 @@ class PrixCibleSchema(BaseModel):
     mode: Literal['wc', 'fixe']
     valeur: Optional[float] = None
 
-    @model_validator(mode='after')
-    def _valider_bornes(self):
-        if self.valeur is None:
-            return self
-        mini, maxi = PRIX_CIBLE_BORNES[self.mode]
-        if not mini <= self.valeur <= maxi:
-            unite = '€/Wc' if self.mode == 'wc' else '€'
-            raise ValueError(f"Prix cible : entre {mini:g} et {maxi:g} {unite} (saisi : {self.valeur:g}).")
-        return self
-
 
 class ResidentielCapexSchema(BaseModel):
     """Payload complet `data.capex` de POST .../residentiel-chiffrage/save."""
@@ -157,6 +187,7 @@ class ResidentielCapexSchema(BaseModel):
     # Poste « Main-d'œuvre » compté dans le devis. False : poste à 0, hors totaux et hors contrôle de
     # bornes (cf. poste_hors_devis). Absent (chiffrage antérieur à la case) : compté, comme avant.
     inclureMainOeuvre: Optional[bool] = None
+    tauxConversion: Optional[float] = None
 
     @field_validator('margeCible')
     @classmethod
@@ -192,6 +223,20 @@ class ResidentielCapexSchema(BaseModel):
                     )
         return self
 
+    @model_validator(mode='after')
+    def _valider_prix_cible_avec_taux(self):
+        facteur = valider_taux_conversion(self.tauxConversion) if self.tauxConversion is not None else 1.0
+        if self.prixCible and self.prixCible.valeur is not None:
+            base_min, base_max = PRIX_CIBLE_BORNES[self.prixCible.mode]
+            mini = round(base_min * facteur, 4) if facteur < 1.0 else base_min
+            maxi = round(base_max * facteur, 2)
+            if not mini <= self.prixCible.valeur <= maxi:
+                unite = '/Wc' if self.prixCible.mode == 'wc' else ''
+                raise ValueError(
+                    f"Prix cible : entre {mini:g} et {maxi:g} {unite} (saisi : {self.prixCible.valeur:g})."
+                )
+        return self
+
 
 # NOUVEAU (demande explicite : "validation stricte des données d'entrée pour les Charges annuelles
 # (OPEX)") : bornes par charge — DOIT rester identique à OPEX_RULES dans
@@ -209,10 +254,22 @@ class ResidentielOpexSchema(BaseModel):
     fixes (TTC €/an), chacune bornée individuellement (cf. OPEX_RULES ci-dessus)."""
     model_config = ConfigDict(extra="ignore", strict=True)
 
-    assurances: float = Field(ge=OPEX_RULES['assurances'][0], le=OPEX_RULES['assurances'][1])
-    communication: float = Field(ge=OPEX_RULES['communication'][0], le=OPEX_RULES['communication'][1])
-    visiteTechnique: float = Field(ge=OPEX_RULES['visiteTechnique'][0], le=OPEX_RULES['visiteTechnique'][1])
-    autres: float = Field(ge=OPEX_RULES['autres'][0], le=OPEX_RULES['autres'][1])
+    assurances: float
+    communication: float
+    visiteTechnique: float
+    autres: float
+    tauxConversion: Optional[float] = None
+
+    @model_validator(mode='after')
+    def _valider_bornes_opex(self):
+        facteur = valider_taux_conversion(self.tauxConversion) if self.tauxConversion is not None else 1.0
+        for cle, (b_min, b_max) in OPEX_RULES.items():
+            val = getattr(self, cle)
+            mini = round(b_min * facteur, 4) if facteur < 1.0 else b_min
+            maxi = round(b_max * facteur, 2)
+            if val < mini or val > maxi:
+                raise ValueError(f"{cle} ({val}) doit être compris entre {mini} et {maxi}.")
+        return self
 
 
 class ResidentielRuleError(Exception):
@@ -397,7 +454,8 @@ def poste_hors_devis(poste_key: Optional[str], inclure_main_oeuvre: Optional[boo
 
 def validate_capex_business_rules(postes: List[dict], conversion_type: Optional[str] = None,
                                   profil: str = 'residentiel', lignes_exclues=(),
-                                  inclure_main_oeuvre: Optional[bool] = None) -> None:
+                                  inclure_main_oeuvre: Optional[bool] = None,
+                                  taux_conversion: float = 1.0) -> None:
     """Valide qte/puHt de chaque ligne selon la règle de son sous-type (ou le repli de son poste).
     Lève ResidentielRuleError au PREMIER écart trouvé (field = chemin exact, ex.
     "postes[1].lines[2].qte") — jamais de correction silencieuse, la requête entière est rejetée.
@@ -436,9 +494,12 @@ def validate_capex_business_rules(postes: List[dict], conversion_type: Optional[
                     f"comprise entre {qte_min} et {qte_max}{' (ou 0)' if zero_accepte else ''}."
                 )
 
-            pu_min, pu_max = regle['puHt']
+            facteur = valider_taux_conversion(taux_conversion)
+            raw_pu_min, raw_pu_max = regle['puHt']
+            pu_min = round(raw_pu_min * facteur, 4) if facteur < 1.0 else raw_pu_min
+            pu_max = round(raw_pu_max * facteur, 2)
             pu_ht = line.get('puHt')
-            if _hors_plage(pu_ht, regle['puHt'], zero_accepte):
+            if _hors_plage(pu_ht, (pu_min, pu_max), zero_accepte):
                 raise ResidentielRuleError(
                     f"{path}.puHt",
                     f"Prix unitaire HT ({pu_ht}) invalide pour '{line.get('designation', '?')}' — "

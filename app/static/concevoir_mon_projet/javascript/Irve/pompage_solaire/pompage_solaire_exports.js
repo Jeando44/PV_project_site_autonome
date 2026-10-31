@@ -21,6 +21,8 @@
         { id: 'plan-affaires', icone: 'fas fa-chart-line', titre: "Rapport du plan d'affaires", description: "Prix d'équilibre, VAN, TRI", verrou: "Calculez d'abord le plan d'affaires", rapport: true },
         { id: 'calepinage', icone: 'fas fa-solar-panel', titre: 'Plan de calepinage', description: 'Plan 2D, vue aérienne, 3D', verrou: "Dessinez d'abord les panneaux sur la carte" },
         { id: 'cablage', icone: 'fas fa-project-diagram', titre: 'Plan de câblage', description: 'Chaînes DC, MPPT, métrés', verrou: "Dimensionnez d'abord les chaînes (Dimensionnement)" },
+        { id: 'devis-detaille', icone: 'fas fa-file-invoice-dollar', titre: 'Exporter le devis détaillé en PDF/Excel', description: 'Devis détaillé par poste (PDF / Excel)', verrou: "Chiffrez d'abord le projet" },
+        { id: 'devis-synthetique', icone: 'fas fa-file-invoice', titre: 'Exporter le devis synthétique en PDF/Excel', description: 'Récapitulatif par poste (PDF / Excel)', verrou: "Chiffrez d'abord le projet" },
     ];
     // Rapports : état des calculs relu périodiquement dans la section tant que la palette est
     // affichée (simples booléens). Plans : vérifiés à chaque affichage de la palette — le calepinage
@@ -45,7 +47,7 @@
                 --pe-drag-x: 0px;
                 --pe-drag-y: 0px;
                 transform: translateY(-50%) translate(var(--pe-drag-x), var(--pe-drag-y));
-                width: 180px;
+                width: 210px;
                 background: #ffffff;
                 border: 2px solid #dc2626;
                 border-radius: 20px;
@@ -320,6 +322,9 @@
         try { etat = api && typeof api.etat === 'function' ? (api.etat() || {}) : {}; } catch (e) { etat = {}; }
         disponibles.rapport = !!etat.rapport;
         disponibles['plan-affaires'] = !!etat.planAffaires;
+        const devisOk = !!(window.ResidentielChiffrage && window.ResidentielChiffrage.PDF && typeof window.ResidentielChiffrage.PDF.previewAndExport === 'function');
+        disponibles['devis-detaille'] = devisOk;
+        disponibles['devis-synthetique'] = devisOk;
         if (avecPlans) {
             disponibles.calepinage = champsCalepinage().length > 0;
             disponibles.cablage = cablageDisponible();
@@ -380,6 +385,21 @@
         else if (id === 'plan-affaires') executer(bouton, () => api.planAffaires());
         else if (id === 'calepinage') choisirChampCalepinage(bouton);
         else if (id === 'cablage') executer(bouton, exporterCablage);
+        else if (id === 'devis-detaille') executer(bouton, () => exporterDevis(true));
+        else if (id === 'devis-synthetique') executer(bouton, () => exporterDevis(false));
+    }
+
+    async function exporterDevis(detailed) {
+        const PDF = window.ResidentielChiffrage && window.ResidentielChiffrage.PDF;
+        const Capex = window.ResidentielChiffrage && window.ResidentielChiffrage.Capex;
+        if (!PDF || typeof PDF.previewAndExport !== 'function') {
+            signaler("Le module d'export de devis n'est pas disponible sur cette page.", 'error');
+            return;
+        }
+        await PDF.previewAndExport({
+            capexOverride: Capex && typeof Capex.getData === 'function' ? Capex.getData() : undefined,
+            detailed: !!detailed,
+        });
     }
 
     // ── Plan de calepinage ──────────────────────────────────────────────────────────────────────
