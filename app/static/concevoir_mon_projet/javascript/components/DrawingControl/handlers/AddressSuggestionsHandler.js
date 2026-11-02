@@ -1,5 +1,5 @@
 // Gestion des suggestions d'adresses via l'API Google Maps
-import AddressSuggestions from '/static/concevoir_mon_projet/javascript/components/AddressSuggestions.js';
+import AddressSuggestions from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/AddressSuggestions.js';
 
 /**
  * Initialise les suggestions d'adresses pour un input donné

@@ -47,34 +47,34 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <!-- <script src="/static/concevoir_mon_projet/javascript/modele.js"></script> -->
-    <!-- <script src="/static/concevoir_mon_projet/javascript/vuesModele.js"></script> -->
-    <!-- <script src="/static/concevoir_mon_projet/javascript/ParametresTypeOmbriere.js"></script> -->
-    <!-- <script src="/static/concevoir_mon_projet/javascript/positionModele.js"></script> -->
-    <!-- <script src="/static/concevoir_mon_projet/javascript/param.js"></script> -->
+    <!-- <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/modele.js"></script> -->
+    <!-- <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/vuesModele.js"></script> -->
+    <!-- <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/ParametresTypeOmbriere.js"></script> -->
+    <!-- <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/positionModele.js"></script> -->
+    <!-- <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/param.js"></script> -->
 
-    <script src="/static/concevoir_mon_projet/javascript/menu_list.js"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/menu_list.js"></script>
    
 
     <!-- FONCTION RESIZE -->
-    <script src="/static/concevoir_mon_projet/javascript/resize.js?v=2"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/resize.js?v=2"></script>
     <!-- FONCTION TABS MANAGER -->
-    <script type="module" src="/static/concevoir_mon_projet/javascript/components/TabsManager.js"></script>
+    <script type="module" src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/TabsManager.js"></script>
      <script type="module"
       src="{{ url_for('static', filename='concevoir_mon_projet/javascript/parametreProjetMap/initialisationMap.js') }}?v=33"></script>
-       <!-- <script src="/static/concevoir_mon_projet/javascript/ParametresProjet.js"></script> -->
+       <!-- <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/ParametresProjet.js"></script> -->
 
     <!-- SERVICE CALEPINAGE DATA -->
-    <script type="module" src="/static/concevoir_mon_projet/javascript/services/CalepinageDataService.js"></script>
+    <script type="module" src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/CalepinageDataService.js"></script>
 
     <!-- MODAL MES PROJETS -->
-    <script type="module" src="/static/concevoir_mon_projet/javascript/components/MesProjetsModal.js?v=5"></script>
+    <script type="module" src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/MesProjetsModal.js?v=5"></script>
 
     <!-- LOGGER (doit être chargé avant geometrieModal.js) -->
-    <script src="/static/concevoir_mon_projet/javascript/logger.js"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/logger.js"></script>
 
     <!-- MODAL GEOMETRIE -->
-    <script src="/static/concevoir_mon_projet/javascript/geometrieModal.js?v=3"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrieModal.js?v=3"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
@@ -96,7 +96,7 @@
     <script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 
     <!-- Chargement automatique du contenu de la page système -->
-    <script type="module" src="/static/concevoir_mon_projet/javascript/services/SystemPageLoader.js"></script>
+    <script type="module" src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/SystemPageLoader.js"></script>
 
     <script>
       HTMLCanvasElement.prototype.getContext = function (origFn) {
@@ -236,11 +236,11 @@
           // Add other bootstrap parameters as needed, using camel case.
         });
     </script>
-    <script type="module" src="/static/concevoir_mon_projet/javascript/GoogleMaps.js?v=3"></script>
+    <script type="module" src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/GoogleMaps.js?v=3"></script>
 
     <!-- LOADING INDICATOR -->
     <script type="module">
-      import LoadingIndicator from '/static/concevoir_mon_projet/javascript/components/LoadingIndicator.js';
+      import LoadingIndicator from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/LoadingIndicator.js';
 
       // Initialiser le loading indicator globalement
       document.addEventListener('DOMContentLoaded', () => {
@@ -253,7 +253,7 @@
 
     <!-- FONCTION SUMMARY MODAL -->
     <script type="module">
-      import SummaryModal from '/static/concevoir_mon_projet/javascript/components/SummaryModal.js';
+      import SummaryModal from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/SummaryModal.js';
 
       // Attendre que le DOM soit chargé
       document.addEventListener('DOMContentLoaded', () => {
@@ -263,7 +263,7 @@
     </script>
     <!-- FONCTION GRAPH MODAL -->
     <script type="module">
-      import GraphModal from '/static/concevoir_mon_projet/javascript/components/GraphModal.js';
+      import GraphModal from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/GraphModal.js';
       // Attendre que le DOM soit chargé
       document.addEventListener('DOMContentLoaded', () => {
         // Initialiser la modale
@@ -274,11 +274,11 @@
     <!-- Génération du PDF "Devis" résidentiel (onglet "Devis" du modal Export des plans ci-dessous) :
          fichier autonome (pas de dépendance aux autres scripts de etude_economique/residentiel/,
          non chargés sur cette page), cf. plan Chiffrage & Devis Résidentiel. -->
-    <script src="/static/concevoir_mon_projet/javascript/etude_economique/residentiel/DevisPdfGenerator.js?v=17"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/etude_economique/residentiel/DevisPdfGenerator.js?v=17"></script>
 
     <!-- EXPORT DES PLANS EN PDF ET DXF -->
     <script type="module">
-      import ExportPlansModal from '/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/ExportPlansModal.js?v=7';
+      import ExportPlansModal from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/ExportPlansModal.js?v=7';
       document.addEventListener('DOMContentLoaded', () => {
         if (!window.exportPlansModal) {
           window.exportPlansModal = new ExportPlansModal();
@@ -290,7 +290,7 @@
          ouvert depuis le menu horizontal (menu_list.html::openDeclarationPrealable). Depuis une
          autre page, le menu redirige ici avec ?dp=1 : le modal s'ouvre une fois la carte prête. -->
     <script type="module">
-      import DpModal from '/static/concevoir_mon_projet/javascript/declaration_prealable/DpModal.js?v=4';
+      import DpModal from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/declaration_prealable/DpModal.js?v=4';
       document.addEventListener('DOMContentLoaded', () => {
         if (!window.declarationPrealableModal) window.declarationPrealableModal = new DpModal();
         if (new URLSearchParams(window.location.search).get('dp') === '1') {
@@ -307,7 +307,7 @@
          (iframe du modal géométrie, bouton « Dossier de plans de conception ») par postMessage ;
          vit dans cette page pour accéder à la carte, à la 3D et aux résultats du calepinage. -->
     <script type="module">
-      import PetitChampDossierModal from '/static/concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/dossier_plans/PetitChampDossierModal.js?v=12';
+      import PetitChampDossierModal from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_structure/petit_champ_solaire/dossier_plans/PetitChampDossierModal.js?v=12';
       document.addEventListener('DOMContentLoaded', () => {
         if (!window.petitChampDossierModal) window.petitChampDossierModal = new PetitChampDossierModal();
       });
@@ -317,7 +317,7 @@
          bouton de la barre d'outils de la carte (ButtonControl, #ombrieres-dossier-plans-button).
          Même modal que le petit champ solaire (petitChampDossier.css). -->
     <script type="module">
-      import OmbriereDossierModal from '/static/concevoir_mon_projet/javascript/geometrie_structure/ombrieres/dossier_plans/OmbriereDossierModal.js?v=14';
+      import OmbriereDossierModal from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_structure/ombrieres/dossier_plans/OmbriereDossierModal.js?v=14';
       document.addEventListener('DOMContentLoaded', () => {
         if (!window.ombriereDossierModal) window.ombriereDossierModal = new OmbriereDossierModal();
       });
@@ -327,7 +327,7 @@
          (bouton de son bloc Actions, dans l'iframe du modal géométrie) : la génération a lieu ici,
          seule page à disposer de la carte, de drawingControl et de CalepinageMaisonPlans. -->
     <script type="module">
-      import installerPontPlanDeMasse from '/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/PlanDeMassePont.js?v=4';
+      import installerPontPlanDeMasse from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/PlanDeMassePont.js?v=4';
       installerPontPlanDeMasse();
     </script>
 
@@ -378,10 +378,10 @@
     </script>
 
     <!-- Script du navigateur séquentiel de modales -->
-    <script src="/static/concevoir_mon_projet/javascript/navigation-modales.js?v=6"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/navigation-modales.js?v=6"></script>
 
     <!-- VALIDATION CALEPINAGE : affiche une modale de recommandation après dessin d'une ombrière -->
-    <script src="/static/concevoir_mon_projet/javascript/gestion_calepin/gestion_calepinage.js"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/gestion_calepin/gestion_calepinage.js"></script>
 
     {% include 'concevoir_mon_projet/components/page_navigation.html' %}
 </body>

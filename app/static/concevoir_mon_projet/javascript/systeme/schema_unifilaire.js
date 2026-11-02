@@ -2894,8 +2894,8 @@ ${unit.nbPanneaux != null ? unit.nbPanneaux + ' panneaux' : 'Nombre de panneaux 
             // type="module" dans schema_unifilaire.html) — import() dynamique fonctionne malgré tout
             // dans un script classique, sans changer son mode de chargement.
             const [{ default: PdfCartouche }, { default: CartoucheData }] = await Promise.all([
-                import('/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/utils/PdfCartouche.js'),
-                import('/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/utils/CartoucheData.js'),
+                import('/concevoir_mon_projet/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/utils/PdfCartouche.js'),
+                import('/concevoir_mon_projet/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/utils/CartoucheData.js'),
             ]);
 
             // Toujours en paysage (demande explicite), format A4 (défaut) ou A3 au choix de

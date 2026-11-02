@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/static/concevoir_mon_projet/CSS/geometrieModal.css">
 
     <!-- Logger (doit être chargé en premier) -->
-    <script src="/static/concevoir_mon_projet/javascript/logger.js"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/logger.js"></script>
 
     <style>
             .grid { display: block !important; }
@@ -242,7 +242,7 @@
         </div>
     </div>
 <!-- JavaScript Core (doit être chargé après le logger) -->
-<script src="/static/concevoir_mon_projet/javascript/geometrieModalCore.js"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrieModalCore.js"></script>
 
 <script>
 // Initialiser le logger pour cette page
@@ -2729,7 +2729,7 @@ document.getElementById('modelYShape').addEventListener('click', (e) => {
 
 <!-- Script pour la sauvegarde des plans pour l'export PDF -->
 <script type="module">
-import GeometryPlansSaver from '/static/concevoir_mon_projet/javascript/services/GeometryPlansSaver.js';
+import GeometryPlansSaver from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/GeometryPlansSaver.js';
 
 // Attendre que le DOM soit chargé
 document.addEventListener('DOMContentLoaded', () => {

@@ -226,7 +226,7 @@
 
         if (onProgress) onProgress("Ajout de l'en-tête et du pied de page...");
         try {
-            const PdfUtilitiesModule = await import('/static/concevoir_mon_projet/javascript/services/PdfUtilities.js');
+            const PdfUtilitiesModule = await import('/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/PdfUtilities.js');
             const PdfUtilities = PdfUtilitiesModule.default;
             const residentialInfo = (await PdfUtilities.getPersonnalisationRapport()) || {};
             PdfUtilities.addHeaderFooter(doc, residentialInfo);
@@ -481,7 +481,7 @@ th { background-color: #1e293b; color: #ffffff; font-weight: bold; }
         let ouvrirApercu = window.ouvrirApercuPdf || (window.parent && window.parent.ouvrirApercuPdf);
         if (typeof ouvrirApercu !== 'function') {
             try {
-                const mod = await import('/static/concevoir_mon_projet/javascript/services/PdfPreview.js');
+                const mod = await import('/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/PdfPreview.js');
                 ouvrirApercu = mod.ouvrirApercuPdf;
             } catch (e) {
                 console.warn('[DevisPdfGenerator] PdfPreview indisponible, téléchargement direct :', e);

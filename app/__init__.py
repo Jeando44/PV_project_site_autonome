@@ -294,6 +294,11 @@ def create_app(config_name=None):
     sso_auth = SSOAuth(app)
     register_error_handlers(app)
     register_security_headers(app)
+    # Anti-aspiration (audit de novembre 2026) : plus de téléchargement direct du code JS/JSON par
+    # un robot, et limites de requêtes. Avant cache_statiques_versionnes, cf. protection_statiques.init_app.
+    from app.middleware import protection_statiques, limites_requetes
+    protection_statiques.init_app(app)
+    limites_requetes.init_app(app)
     # Verrou optimiste des données d'un projet (deux onglets / deux postes), cf. le module.
     from app.services.version_projet import init_app as init_version_projet
     init_version_projet(app)

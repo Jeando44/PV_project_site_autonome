@@ -84,7 +84,7 @@
      * PAGE, pas celle du script - un chemin relatif serait donc faux ici.
      */
     async function gatherCartouche(nomPlan, indice) {
-        const { default: CartoucheData } = await import('/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/utils/CartoucheData.js');
+        const { default: CartoucheData } = await import('/concevoir_mon_projet/static/concevoir_mon_projet/javascript/export_plans_pdf_dxf/utils/CartoucheData.js');
         const cartouche = await CartoucheData.build({ nomPlan, indice, scale: null });
         if (!cartouche) {
             throw new Error("Projet introuvable. Sélectionnez un projet avant l'export.");

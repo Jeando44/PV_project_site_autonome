@@ -357,133 +357,133 @@
 
 <!-- Garde du projet actif : verrouille l'onglet si un autre onglet ouvre un autre projet (localStorage
      partagé), pour qu'aucune sauvegarde n'écrive un projet dans un autre. Chargé avant tout calepinage. -->
-<script src="/static/concevoir_mon_projet/javascript/services/garde_projet_actif.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/garde_projet_actif.js?v=2"></script>
 <!-- Sauvegarde complète du projet (icône « Sauvegarder » de la palette) + invitation à enregistrer
      avant « Revenir à Socalts », « Paramètres », « Consommation d'énergie » et la fermeture de l'onglet. -->
-<script src="/static/concevoir_mon_projet/javascript/services/sauvegarde_projet.js?v=6"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/sauvegarde_projet.js?v=6"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsts@2.7.1/dist/jsts.min.js"></script>
-<script src="/static/concevoir_mon_projet/javascript/loiAperModal.js"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/shapes/polygone_aper.js"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/shapes/polygone_aper_persistence.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/calcul_APER.js?v=7"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/loiAperModal.js"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/shapes/polygone_aper.js"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/shapes/polygone_aper_persistence.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/calcul_APER.js?v=7"></script>
 
 <!-- Calepinage résidentiel (toiture maison individuelle) — Étape 1 : décorrélé du calepinage
      "grands projets", même principe d'isolation que la Loi APER ci-dessus. Tous les fichiers de
      cette fonctionnalité sont regroupés dans calepinage_systeme/Calepinage_mainson/. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/polygon_maison.js?v=33"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/polygon_maison.js?v=33"></script>
 <!-- Orthophoto drone (JPEG/PNG + fichier de coordonnées) posée sur la carte principale — Résidentielle et
      Professionnelle ; ouverte par le bouton « orthophoto-drone-button » de la palette (ButtonControl.js). -->
-<script src="/static/concevoir_mon_projet/javascript/components/orthophoto/orthophoto_drone.js?v=4"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/orthophoto/orthophoto_drone.js?v=4"></script>
 <!-- Carte des participants ACC (adresse/bâtiment, cercles 2/10/20 km, contrôle du périmètre) — projets en
      autoconsommation collective ; ouverte par le bouton « acc-participants-button » de la palette. -->
-<script src="/static/concevoir_mon_projet/javascript/components/acc_participants/acc_participants_carte.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/acc_participants/acc_participants_carte.js?v=3"></script>
 <!-- Persistance localStorage des calepinages (contour/panneaux/réglages) — chargée avant le moteur
      principal qui l'utilise via window.CalepinagePersistence. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_persistence.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_persistence.js?v=3"></script>
 <!-- Persistance en base de données (complète, sans la remplacer, la persistance localStorage
      ci-dessus) : sauvegarde sur le clic "Calculer et Visualiser", chargement au démarrage si le
      localStorage est vide pour ce module — cf. window.CalepinageMaisonPersistenceDB. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_persistence_db.js?v=12"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_persistence_db.js?v=12"></script>
 <!-- Puissance projet de « Mes projets » : enregistre le calepinage à l'export et à « Sauvegarder le projet ». -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/puissance_projet_sync.js?v=5"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/puissance_projet_sync.js?v=5"></script>
 <!-- Calepinage résidentiel : scindé en 4 fichiers (calculs / dessin / formulaires / orchestrateur)
      reliés par le namespace partagé window.CalepinageMaisonIndiv (cf. calepinage_maison_calculs.js
      pour le détail) — ordre de chargement reflétant la profondeur de dépendance (calculs n'a
      aucune dépendance sur les 3 autres ; orchestrateur dépend des 3 autres). -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_calculs.js?v=43"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_dessin.js?v=56"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_calculs.js?v=43"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_dessin.js?v=56"></script>
 <!-- Catalogue "Système d'intégration" (espacements X/Y/dX/dY par système) — chargé avant
      formulaires.js, qui le lit via CM.SYSTEME_INTEGRATION_CATALOG. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_systemes_integration.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_systemes_integration.js?v=3"></script>
 <!-- REFONTE toolbar/entête (demande explicite : "modulariser la configuration des actions dans un
      fichier dédié") : config structurée des boutons de #cmToolbar + des 3 toggles de l'en-tête,
      chargée avant formulaires.js qui la lit via window.CalepinageMaisonToolbarConfig. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_toolbar_config.js?v=12"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_formulaires.js?v=115"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_orchestrateur.js?v=104"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_toolbar_config.js?v=12"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_formulaires.js?v=115"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_orchestrateur.js?v=104"></script>
 <!-- Inclinaison / pertes partagées avec le pompage solaire (après l'orchestrateur : CM.listerChampsCarte). -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_parametres_pompage.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_parametres_pompage.js?v=3"></script>
 <!-- Panneaux du canevas reportés sur la carte + données des plans (situation/masse), puis matériels
      électriques et marqueurs de coordonnées posés depuis le canevas. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_carte_plans.js?v=12"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_annotations.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_dimensions_ombriere.js?v=11"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_carte_plans.js?v=12"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_annotations.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_dimensions_ombriere.js?v=11"></script>
 <!-- Poteaux d'ombrière : entraxes transversaux, excentrement, axes et ancrages sur la carte. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_poteaux_ombriere.js?v=5"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_poteaux_ombriere.js?v=5"></script>
 <!-- Configurateur Calepinage des ombrières (iframe imbriquée calepinage_ombriere.html) alimenté
      depuis le champ PV du module résidentiel ; appelé par l'iframe elle-même. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_configurateur_ombriere.js?v=4"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_configurateur_ombriere.js?v=4"></script>
 <!-- Étape 3 de l'unification du calepinage : polygone libre -> modal "Petit champ solaire" (sheds)
      + tableau sheds. Injecté par geometrieModal.js à l'ouverture du modal, aiguillé selon l'URL. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_dimensions_petit_champ.js?v=8"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_terrain.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_dimensions_petit_champ.js?v=8"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_terrain.js?v=3"></script>
 <!-- Tables de petit champ face au terrain (calcul unique carte + 3D) et leur signalement carte/canevas. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_terrain_tables.js?v=6"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_terrain_carte.js?v=7"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_terrain_tables.js?v=6"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_terrain_carte.js?v=7"></script>
 <!-- Boutons "Calculer" / "Résultats" / "Optimisation" du petit champ solaire (sheds). -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_sheds_actions.js?v=11"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_sheds_actions.js?v=11"></script>
 <!-- "Type de calepinage" + "Géométrie de la toiture" dans le formulaire PRO/Grand projet, en
      synchronisation avec le formulaire résidentiel (ombrières et petit champ solaire). -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_form_pro.js?v=23"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_form_pro.js?v=23"></script>
 <!-- Génération 3D (Phase 1 : Monopente + Bipente) — géométrie pure (polygones 3D depuis
      CM.state.roofLocal/pans) puis visionneuse Babylon.js (2e canevas superposé au canevas 2D,
      bascule via #cmView2D3DBtn). Chargés après orchestrateur.js (dépendent de CM.packPanelsForPan /
      CM.getOtherHousesReprojected / CM.modalBody). Babylon.js est chargé à la demande depuis le CDN
      (version figée) par le viewer, uniquement au 1er passage en 3D. -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_geometry.js?v=25"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_geometry.js?v=25"></script>
 <!-- Phase A objets 3D de contexte : bibliothèque Babylon partagée (arbre, bâtiment, mât...) +
      gestion de la liste d'objets posés dans la scène de la maison active (CM.state.sceneObjects3D). -->
 <!-- Générateurs d'ombrières métal + bois (réutilisés tels quels depuis geometrie_3D/) : exposent
      window.buildOmbriere3D / window.buildOmbriereBois3D, consommés par le viewer 3D pour les objets
      "Ombrière Métal/Bois - <modèle>" de la palette. Chargés AVANT scene_objects_library.js. -->
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_single_post.js?v=3"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_offset_post.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_double_post.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_inclined_post.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_linked_post.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_y_shape.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_double_y_shape.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/ombriere_3d_orchestrator.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/ombriere_bois_shared.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_inclined_post_bois.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_y_shape_bois.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_double_post_bois.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_offset_post_bois.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_simple_azelan.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_simple_travolta.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_simple_travolta_2.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/ombriere_3d_orchestrator_bois.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_single_post.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_offset_post.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_double_post.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_inclined_post.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_linked_post.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_y_shape.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/model_double_y_shape.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_metal/ombriere_3d_orchestrator.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/ombriere_bois_shared.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_inclined_post_bois.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_y_shape_bois.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_double_post_bois.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_offset_post_bois.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_simple_azelan.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_simple_travolta.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/model_simple_travolta_2.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/ombriere_bois/ombriere_3d_orchestrator_bois.js?v=1"></script>
 <!-- Générateurs "Petit champ solaire" (dent de scie / shed) — window.buildPetitChampSolaire3D,
      consommé par le viewer 3D pour typeMontage = "Petit champ solaire". Dépend des helpers
      window.parsePostDistancesSimple etc. exposés par ombriere_metal/model_single_post.js (chargé ci-dessus). -->
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/petit_champ_solaire_shared.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_poteau_centre.js?v=3"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_poteau_excentre.js?v=3"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_doublepoteau.js?v=4"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_bipente.js?v=3"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/petit_champ_solaire_3d_orchestrator.js?v=4"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/petit_champ_solaire_3d_rapide.js?v=1"></script>
-<script src="/static/concevoir_mon_projet/javascript/geometrie_3D/scene_objects_library.js?v=6"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_objects.js?v=24"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/petit_champ_solaire_shared.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_poteau_centre.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_poteau_excentre.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_doublepoteau.js?v=4"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/modele_bipente.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/petit_champ_solaire_3d_orchestrator.js?v=4"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/Petit_champ_solaire/petit_champ_solaire_3d_rapide.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/geometrie_3D/scene_objects_library.js?v=6"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_objects.js?v=24"></script>
 <!-- Scène d'ombrage proche (panneaux, bâtiments, objets 3D) envoyée au calcul de production
      (solarProjectData.shadingScene -> /calculate_pv, cf. calcul_ombrage_proche.py). -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_ombrage_scene.js?v=6"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_ombrage_scene.js?v=6"></script>
 <!-- Fenêtres de personnalisation 3D (portage des formulaires de test_3d.html) :
      ombrière (métal + bois) et petit champ solaire (dent de scie / shed). -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_ombriere_form.js?v=7"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_petitchamp_form.js?v=6"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_terrain.js?v=42"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_textures_toit.js?v=2"></script>
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_viewer.js?v=59"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_ombriere_form.js?v=7"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_petitchamp_form.js?v=6"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_terrain.js?v=42"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_textures_toit.js?v=2"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_3d_viewer.js?v=59"></script>
 <!-- Calepinage sur image importée : clic droit sur le bouton "Calepinage résidentiel" (#draw-maison-polygon-button)
      — importe une image, la calibre à l'échelle, puis délègue au moteur ci-dessus via
      window.openCalepinageMaisonModal({type:'image', ...}). Chargé après lui (dépendance). -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_image_source.js?v=3"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_image_source.js?v=3"></script>
 <!-- DIAGNOSTIC TEMPORAIRE (double-vérification backend du calepinage résidentiel, étape 1 : cf.
      app/models/calepinage_maison_verification/residentiel_engine.py) : ajoute un bouton "Vérif
      Python (test)" dans l'en-tête du modal Calepinage Maison. 100% additif, à retirer/étendre une
      fois shed/dôme portés côté backend. Chargé après orchestrateur.js (dépend de CM.modal/CM.state). -->
-<script src="/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_verif_test.js?v=16"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_verif_test.js?v=16"></script>
 
 {% include 'concevoir_mon_projet/modals/liste_de_materiels.html' %}
 <!-- Helper partagé "+ détails" (bouton par ligne des modales favoris panneaux/onduleurs/batteries) :
@@ -548,7 +548,7 @@
 <!-- Aperçu des PDF avant téléchargement (plans de calepinage et de câblage) : module ES rendu
      accessible aux scripts classiques ci-dessus. -->
 <script type="module">
-  import { ouvrirApercuPdf } from '/static/concevoir_mon_projet/javascript/services/PdfPreview.js?v=1';
+  import { ouvrirApercuPdf } from '/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/PdfPreview.js?v=1';
   window.ouvrirApercuPdf = ouvrirApercuPdf;
 </script>
 <!-- Palette « Exports » du pompage solaire, à droite de la modale « Consommation d'énergie ». -->
@@ -560,7 +560,7 @@
 
 
 
-<!-- <script src="/static/concevoir_mon_projet/javascript/menu.js"></script> -->
+<!-- <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/menu.js"></script> -->
 <script>
   async function openLoiAperModal() {
     const modal = document.getElementById('loi-aper-modal');
@@ -1015,7 +1015,7 @@
 
 <!-- Script de gestion des permissions -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-<script src="/static/concevoir_mon_projet/javascript/menuPermissions.js"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/menuPermissions.js"></script>
 
 <!-- ===== Gestion de l'inactivité (déconnexion auto 20 min) ===== -->
 <div id="inactivity-warning" style="
