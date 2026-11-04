@@ -4,6 +4,11 @@ Modèle ProjetRevision - Sauvegarde historique des variantes/indices d'un projet
 from app.extensions import db
 from datetime import datetime
 from app.utils.dates import utc_maintenant
+from app.models.consommation_file import FichierBinaire
+
+# Longueur maximale du libellé d'une variante (contrôlée aussi dans la fenêtre de sauvegarde).
+LIBELLE_MAX = 30
+
 
 class ProjetRevision(db.Model):
     """Modèle pour stocker un instantané (snapshot) complet d'un indice/variante de projet"""
@@ -23,7 +28,11 @@ class ProjetRevision(db.Model):
     
     # 'A', 'B', 'C', 'D'
     indice = db.Column(db.String(10), nullable=False, index=True)
+    # Texte automatique historique (« Version initiale », « Variante B »), jamais affiché à l'utilisateur.
     description = db.Column(db.String(255), nullable=True)
+    # Libellé court saisi par l'utilisateur (infobulle de la pastille dans Mes projets). Longueur
+    # contrôlée et saisie nettoyée par app/services/variantes_projet.py::nettoyer_libelle.
+    libelle = db.Column(db.String(LIBELLE_MAX), nullable=True)
     
     # Copie complète de l'état de conception (format 2, cf. app/services/variantes_projet.py :
     # calepinage résidentiel, géométries, IRVE, éco, chiffrage, pompage, petit champ, ombrières).
@@ -41,6 +50,14 @@ class ProjetRevision(db.Model):
     created_at = db.Column(db.DateTime, default=utc_maintenant)
     updated_at = db.Column(db.DateTime, default=utc_maintenant, onupdate=utc_maintenant)
 
+    # Fichiers binaires de la copie (courbes de charge), supprimés avec la variante.
+    fichiers = db.relationship(
+        'ProjetRevisionFichier',
+        lazy='dynamic',
+        cascade='all, delete-orphan',
+        passive_deletes=True
+    )
+
     @property
     def restaurable(self):
         from app.services.variantes_projet import copie_restaurable
@@ -52,7 +69,28 @@ class ProjetRevision(db.Model):
             'projet_id': self.projet_id,
             'indice': self.indice,
             'description': self.description,
+            'libelle': self.libelle,
             'restaurable': self.restaurable,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'updated_at': self.updated_at.isoformat() if self.updated_at else None
         }
+
+
+class ProjetRevisionFichier(db.Model):
+    """Contenu binaire des fichiers copiés dans une variante (courbes de charge : consommation_files,
+    consommation_files_acc). Tenu hors du JSON `ProjetRevision.donnees` (fichiers de plusieurs Mo) ;
+    la copie y référence chaque fichier par son empreinte sha256. Un fichier inchangé d'une sauvegarde
+    à l'autre n'est pas réécrit (cf. variantes_projet.synchroniser_fichiers)."""
+    __tablename__ = 'projets_revisions_fichiers'
+    __table_args__ = (db.UniqueConstraint('revision_id', 'sha256', name='uq_projets_revisions_fichiers_rev_sha'),)
+
+    id = db.Column(db.Integer, primary_key=True)
+    revision_id = db.Column(
+        db.Integer,
+        db.ForeignKey('projets_revisions.id', ondelete='CASCADE', name='fk_projets_revisions_fichiers_revision_id'),
+        nullable=False,
+        index=True
+    )
+    sha256 = db.Column(db.String(64), nullable=False)
+    file_data = db.Column(FichierBinaire, nullable=False)
+    created_at = db.Column(db.DateTime, default=utc_maintenant)

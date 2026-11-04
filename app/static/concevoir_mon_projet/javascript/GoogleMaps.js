@@ -4,7 +4,7 @@ import ScaleControl from './components/ScaleControl/ScaleControl.js'; // Ajout d
 import { GET_CODE_INSEE_BY_COORDINATES } from '../API/API.js'; // GET_CADASTRE_DATA supprimé
 import { storageManager } from './services/StorageManager.js';
 import { adresseCourteDepuisGoogle, raccourcirTexteAdresse } from './parametreProjetMap/adresseCourte.js';
-import ExportService from './services/ExportService.js?v=12'; // Import pour injecter la toolbar — ?v= : cf. ButtonControl.js (même valeur, singleton getInstance())
+import ExportService from './services/ExportService.js?v=13'; // Import pour injecter la toolbar — ?v= : cf. ButtonControl.js (même valeur, singleton getInstance())
 let map;
 let marker;
 

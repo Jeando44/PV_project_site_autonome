@@ -1,6 +1,6 @@
 import OmbriereDossierState, { LIBELLES_FORMAT, codesPieces, champsAvecPlans } from './OmbriereDossierState.js?v=9';
 import { PROFILS, profilAvecPlans } from '../../dossier_profils.js?v=1';
-import { optionDevisHtml, brancherOptionDevis, boutonsDevisHtml, brancherBoutonsDevis, devisPropose, texteQuotaDossier } from '../../dossier_devis.js?v=4';
+import { optionDevisHtml, brancherOptionDevis, boutonsDevisHtml, brancherBoutonsDevis, devisPropose, texteQuotaDossier } from '../../dossier_devis.js?v=5';
 import { ouvrirApercuPdf } from '../../../services/PdfPreview.js?v=1';
 import OmbriereDossierExport, { download } from './OmbriereDossierExport.js?v=14';
 import { SECTIONS_REGLEMENTATION, TEXTES_TYPES } from './reglementation_modele.js?v=5';

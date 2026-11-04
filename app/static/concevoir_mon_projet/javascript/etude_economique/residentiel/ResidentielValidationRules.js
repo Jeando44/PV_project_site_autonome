@@ -290,6 +290,69 @@
     }
 
     /**
+     * Mode de chiffrage du CAPEX (boutons « Prix au Wc » / « CAPEX total » / « Chiffrage détaillé »)
+     * — miroir de CAPEX_MODES / CAPEX_PRIX_WC_BORNES / CAPEX_FIXE_TRANCHES dans
+     * residentiel_chiffrage_schemas.py. 'detaille' = tableau du devis (défaut, chiffrages existants).
+     * Valeurs saisies sur la base du moteur : HT en PRO (TVA récupérable), TTC en résidentiel.
+     */
+    const CAPEX_MODES = ['wc', 'fixe', 'detaille'];
+    const CAPEX_PRIX_WC_RULE = {
+        get min() { return scaleMin(0.1, getFacteurConversionDevise()); },
+        get max() { return scaleMax(5, getFacteurConversionDevise()); },
+        get label() { return `Prix au Wc (${getDeviseSymbol()}/Wc)`; }
+    };
+    // CAPEX total (k€) selon la puissance du projet : [puissance min incluse, puissance max exclue
+    // (incluse pour la dernière tranche), CAPEX min, CAPEX max].
+    const CAPEX_FIXE_TRANCHES = [
+        { pMin: 0, pMax: 3, min: 0.1, max: 10, libelle: 'moins de 3 kWc' },
+        { pMin: 3, pMax: 9, min: 3, max: 30, libelle: 'de 3 à 9 kWc' },
+        { pMin: 9, pMax: 100, min: 9, max: 180, libelle: 'de 9 à 100 kWc' },
+        { pMin: 100, pMax: 500, min: 50, max: 800, libelle: 'de 100 à 500 kWc' },
+        { pMin: 500, pMax: 5000, min: 200, max: 10000, libelle: 'de 500 à 5 000 kWc', derniere: true }
+    ];
+
+    /** Tranche du CAPEX total pour une puissance (kWc), bornes converties en devise ; null hors 0-5 000 kWc. */
+    function trancheCapexFixe(puissanceKwc) {
+        const p = Number(puissanceKwc);
+        if (!Number.isFinite(p) || p <= 0) return null;
+        const t = CAPEX_FIXE_TRANCHES.find((x) => p >= x.pMin && (x.derniere ? p <= x.pMax : p < x.pMax));
+        if (!t) return null;
+        return { min: scaleMin(t.min, getFacteurConversionDevise()), max: scaleMax(t.max, getFacteurConversionDevise()), libelle: t.libelle };
+    }
+
+    /** Prix au Wc (vide accepté : pas encore saisi ; le calcul de rentabilité l'exige, cf. erreursCapexSimple). */
+    function validateCapexPrixWc(valeur) {
+        return validerBorne(CAPEX_PRIX_WC_RULE, valeur, true);
+    }
+
+    // CAPEX total conservé pour un mode inactif : enveloppe de toutes les tranches (la puissance a pu
+    // changer depuis la saisie). Miroir de CAPEX_FIXE_ENVELOPPE.
+    const CAPEX_FIXE_ENVELOPPE = { min: 0.1, max: 10000 };
+
+    /**
+     * CAPEX total en k€ (vide accepté) : bornes selon la puissance du projet quand c'est le mode
+     * actif (`actif` vrai par défaut), sinon enveloppe des tranches.
+     */
+    function validateCapexFixe(valeur, puissanceKwc, actif) {
+        const label = `CAPEX total (k${getDeviseSymbol()})`;
+        if (valeur === null || valeur === undefined || valeur === '') return { valid: true, message: '' };
+        if (actif === false) {
+            return validerBorne({ min: scaleMin(CAPEX_FIXE_ENVELOPPE.min, getFacteurConversionDevise()), max: scaleMax(CAPEX_FIXE_ENVELOPPE.max, getFacteurConversionDevise()), label }, valeur, true);
+        }
+        const tranche = trancheCapexFixe(puissanceKwc);
+        if (!tranche) {
+            const p = Number(puissanceKwc);
+            return {
+                valid: false,
+                message: (Number.isFinite(p) && p > 0)
+                    ? `${label} : puissance du projet (${p.toLocaleString('fr-FR')} kWc) hors du domaine prévu (jusqu'à 5 000 kWc).`
+                    : `${label} : puissance du projet inconnue, lancez d'abord le calcul de production.`
+            };
+        }
+        return validerBorne({ min: tranche.min, max: tranche.max, label: `${label}, puissance ${tranche.libelle}` }, valeur, true);
+    }
+
+    /**
      * Lignes dont la quantité vient TOUJOURS du calepinage (nombre de panneaux posés), pour tous les
      * types d'étude : jamais saisie dans les Favoris chiffrage ni appliquée depuis eux, et en lecture
      * seule dans le tableau CAPEX dès que le calepinage compte au moins un panneau.
@@ -666,6 +729,12 @@
         MARGE_CIBLE_RULE,
         validatePrixCible,
         validateMargeCible,
+        CAPEX_MODES,
+        CAPEX_PRIX_WC_RULE,
+        CAPEX_FIXE_TRANCHES,
+        trancheCapexFixe,
+        validateCapexPrixWc,
+        validateCapexFixe,
         isLigneApplicable,
         getProfil,
         getDefaultTvaRate,

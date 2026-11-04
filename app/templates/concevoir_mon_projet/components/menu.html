@@ -360,7 +360,7 @@
 <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/garde_projet_actif.js?v=2"></script>
 <!-- Sauvegarde complète du projet (icône « Sauvegarder » de la palette) + invitation à enregistrer
      avant « Revenir à Socalts », « Paramètres », « Consommation d'énergie » et la fermeture de l'onglet. -->
-<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/sauvegarde_projet.js?v=6"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/sauvegarde_projet.js?v=8"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsts@2.7.1/dist/jsts.min.js"></script>
 <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/loiAperModal.js"></script>
 <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/shapes/polygone_aper.js"></script>
@@ -385,7 +385,7 @@
      localStorage est vide pour ce module — cf. window.CalepinageMaisonPersistenceDB. -->
 <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_persistence_db.js?v=12"></script>
 <!-- Puissance projet de « Mes projets » : enregistre le calepinage à l'export et à « Sauvegarder le projet ». -->
-<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/puissance_projet_sync.js?v=5"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/puissance_projet_sync.js?v=6"></script>
 <!-- Calepinage résidentiel : scindé en 4 fichiers (calculs / dessin / formulaires / orchestrateur)
      reliés par le namespace partagé window.CalepinageMaisonIndiv (cf. calepinage_maison_calculs.js
      pour le détail) — ordre de chargement reflétant la profondeur de dépendance (calculs n'a
@@ -399,7 +399,9 @@
      fichier dédié") : config structurée des boutons de #cmToolbar + des 3 toggles de l'en-tête,
      chargée avant formulaires.js qui la lit via window.CalepinageMaisonToolbarConfig. -->
 <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_toolbar_config.js?v=12"></script>
-<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_formulaires.js?v=115"></script>
+<!-- Icônes des types de structure et des modèles d'ombrière / de petit champ (avant les formulaires de calepinage). -->
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/icones_structures.js?v=1"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_formulaires.js?v=116"></script>
 <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_orchestrateur.js?v=104"></script>
 <!-- Inclinaison / pertes partagées avec le pompage solaire (après l'orchestrateur : CM.listerChampsCarte). -->
 <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_parametres_pompage.js?v=3"></script>
@@ -424,7 +426,7 @@
 <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_sheds_actions.js?v=11"></script>
 <!-- "Type de calepinage" + "Géométrie de la toiture" dans le formulaire PRO/Grand projet, en
      synchronisation avec le formulaire résidentiel (ombrières et petit champ solaire). -->
-<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_form_pro.js?v=23"></script>
+<script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/components/calepinage_systeme/Calepinage_mainson/calepinage_maison_form_pro.js?v=24"></script>
 <!-- Génération 3D (Phase 1 : Monopente + Bipente) — géométrie pure (polygones 3D depuis
      CM.state.roofLocal/pans) puis visionneuse Babylon.js (2e canevas superposé au canevas 2D,
      bascule via #cmView2D3DBtn). Chargés après orchestrateur.js (dépendent de CM.packPanelsForPan /

@@ -39,9 +39,66 @@
             && window.parent.SkvVersionProjet.partage) parent = window.parent.SkvVersionProjet.partage;
     } catch (e) { /* parent d'une autre origine : onglet à part entière */ }
 
-    const ONGLET = parent ? parent.onglet : ((window.crypto && typeof window.crypto.randomUUID === 'function')
+    const nouvelIdentifiant = () => ((window.crypto && typeof window.crypto.randomUUID === 'function')
         ? window.crypto.randomUUID()
         : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`);
+
+    // Identifiant de CET onglet du navigateur, gardé d'une page à l'autre (bug rapporté 2026-11-04 :
+    // « Ce projet a été modifié depuis un autre onglet » en production, alors qu'aucun autre onglet
+    // n'était ouvert). Avant : un identifiant par CHARGEMENT de page. Une écriture partie juste avant
+    // un changement de page (sauvegarde automatique, enregistrement avant navigation, réponse plus lente
+    // en production) était comptée par le serveur APRÈS le rendu de la page suivante : celle-ci, avec
+    // un autre identifiant et une version déjà dépassée, était refusée à sa première écriture. Même cas
+    // avec une page servie depuis le cache du navigateur (bouton Retour).
+    // Désormais : identifiant repris (sessionStorage, propre à l'onglet) quand la page précédente de
+    // CET onglet a bien été quittée (marque posée à beforeunload / pagehide). Onglet dupliqué ou
+    // fenêtre ouverte depuis l'application (sessionStorage recopié, page d'origine toujours ouverte) :
+    // nouvel identifiant, le verrou entre les deux onglets reste actif.
+    const CLE_ID_ONGLET = 'skv_id_onglet';
+    const CLE_PAGE_ONGLET = 'skv_page_onglet';
+    const CLE_PAGE_QUITTEE = 'skv_page_onglet_quittee';
+    // Identifiant de CE chargement de page (continuité de l'onglet, onglets vivants).
+    const PAGE = nouvelIdentifiant();
+    const pageDeHaut = (() => { try { return window.top === window; } catch (e) { return false; } })();
+    function sessionLire(cle) {
+        try { return sessionStorage.getItem(cle); } catch (e) { return null; }
+    }
+    function sessionEcrire(cle, valeur) {
+        try {
+            if (valeur === null) sessionStorage.removeItem(cle); else sessionStorage.setItem(cle, String(valeur));
+        } catch (e) { /* stockage indisponible : identifiant par page, comme avant */ }
+    }
+    function identifiantOnglet() {
+        if (parent) return parent.onglet;
+        // Iframe sans page parente de l'application : sessionStorage partagé avec la page du haut,
+        // on n'y touche pas (identifiant propre, comme avant).
+        if (!pageDeHaut) return nouvelIdentifiant();
+        const repris = sessionLire(CLE_ID_ONGLET);
+        const pagePrecedente = sessionLire(CLE_PAGE_ONGLET);
+        const continuite = !!repris && !!pagePrecedente && sessionLire(CLE_PAGE_QUITTEE) === pagePrecedente;
+        const id = continuite ? repris : nouvelIdentifiant();
+        sessionEcrire(CLE_ID_ONGLET, id);
+        sessionEcrire(CLE_PAGE_ONGLET, PAGE);
+        sessionEcrire(CLE_PAGE_QUITTEE, null);
+        return id;
+    }
+    let ONGLET = identifiantOnglet();
+    if (!parent && pageDeHaut) {
+        const marquerQuittee = () => sessionEcrire(CLE_PAGE_QUITTEE, PAGE);
+        window.addEventListener('beforeunload', marquerQuittee);
+        window.addEventListener('pagehide', marquerQuittee);
+        window.addEventListener('pageshow', (e) => {
+            sessionEcrire(CLE_PAGE_QUITTEE, null);
+            if (!e.persisted) return;
+            // Page restaurée depuis le cache arrière/avant : son état en mémoire peut être antérieur à
+            // ce que les pages suivantes de l'onglet ont enregistré. Nouvel identifiant : elle est de
+            // nouveau contrôlée comme un autre onglet (refus si la version a avancé entre-temps).
+            ONGLET = nouvelIdentifiant();
+            sessionEcrire(CLE_ID_ONGLET, ONGLET);
+            sessionEcrire(CLE_PAGE_ONGLET, PAGE);
+            noterOngletRecent();
+        });
+    }
     const rendu = window.SKV_PROJET_RENDU || {};
     const idRendu = rendu.id != null ? String(rendu.id) : null;
     const versionRendue = Number.isInteger(rendu.version) ? rendu.version : null;
@@ -56,11 +113,12 @@
     function ongletsRecents() {
         try { return JSON.parse(localStorage.getItem(CLE_ONGLETS) || '[]'); } catch (e) { return []; }
     }
-    if (!parent) {
+    function noterOngletRecent() {
         try {
             localStorage.setItem(CLE_ONGLETS, JSON.stringify([ONGLET, ...ongletsRecents().filter((o) => o !== ONGLET)].slice(0, 30)));
         } catch (e) { /* stockage plein : sans conséquence */ }
     }
+    if (!parent) noterOngletRecent();
     const CHEMINS_PROJET = [
         /^(?:\/concevoir_mon_projet)?\/parametre-projet\/(\d+)(?:\/|$)/,
         /^(?:\/concevoir_mon_projet)?\/api\/petit_champ\/(\d+)\//,
@@ -174,7 +232,7 @@
         const maintenant = Date.now();
         const tous = ongletsVivants();
         Object.keys(tous).forEach((o) => { if (maintenant - Number(tous[o]) > ONGLET_VIVANT_MS) delete tous[o]; });
-        if (vivant) tous[ONGLET] = maintenant; else delete tous[ONGLET];
+        if (vivant) tous[PAGE] = maintenant; else delete tous[PAGE];
         ecrire(CLE_ONGLETS_VIVANTS, JSON.stringify(tous));
     }
 
@@ -184,7 +242,7 @@
             let ongletDejaOuvert = false;
             try { ongletDejaOuvert = sessionStorage.getItem(MARQUE_ONGLET) === '1'; } catch (e) { ongletDejaOuvert = true; }
             const autreOngletOuvert = Object.entries(ongletsVivants())
-                .some(([o, t]) => o !== ONGLET && maintenant - Number(t) <= ONGLET_VIVANT_MS);
+                .some(([o, t]) => o !== PAGE && maintenant - Number(t) <= ONGLET_VIVANT_MS);
             const sessionVue = lire(CLE_SESSION_CACHES);
             const nouvelleSession = !!rendu.session && sessionVue !== null && sessionVue !== String(rendu.session);
             if (nouvelleSession || (!ongletDejaOuvert && !autreOngletOuvert)) {
@@ -280,7 +338,10 @@
     window.addEventListener('beforeunload', () => {
         enDechargement = true;
         // Fermeture annulée (avertissement « Quitter la page ? ») : écritures de nouveau comptées.
-        setTimeout(() => { enDechargement = false; }, 1500);
+        setTimeout(() => {
+            enDechargement = false;
+            if (!parent && pageDeHaut && document.visibilityState === 'visible') sessionEcrire(CLE_PAGE_QUITTEE, null);
+        }, 1500);
     });
     window.addEventListener('pagehide', () => { enDechargement = true; });
     window.addEventListener('pageshow', () => { enDechargement = false; });
@@ -361,12 +422,12 @@
     }
 
     window.SkvVersionProjet = {
-        onglet: ONGLET,
+        get onglet() { return ONGLET; },
         integre: !!parent,
         // Partagé avec les modales intégrées de cette page (cf. en-tête) : valeurs primitives
         // seulement, chaque fenêtre construit ses propres objets Headers.
         partage: {
-            onglet: ONGLET,
+            get onglet() { return ONGLET; },
             entetes: (projetId) => entetesEcriture(String(projetId)),
             noterEcriture: (projetId, version) => noterEcriture(String(projetId), version),
             signalerConflit: (message) => signalerConflit(message),

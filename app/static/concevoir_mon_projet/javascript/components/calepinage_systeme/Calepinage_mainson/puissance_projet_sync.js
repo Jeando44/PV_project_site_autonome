@@ -38,10 +38,20 @@
 
     let enCours = null;
 
+    // Projet tout juste créé (ou autre projet modifié) mais pas encore ouvert dans cette page
+    // (DataManager.projetQuitteEnregistre, parametreProjetFormManager.js) : les modules de la page
+    // portent encore l'état du projet quitté, déjà enregistré. Rien ne doit partir vers le nouveau
+    // projet avant son ouverture (demande 2026-11-04 : le formulaire reste affiché après la création).
+    function projetPasEncoreCharge(projetId) {
+        const dm = window.dataManager;
+        return !!(dm && dm.projetQuitteEnregistre && projetId && String(dm.projetQuitteEnregistre) === String(projetId));
+    }
+
     function synchroniserPuissanceProjet(source) {
         if (enCours) return enCours;
         if (typeof window.projetActifVerrouille === 'function' && window.projetActifVerrouille()) return Promise.resolve(null);
         const projetId = projetActif();
+        if (projetPasEncoreCharge(projetId)) return Promise.resolve(null);
         const pro = window.calepinageService;
         const maison = window.CalepinageMaisonPersistenceDB;
         const sauvegardes = [
@@ -202,6 +212,7 @@
         const maison = window.CalepinageMaisonPersistenceDB;
         const projetId = projetActif();
         if (!projetId || !maison || typeof maison.modificationsNonEnregistreesConnues !== 'function') return;
+        if (projetPasEncoreCharge(projetId)) return;
         if (!maison.modificationsNonEnregistreesConnues()) return;
         sauvegardeAutoEnCours = true;
         try {

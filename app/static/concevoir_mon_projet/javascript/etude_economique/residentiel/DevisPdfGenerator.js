@@ -220,22 +220,42 @@
         const puissanceKwc = options.puissanceKwc > 0 ? options.puissanceKwc : await lirePuissanceProjetKwc();
         const devise = options.devise || getDeviseSymbol(saved);
         const nomProjet = options.nomProjet || getNomProjetCourant(saved);
+        // Profil de personnalisation (logo, entreprise, chargé(e) d'affaires, coordonnées) : chargé
+        // avant le dessin pour le bloc émetteur, puis réutilisé pour l'en-tête / pied de page.
+        let PdfUtilities = null;
+        let entete = {};
+        try {
+            PdfUtilities = (await import('/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/PdfUtilities.js?v=2')).default;
+            entete = (await PdfUtilities.getPersonnalisationRapport()) || {};
+        } catch (e) {
+            console.warn('[DevisPdfGenerator] Personnalisation du rapport indisponible :', e);
+        }
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-        dessiner(doc, { capexData, detailed, puissanceKwc, devise, nomProjet, conversionDevise: conv });
+        dessiner(doc, { capexData, detailed, puissanceKwc, devise, nomProjet, conversionDevise: conv, entete });
 
         if (onProgress) onProgress("Ajout de l'en-tête et du pied de page...");
         try {
-            const PdfUtilitiesModule = await import('/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/PdfUtilities.js');
-            const PdfUtilities = PdfUtilitiesModule.default;
-            const residentialInfo = (await PdfUtilities.getPersonnalisationRapport()) || {};
-            PdfUtilities.addHeaderFooter(doc, residentialInfo);
+            if (!PdfUtilities) throw new Error('PdfUtilities indisponible');
+            PdfUtilities.addHeaderFooter(doc, entete);
         } catch (e) {
             console.warn('[DevisPdfGenerator] En-tête/pied de page indisponibles :', e);
         }
 
         const filename = detailed ? 'Devis_detaille.pdf' : 'Devis_synthetique.pdf';
         return { blob: doc.output('blob'), filename, capexData, puissanceKwc, devise, nomProjet, conversionDevise: conv };
+    }
+
+    /**
+     * CAPEX chiffré en « Prix au Wc » ou « CAPEX total » (ResidentielCapexTable.js) : pas de lignes
+     * de devis comptées, donc pas de devis imprimable — refus explicite plutôt qu'un devis dont les
+     * lignes ne correspondraient pas au CAPEX retenu.
+     */
+    function refuserModeSimplifie(capexData) {
+        const mode = capexData && capexData.capexMode;
+        if (mode !== 'wc' && mode !== 'fixe') return;
+        const libelle = mode === 'wc' ? 'Prix au Wc' : 'CAPEX total';
+        throw new Error(`Devis indisponible : le CAPEX est chiffré en « ${libelle} ». Choisissez « Chiffrage détaillé » dans « Chiffrage CAPEX (Devis) » pour générer un devis.`);
     }
 
     /**
@@ -247,8 +267,40 @@
      * @param {{capexData:object, detailed:boolean, devise?:string, puissanceKwc?:number}} options
      * @returns {{premierePage:number, dernierePage:number}}
      */
+    /**
+     * Bloc émetteur du devis, en haut à droite sous le titre : entreprise, chargé(e) d'affaires,
+     * téléphone, email, site web, adresse (Paramètres du projet > Personnalisation du rapport).
+     * Le logo est imprimé dans l'en-tête (PdfUtilities.addHeaderFooter).
+     * @returns {number} ordonnée sous le bloc (y de départ si rien n'est imprimé)
+     */
+    function dessinerEmetteur(doc, entete, yDepart) {
+        const p = entete || {};
+        const propre = (v) => String(v == null ? '' : v).trim();
+        const lignes = [
+            { t: propre(p.nom_entreprise), gras: true },
+            { t: propre(p.charge_affaires) ? "Chargé(e) d'affaires : " + propre(p.charge_affaires) : '' },
+            { t: propre(p.telephone) ? 'Tél. : ' + propre(p.telephone) : '' },
+            { t: propre(p.email) },
+            { t: propre(p.site_web) },
+            { t: propre(p.adresse) },
+        ].filter((l) => l.t);
+        if (!lignes.length) return yDepart;
+        const xDroite = doc.internal.pageSize.getWidth() - 15;
+        let y = yDepart;
+        lignes.forEach((l) => {
+            doc.setFont('helvetica', l.gras ? 'bold' : 'normal');
+            doc.setFontSize(l.gras ? 10.5 : 9);
+            doc.text(doc.splitTextToSize(l.t, 75)[0], xDroite, y, { align: 'right' });
+            y += 4.6;
+        });
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        return y;
+    }
+
     function dessiner(doc, options) {
         const capexData = (options && options.capexData) || { postes: [] };
+        refuserModeSimplifie(capexData);
         const detailed = !!(options && options.detailed);
         const devise = (options && options.devise) || getDeviseSymbol();
         const nomProjet = (options && options.nomProjet) || getNomProjetCourant();
@@ -259,6 +311,7 @@
         doc.setFontSize(22);
         doc.setTextColor(0, 0, 0);
         doc.text('Devis', doc.internal.pageSize.getWidth() / 2, 48, { align: 'center' });
+        const finEmetteur = dessinerEmetteur(doc, options && options.entete, 56);
 
         let infoY = 58;
         doc.setFont('helvetica', 'bold');
@@ -294,7 +347,7 @@
         const totalTva = capexTotals.totalTtc - capexTotals.totalHt;
 
         doc.autoTable({
-            startY: infoY,
+            startY: Math.max(infoY, finEmetteur + 2),
             head: [['Poste / Désignation', 'Référence', 'Qté', 'PU HT', 'TVA', 'Total HT', 'Total TTC']],
             body: buildCapexRows(postes, detailed, devise),
             foot: [['', '', '', '', 'Total CAPEX', capexTotals.totalHt.toFixed(2) + ' ' + devise, capexTotals.totalTtc.toFixed(2) + ' ' + devise]],
@@ -377,6 +430,7 @@
                 capexData = (saved && saved.capex) || { postes: [] };
             }
         }
+        refuserModeSimplifie(capexData);
 
         const conv = options.conversionDevise || resolveConversionDevise(capexData, saved);
         if (conv && conv.active && conv.valid === false) {

@@ -120,6 +120,8 @@ window.MONTHLY_WEIGHTS_BY_PROFILE = {
   industriel:  [0.0892, 0.0892, 0.0892, 0.0892, 0.0892, 0.0861, 0.0622, 0.0519, 0.0861, 0.0892, 0.0892, 0.0893],
   supermarche: [0.0891, 0.0792, 0.0792, 0.0792, 0.0792, 0.0891, 0.0891, 0.0792, 0.0792, 0.0792, 0.0792, 0.0991],
   agricole:    [0.07, 0.07, 0.08, 0.09, 0.1, 0.11, 0.11, 0.1, 0.08, 0.07, 0.06, 0.06],
+  boulangerie: [0.088, 0.083, 0.086, 0.083, 0.084, 0.081, 0.079, 0.065, 0.083, 0.087, 0.087, 0.094], // creux d'août (congés)
+  discount:    [0.083, 0.077, 0.081, 0.079, 0.082, 0.083, 0.087, 0.085, 0.08, 0.082, 0.087, 0.094],  // pic de fin d'année
   autres:      Array(12).fill(1 / 12)
 };
 
@@ -131,6 +133,8 @@ window.WEEKDAY_WEEKEND_RATIO_BY_PROFILE = {
   industriel:  { ouvre: 1.35, repos: 0.05 }, // arrêt de production le WE
   supermarche: { ouvre: 0.95, repos: 1.2 },  // pic de fréquentation le samedi
   agricole:    { ouvre: 1.0, repos: 1.0 },   // pas de distinction (activité continue)
+  boulangerie: { ouvre: 0.97, repos: 1.075 }, // ouverte 6 à 7 jours, affluence le week-end
+  discount:    { ouvre: 1.06, repos: 0.85 },  // samedi chargé, dimanche souvent fermé
   autres:      { ouvre: 1.0, repos: 1.0 }
 };
 
@@ -170,6 +174,22 @@ window.DAILY_SHAPE_BY_PROFILE = {
     0.0610, 0.0563, 0.0516, 0.0469, 0.0469, 0.0469,
     0.0423, 0.0423, 0.0469, 0.0469, 0.0516, 0.0563,
     0.0516, 0.0423, 0.0329, 0.0282, 0.0282, 0.0283
+  ],
+  // Boulangerie : production du pain le matin (fournées dès 4 h, ≈ 28 % de l'énergie du jour entre 4 h
+  // et 8 h) ET en journée (fournées de midi et de fin d'après-midi), vente 8 h 30 - 19 h 30 (≈ 65 %
+  // entre 8 h et 20 h).
+  boulangerie: [
+    0.0067, 0.0067, 0.0067, 0.0202, 0.0538, 0.0739, // nuit : froid ; pétrissage dès 3 h, fournées dès 4 h
+    0.0807, 0.0739, 0.0645, 0.0605, 0.0565, 0.0618, // fournées du matin, ouverture 8 h 30, fournée de midi
+    0.0591, 0.0484, 0.0457, 0.0538, 0.0618, 0.0591, // vente, creux d'après-midi, fournée du soir
+    0.0484, 0.0269, 0.0108, 0.0067, 0.0067, 0.0067  // fermeture 19 h 30, nettoyage
+  ],
+  // Magasin discount / bazar : ouverture 8 h 30 - 19 h 30 (≈ 88 % de l'énergie du jour sur cette plage).
+  discount: [
+    0.0050, 0.0050, 0.0050, 0.0050, 0.0050, 0.0050, // nuit : veille
+    0.0066, 0.0132, 0.0430, 0.0827, 0.0827, 0.0827, // mise en route, ouverture 8 h 30
+    0.0827, 0.0827, 0.0860, 0.0860, 0.0860, 0.0860, // éclairage + ventilation en journée
+    0.0827, 0.0397, 0.0099, 0.0058, 0.0058, 0.0058  // fermeture 19 h 30
   ],
   autres: Array(24).fill(1 / 24)
 };

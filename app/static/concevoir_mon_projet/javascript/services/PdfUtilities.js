@@ -133,17 +133,18 @@ export default class PdfUtilities {
       const local = JSON.parse(localStorage.getItem('skv_company_info') || '{}');
       if (local && local.save) {
         return {
-          logo_base64: local.logo || null,
-          nom_entreprise: local.name || '',
-          telephone: local.phone || '',
-          adresse: local.address || '',
-          email: '',
-          site_web: '',
-          mission_text: '',
-          services_text: '',
-          stat_installations: null,
-          stat_annees_experience: null,
-          stat_clients_satisfaits_pct: null,
+          logo_base64: local.logo_base64 || local.logo || null,
+          nom_entreprise: local.nom_entreprise || local.name || '',
+          charge_affaires: local.charge_affaires || '',
+          telephone: local.telephone || local.phone || '',
+          adresse: local.adresse || local.address || '',
+          email: local.email || '',
+          site_web: local.site_web || '',
+          mission_text: local.mission_text || '',
+          services_text: local.services_text || '',
+          stat_installations: local.stat_installations ?? null,
+          stat_annees_experience: local.stat_annees_experience ?? null,
+          stat_clients_satisfaits_pct: local.stat_clients_satisfaits_pct ?? null,
         };
       }
     } catch (e) { /* ignoré : repli sur les valeurs par défaut */ }
@@ -300,72 +301,115 @@ export default class PdfUtilities {
     }
   }
 
-  /** Je souhaite ajouter des codes ici pour personaliser le rapport du client en intégrand sont logo dans la page de garde du rapport */
+  /**
+   * Coordonnées imprimables du profil de personnalisation, dans l'ordre d'affichage : entreprise,
+   * chargé(e) d'affaires, téléphone, email, site web, adresse. Valeurs vides écartées.
+   * @returns {{label:string, value:string, gras?:boolean}[]}
+   */
+  static lignesCoordonnees(perso) {
+    const p = perso || {};
+    const propre = (v) => String(v ?? '').trim();
+    return [
+      { label: '', value: propre(p.nom_entreprise), gras: true },
+      { label: "Chargé(e) d'affaires", value: propre(p.charge_affaires) },
+      { label: 'Tél.', value: propre(p.telephone) },
+      { label: 'Email', value: propre(p.email) },
+      { label: 'Web', value: propre(p.site_web) },
+      { label: '', value: propre(p.adresse) },
+    ].filter((l) => l.value);
+  }
+
+  /**
+   * Cadre « Rapport réalisé par : » en bas à droite de la page de garde : logo de l'utilisateur
+   * et coordonnées saisies dans Paramètres du projet > Personnalisation du rapport. Source : le
+   * profil serveur (getPersonnalisationRapport, chargé ici s'il n'est pas fourni) ; repli sur le
+   * cache localStorage 'skv_company_info'. Rien n'est dessiné si le profil ne contient ni logo ni
+   * coordonnée.
+   */
   static async addCompanyLogoBox(doc, personnalisationData = null) {
     try {
-      // Source du logo : profil de personnalisation déjà chargé (résidentiel), sinon repli sur
-      // l'ancien cache localStorage 'skv_company_info' (comportement historique inchangé).
-      let logo = personnalisationData && personnalisationData.logo_base64;
-      if (!logo) {
-        const companyInfoStr = localStorage.getItem('skv_company_info');
-        if (!companyInfoStr) return;
-        const companyInfo = JSON.parse(companyInfoStr);
-        logo = companyInfo.logo;
+      let perso = personnalisationData;
+      if (!perso || (!perso.logo_base64 && PdfUtilities.lignesCoordonnees(perso).length === 0)) {
+        perso = await PdfUtilities.getPersonnalisationRapport();
       }
-      // Condition : Afficher ce contenu uniquement si le logo a été téléchargé et enregistré
-      if (!logo) return;
-      const companyInfo = { logo };
+      if (!perso) return;
+      const logo = perso.logo_base64 || null;
+      const lignes = PdfUtilities.lignesCoordonnees(perso);
+      if (!logo && lignes.length === 0) return;
 
       const pageWidth = doc.internal.pageSize.getWidth();
       const pageHeight = doc.internal.pageSize.getHeight();
-
-      // Dimensions et positionnement du carré
-      const boxW = 35; // Largeur du carré (réduite)
-      const boxH = 30; // Hauteur du carré
       const marginRight = 15;
-      const marginBottom = 20; // Bloc descendu (10mm du bas au lieu de 30mm)
+      const marginBottom = 20;
 
+      // Logo seul : cadre historique 35 x 30. Avec coordonnées : cadre élargi, logo à gauche,
+      // texte à droite.
+      const avecTexte = lignes.length > 0;
+      const logoZoneW = logo && avecTexte ? 32 : 0;
+      const texteW = avecTexte ? 62 : 0;
+      const boxW = avecTexte ? logoZoneW + texteW + 4 : 35;
+
+      const lignesDecoupees = [];
+      lignes.forEach((l) => {
+        const texte = l.label ? `${l.label} : ${l.value}` : l.value;
+        doc.setFont('helvetica', l.gras ? 'bold' : 'normal');
+        doc.setFontSize(l.gras ? 9.5 : 8.5);
+        doc.splitTextToSize(texte, texteW - 2).slice(0, 2).forEach((t) => lignesDecoupees.push({ t, gras: l.gras }));
+      });
+      const interligne = 4.2;
+      const boxH = Math.max(30, 10 + lignesDecoupees.length * interligne + 2);
       const boxX = pageWidth - marginRight - boxW;
       const boxY = pageHeight - marginBottom - boxH;
 
-      // 1. Dessiner le carré avec bordures grises et très fines
-      doc.setDrawColor(200, 200, 200); // Gris clair
-      doc.setLineWidth(0.2); // Épaisseur très petite
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.2);
       doc.rect(boxX, boxY, boxW, boxH);
 
-      // 2. Ajouter le texte "Rapport réalisé par :" centré
       doc.setFontSize(9);
       doc.setFont('helvetica', 'italic');
       doc.setTextColor(100, 100, 100);
-      doc.text("Rapport réalisé par :", boxX + (boxW / 2), boxY + 5, { align: 'center' });
+      if (avecTexte) doc.text('Rapport réalisé par :', boxX + 3, boxY + 5);
+      else doc.text('Rapport réalisé par :', boxX + boxW / 2, boxY + 5, { align: 'center' });
 
-      // 3. Traiter et adapter le logo de l'entreprise
-      const imgProps = doc.getImageProperties(companyInfo.logo);
-      const ratio = imgProps.width / imgProps.height;
-
-      const maxLogoW = boxW - 6;
-      const maxLogoH = boxH - 12; // Espace alloué au logo réduit pour augmenter la marge
-      let logoW = maxLogoW;
-      let logoH = logoW / ratio;
-
-      if (logoH > maxLogoH) {
-          logoH = maxLogoH;
-          logoW = logoH * ratio;
+      if (logo) {
+        const zoneW = avecTexte ? logoZoneW - 2 : boxW - 6;
+        const zoneH = boxH - 12;
+        const zoneX = boxX + 3;
+        const zoneY = boxY + 9;
+        let logoW = zoneW, logoH = zoneH;
+        try {
+          const imgProps = doc.getImageProperties(logo);
+          const ratio = imgProps.width / imgProps.height;
+          logoW = zoneW; logoH = logoW / ratio;
+          if (logoH > zoneH) { logoH = zoneH; logoW = logoH * ratio; }
+        } catch (e) { /* proportions inconnues : zone pleine */ }
+        PdfUtilities.safeAddImage(doc, logo, PdfUtilities.guessImageType(logo),
+          zoneX + (zoneW - logoW) / 2, zoneY + (zoneH - logoH) / 2, logoW, logoH);
       }
 
-      // Centrer le logo à l'intérieur du cadre
-      const logoX = boxX + (boxW - logoW) / 2;
-      const logoY = boxY + 9 + (maxLogoH - logoH) / 2; // Descendu à 9 pour l'éloigner du texte "Rapport réalisé par :"
-
-      let imgType = 'PNG';
-      if (companyInfo.logo.includes('image/jpeg') || companyInfo.logo.includes('image/jpg')) {
-          imgType = 'JPEG';
+      if (avecTexte) {
+        const texteX = boxX + 3 + logoZoneW;
+        let y = boxY + 10;
+        doc.setTextColor(40, 40, 40);
+        lignesDecoupees.forEach((l) => {
+          doc.setFont('helvetica', l.gras ? 'bold' : 'normal');
+          doc.setFontSize(l.gras ? 9.5 : 8.5);
+          doc.text(l.t, texteX, y);
+          y += interligne;
+        });
       }
-
-      doc.addImage(companyInfo.logo, imgType, logoX, logoY, logoW, logoH);
+      doc.setTextColor(0, 0, 0);
+      doc.setFont('helvetica', 'normal');
     } catch (error) {
       console.warn("Erreur lors de l'ajout de la boîte du logo de l'entreprise :", error);
     }
+  }
+
+  /** Vrai si le profil contient au moins une saisie de la page « Notre entreprise ». */
+  static aContenuPageEntreprise(perso) {
+    const p = perso || {};
+    return Boolean(String(p.mission_text || '').trim() || String(p.services_text || '').trim()
+      || p.stat_installations != null || p.stat_annees_experience != null || p.stat_clients_satisfaits_pct != null);
   }
 
   /**

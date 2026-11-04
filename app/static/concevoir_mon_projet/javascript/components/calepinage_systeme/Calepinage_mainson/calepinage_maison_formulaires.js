@@ -355,7 +355,12 @@
             b.className = 'cm-btn';
             b.setAttribute('role', 'radio');
             b.setAttribute('data-cm-valeur', opt.value);
-            b.textContent = String(opt.textContent || '').trim();
+            // Icône + infobulle descriptive à la place du libellé (icones_structures.js) ; libellé
+            // texte si le module d'icônes n'est pas chargé ou ne connaît pas la valeur.
+            const libelle = String(opt.textContent || '').trim();
+            if (!(window.SkvIcones && window.SkvIcones.decorerBouton(b, 'structure', opt.value, libelle))) {
+                b.textContent = libelle;
+            }
             groupe.appendChild(b);
         });
         groupe.addEventListener('click', (e) => {
@@ -1954,6 +1959,10 @@
             <h2 style="margin:0; font-size:16px; font-weight:600; display:flex; align-items:center; gap:8px;">
                 <img src="/static/concevoir_mon_projet/medias/icons/panneau-solaire.svg" alt="Calepinage multi typologie" style="height:20px; width:20px;"> Calepinage multi typologie
             </h2>
+            <!-- Navigation (demande explicite) : mêmes étapes que le menu horizontal — Mes projets,
+                 Paramètres projet, Consommation d'énergie (« Profil de consommation » en Site
+                 autonome), Calepinage. Boutons générés par construireNavigationEntete(). -->
+            <nav id="cmHeaderNav" aria-label="Navigation du projet" style="display:flex; align-items:center; gap:6px; margin:0 16px; flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:none;"></nav>
             <div style="display:flex; align-items:center; gap:10px;">
                 <!-- Champs PV / images importées : un bouton par source (demande explicite : sélection sans
                      liste déroulante), placés à gauche des icônes d'affichage. Boutons générés par
@@ -1965,6 +1974,8 @@
                 <button id="closeCalepinageMaisonBtn" style="background:none; border:none; color:white; font-size:24px; cursor:pointer; line-height:1; padding:0;">&times;</button>
             </div>
         `;
+
+        construireNavigationEntete(header);
 
         CM.modalBody = document.createElement('div');
         CM.modalBody.id = 'cmModalBody';
@@ -3003,6 +3014,10 @@
             .cm-header-toggle-btn { background:rgba(255,255,255,0.15); border:none; color:#fff; width:28px; height:28px; border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; }
             .cm-header-toggle-btn:hover { background:rgba(255,255,255,0.32); }
             .cm-header-toggle-off { opacity:0.5; }
+            #cmHeaderNav::-webkit-scrollbar { display:none; }
+            .cm-header-nav-btn { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.45); color:#fff; height:30px; padding:0 12px; border-radius:15px; font-size:12.5px; font-weight:500; cursor:pointer; white-space:nowrap; transition:background .15s, color .15s; }
+            .cm-header-nav-btn:hover, .cm-header-nav-btn:focus-visible { background:#fff; color:#dc2626; outline:none; }
+            .cm-header-nav-btn i { font-size:12px; }
             .cm-section-title { margin:0 0 6px 0; font-size:0.8rem; font-weight:700; color:#374151; }
             /* Type de structure en boutons, 2 par rangée (demande explicite). */
             /* CORRECTIF (bug rapporté : boutons du Type de structure invisibles) : Modele.css impose
@@ -4319,6 +4334,71 @@
     function wireForceRealignButton() {
         const btn = CM.modalBody && CM.modalBody.querySelector('#cmForceRealignBtn');
         if (btn) btn.addEventListener('click', forceRealignCalepinage);
+    }
+
+    /**
+     * Boutons de navigation de l'en-tête (demande explicite) : reprennent les entrées du menu
+     * horizontal (a[data-nav-step]) — libellé, icône et visibilité selon le parcours (« Profil de
+     * consommation » en Site autonome, « Consommation d'énergie » masquée en Chiffrage...). Un clic
+     * ferme le modal (état recopié dans le cache local, comme la croix) puis rejoue le clic sur
+     * l'entrée du menu : c'est son gestionnaire qui ouvre l'onglet, aucune règle dupliquée ici.
+     */
+    function lienMenuNavigation(etape) {
+        return document.querySelector(`.demo-nav a[data-nav-step="${etape}"]`)
+            || document.querySelector(`a[data-nav-step="${etape}"]`);
+    }
+
+    function construireNavigationEntete(header) {
+        const nav = header.querySelector('#cmHeaderNav');
+        if (!nav) return;
+        nav.innerHTML = '';
+        // Libellés / icônes par défaut ; remplacés par ceux du menu quand il est présent.
+        const NAVIGATION_ENTETE = [
+            { etape: 'mes-projets', libelle: 'Mes projets', icone: 'fas fa-folder-open' },
+            { etape: 'parametres', libelle: 'Paramètres projet', icone: 'fa fa-cogs' },
+            { etape: 'cons-energie', libelle: "Consommation d'énergie", icone: 'bi bi-bar-chart-line-fill' },
+            { etape: 'calepinage', libelle: 'Calepinage', icone: 'fas fa-solar-panel' },
+        ];
+        NAVIGATION_ENTETE.forEach(({ etape, libelle, icone }) => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'cm-header-nav-btn';
+            b.setAttribute('data-cm-nav', etape);
+            b.innerHTML = `<i class="${icone}" aria-hidden="true"></i><span></span>`;
+            b.querySelector('span').textContent = libelle;
+            nav.appendChild(b);
+        });
+        // L'en-tête sert de poignée de déplacement : un appui sur un bouton ne doit pas l'armer.
+        nav.addEventListener('mousedown', (e) => e.stopPropagation());
+        nav.addEventListener('click', (e) => {
+            const b = e.target.closest('[data-cm-nav]');
+            if (!b) return;
+            e.preventDefault();
+            const lien = lienMenuNavigation(b.getAttribute('data-cm-nav'));
+            requestCloseModal();
+            if (lien) lien.click();
+        });
+        // Libellés / visibilité relus sur le menu à chaque survol de l'en-tête (le menu peut être
+        // rendu après le modal, et ses entrées masquées selon le parcours ou le type d'étude).
+        header.addEventListener('mouseenter', () => rafraichirNavigationEntete(header));
+        rafraichirNavigationEntete(header);
+    }
+
+    function rafraichirNavigationEntete(header) {
+        const nav = header && header.querySelector('#cmHeaderNav');
+        if (!nav) return;
+        nav.querySelectorAll('[data-cm-nav]').forEach((b) => {
+            const lien = lienMenuNavigation(b.getAttribute('data-cm-nav'));
+            if (!lien) return; // menu absent de la page : libellé par défaut
+            const texte = String(lien.textContent || '').replace(/\s+/g, ' ').trim();
+            if (texte) b.querySelector('span').textContent = texte;
+            const iconeMenu = lien.querySelector('i');
+            if (iconeMenu) b.querySelector('i').className = iconeMenu.className;
+            const li = lien.closest('li') || lien;
+            const masque = window.getComputedStyle(li).display === 'none' || lien.hidden;
+            b.style.display = masque ? 'none' : '';
+            b.title = texte ? `Aller à « ${texte} »` : '';
+        });
     }
 
     /**

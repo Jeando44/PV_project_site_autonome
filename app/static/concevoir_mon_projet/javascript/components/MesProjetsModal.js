@@ -173,12 +173,15 @@ export class MesProjetsModal {
                 // Indice A = variante de référence du projet, permanente : sa suppression n'est
                 // possible qu'en supprimant le projet dans sa globalité (bouton masqué pour ce cas).
                 const isIndiceA = rev.indice === 'A';
+                const action = isActive ? `Variante ${rev.indice} ouverte` : (isProjetActif ? `Ouvrir la variante ${rev.indice}` : "Ouvrez d'abord ce projet, puis choisissez sa variante");
+                // Libellé saisi à l'enregistrement en tête de l'infobulle ; sans libellé, l'action seule.
+                const titre = this.escapeHtml(rev.libelle ? `${rev.indice} — ${rev.libelle}\n${action}` : action);
                 return `
                 <span class="badge bg-danger indice-badge${isActive ? ' indice-badge-active' : ''}"
                       data-projet-id="${projet.id}"
                       data-indice="${rev.indice}"
                       data-active-indice="${projet.active_indice || ''}"
-                      title="${isActive ? `Variante ${rev.indice} ouverte` : (isProjetActif ? `Ouvrir la variante ${rev.indice}` : "Ouvrez d'abord ce projet, puis choisissez sa variante")}"
+                      title="${titre}"
                       style="cursor: ${isActive || !isProjetActif ? 'default' : 'pointer'}; padding: 6px 10px; font-size: 0.85rem; user-select: none; margin-right: 5px;">
                     ${rev.indice}
                     ${isIndiceA || isActive ? '' : `
@@ -282,7 +285,7 @@ export class MesProjetsModal {
             if (actuel && String(actuel) !== String(projetId) && dm && typeof dm.saveCurrentProjectBeforeSwitch === 'function') {
                 const enregistrement = await dm.saveCurrentProjectBeforeSwitch();
                 if (typeof dm.confirmerMalgreEchecEnregistrement === 'function'
-                    && !dm.confirmerMalgreEchecEnregistrement(enregistrement, 'charger cet autre projet')) {
+                    && !(await dm.confirmerMalgreEchecEnregistrement(enregistrement, 'charger cet autre projet'))) {
                     document.querySelectorAll('.alert-info').forEach((n) => { if (n.textContent.includes('Chargement en cours')) n.remove(); });
                     this.showNotification('Chargement annulé : le projet en cours reste ouvert. Réessayez avec l\'icône « Sauvegarder ».', 'warning');
                     return;

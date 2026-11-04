@@ -1,5 +1,5 @@
 import DossierState, { PIECES, LIBELLES_FORMAT, codesPieces } from './DossierState.js?v=8';
-import { optionDevisHtml, brancherOptionDevis, boutonsDevisHtml, brancherBoutonsDevis, devisPropose, texteQuotaDossier } from '../../dossier_devis.js?v=4';
+import { optionDevisHtml, brancherOptionDevis, boutonsDevisHtml, brancherBoutonsDevis, devisPropose, texteQuotaDossier } from '../../dossier_devis.js?v=5';
 import { ouvrirApercuPdf } from '../../../services/PdfPreview.js?v=1';
 import DossierExport, { download } from './DossierExport.js?v=13';
 import { SECTIONS_REGLEMENTATION, TEXTES_TYPES } from './reglementation_modele.js';

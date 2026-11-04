@@ -1,4 +1,4 @@
-import PdfUtilities from '../services/PdfUtilities.js';
+import PdfUtilities from '../services/PdfUtilities.js?v=2';
 
 /**
  * Pièce « Devis » des dossiers de plans (ombrières, petit champ solaire) — parcours Chiffrage.

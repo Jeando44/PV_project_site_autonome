@@ -90,9 +90,13 @@ export async function clearAllProjectLocalState() {
  * Caches navigateur de l'état de conception, vidés au changement de VARIANTE (même projet) : ils
  * portent l'id du projet, identique pour toutes ses variantes, et seraient donc repris (puis
  * réenregistrés en base par les sauvegardes automatiques) sur la variante qu'on vient d'ouvrir.
- * Tous se rechargent depuis la base au chargement de la page de calepinage. La consommation
- * (fichiers importés, IndexedDB) est commune aux variantes : conservée.
+ * Tous se rechargent depuis la base au chargement de la page de calepinage.
+ * Courbes de charge (2026-11-04) : propres à chaque variante. Leurs propriétaires locaux sont marqués
+ * périmés : restoreConsFileFromDBIfMissing / restoreAccFilesFromDBIfMissing (persistence.js) écartent
+ * alors l'IndexedDB et relisent la courbe de la variante en base (cf. aussi purgerConsoLocaleVariante).
  */
+const CONSO_VARIANTE_PERIMEE = 'variante-changee';
+
 export function purgerCachesLocauxVariante(projetId) {
     const id = String(projetId);
     [
@@ -106,6 +110,24 @@ export function purgerCachesLocauxVariante(projetId) {
     sessionStorage.removeItem('activeAutoconsoRate');
     sessionStorage.removeItem('seasonalAutoconsoShares');
     purgerLoiAperLocale();
+    // Courbes de charge de la variante quittée : propriétaires marqués périmés (relecture en base).
+    ['consFileProjetId', 'accFilesProjetId'].forEach((cle) => localStorage.setItem(cle, JSON.stringify(CONSO_VARIANTE_PERIMEE)));
+    ['accFileMeta', 'acc_session_state'].forEach((cle) => localStorage.removeItem(cle));
+}
+
+/**
+ * Changement de variante : supprime de l'IndexedDB les courbes de charge de la variante quittée
+ * (ACI 'consFile', participants ACC 'accFile_*'), pour qu'aucun écran ne puisse les relire avant
+ * leur rechargement depuis la base (courbe de la variante ouverte).
+ */
+export async function purgerConsoLocaleVariante() {
+    try {
+        await deleteFileFromIDB('consFile');
+        const accEntries = await getIDBEntriesByPrefix('accFile_');
+        await Promise.all(accEntries.map((entry) => deleteFileFromIDB(entry.key)));
+    } catch (e) {
+        console.warn('Purge des courbes de charge locales (changement de variante) partiellement échouée :', e);
+    }
 }
 
 /**
@@ -701,10 +723,13 @@ export class DataManager {
                     // possible qu'en supprimant le projet dans sa globalité (bouton masqué pour ce cas).
                     const isIndiceA = rev.indice === 'A';
                     // Ouverture d'un clic (cf. ouvrirVariante) : seulement sur le projet ouvert.
-                    const titre = isActive ? `Variante ${rev.indice} ouverte`
+                    const action = isActive ? `Variante ${rev.indice} ouverte`
                         : !isSelected ? `Variante ${rev.indice} — ouvrez d'abord ce projet (case « Actif »)`
                         : rev.restaurable === false ? `Variante ${rev.indice} — ancienne version, ne peut pas être ouverte`
                         : `Ouvrir la variante ${rev.indice}`;
+                    // Libellé saisi à l'enregistrement en tête de l'infobulle ; sans libellé, seule
+                    // l'action reste (jamais d'infobulle vide).
+                    const titre = this.escapeHtml(rev.libelle ? `${rev.indice} — ${rev.libelle}\n${action}` : action);
                     return `
                 <span class="badge bg-danger indice-badge${isActive ? ' indice-badge-active' : ''}"
                       data-projet-id="${projet.id}"
@@ -1033,6 +1058,7 @@ export class DataManager {
 
             // 4. Recharger la page de calepinage sans les caches de l'ancienne variante
             purgerCachesLocauxVariante(id);
+            await purgerConsoLocaleVariante();
             this.showSuccess(`Variante ${indice} ouverte.`);
             if (window.estPageAccueil()) window.location.reload();
             else window.location.assign(window.SKV_URL_ACCUEIL);
@@ -1542,7 +1568,7 @@ export class DataManager {
             // ÉTAPE 1 : Sauvegarder les données du projet actuel (si existant). Échec : l'utilisateur
             // choisit (rester et réessayer, ou ouvrir quand même en perdant ces modifications).
             const enregistrement = await this.saveCurrentProjectBeforeSwitch();
-            if (!this.confirmerMalgreEchecEnregistrement(enregistrement, `ouvrir le projet « ${projectName} »`)) {
+            if (!(await this.confirmerMalgreEchecEnregistrement(enregistrement, `ouvrir le projet « ${projectName} »`))) {
                 this.showMessage('Ouverture annulée : le projet en cours reste ouvert. Réessayez avec l\'icône « Sauvegarder ».', 'warning');
                 return;
             }
@@ -1830,16 +1856,37 @@ export class DataManager {
     /**
      * Enregistrement du projet quitté en échec : demande s'il faut continuer quand même.
      * @param {{ok?: boolean, message?: string}|undefined} enregistrement - résultat de saveCurrentProjectBeforeSwitch
-     * @returns {boolean} true : continuer
+     * Fenêtre de l'application (texte sélectionnable et copiable, demande 2026-11-04) ; fenêtre
+     * native seulement si services/boite_message.js est absent de la page.
+     * @returns {Promise<boolean>} true : continuer
      */
-    confirmerMalgreEchecEnregistrement(enregistrement, action) {
+    async confirmerMalgreEchecEnregistrement(enregistrement, action) {
         if (!enregistrement || enregistrement.ok !== false) return true;
         const nom = localStorage.getItem('current_projet_nom');
-        return window.confirm(
-            `Le projet en cours${nom ? ` « ${nom} »` : ''} n'a pas pu être enregistré entièrement.\n`
+        const texte = `Le projet en cours${nom ? ` « ${nom} »` : ''} n'a pas pu être enregistré entièrement.\n`
             + `${enregistrement.message || ''}\n\n`
             + `OK : ${action} quand même — les modifications non enregistrées seront perdues.\n`
-            + 'Annuler : rester sur le projet en cours pour réessayer.');
+            + 'Annuler : rester sur le projet en cours pour réessayer.';
+        if (window.SkvMessage && typeof window.SkvMessage.confirmer === 'function') {
+            return window.SkvMessage.confirmer(texte, { titre: 'Enregistrement incomplet' });
+        }
+        return window.confirm(texte);
+    }
+
+    /**
+     * Le projet existe-t-il encore pour cet utilisateur ? false seulement sur le « 404 Not Found » de
+     * get_parametre_projet (projet supprimé, ou d'un autre compte) ; erreur réseau, erreur serveur
+     * (la route renvoie aussi 404 sur une exception, avec un autre message) : true (prudence).
+     */
+    async projetEncoreAccessible(projetId) {
+        try {
+            const r = await fetch(`/concevoir_mon_projet/parametre-projet/${encodeURIComponent(projetId)}`);
+            if (r.status !== 404) return true;
+            const corps = await r.json().catch(() => null);
+            return !(corps && corps.success === false && /^404\b/.test(String(corps.message || '')));
+        } catch (e) {
+            return true;
+        }
     }
 
     /**
@@ -1877,6 +1924,17 @@ export class DataManager {
                 const activation = await window.calepinageService.activateOnServer(currentProjetId);
                 if (!activation || activation.success === false) {
                     console.warn(`⚠️ Session non remise sur le projet ${currentProjetId} avant enregistrement :`, activation && activation.message);
+                    // Bug rapporté 2026-11-04 (« Enregistrement impossible : Calepinage (Erreur HTTP: 404) ;
+                    // Étude économique (Projet introuvable ou accès non autorisé) » à l'ouverture d'un
+                    // autre projet) : le projet en cours avait été SUPPRIMÉ (depuis une autre fenêtre ou
+                    // une autre instance de l'application) et restait le projet du navigateur. Il n'y a
+                    // plus rien à enregistrer : caches locaux oubliés, changement de projet sans fenêtre
+                    // d'échec.
+                    if (!(await this.projetEncoreAccessible(currentProjetId))) {
+                        console.warn(`ℹ️ Projet ${currentProjetId} supprimé ou inaccessible : rien à enregistrer avant le changement de projet.`);
+                        oublierCachesProjetQuitte(currentProjetId);
+                        return { ok: true, skipped: true, projetIntrouvable: true };
+                    }
                 }
             }
             const res = await window.SauvegardeProjet.enregistrerDonnees({ parametres: false });
@@ -3263,7 +3321,7 @@ export class DataManager {
 
         // Importer et afficher la modal de projets
         try {
-            const { mesProjetsModal } = await import('../components/MesProjetsModal.js?v=5');
+            const { mesProjetsModal } = await import('../components/MesProjetsModal.js?v=7');
             mesProjetsModal.show();
         } catch (error) {
             console.error('Erreur lors du chargement de la modal:', error);
@@ -4176,13 +4234,20 @@ export class DataManager {
             // /update font du projet enregistré le projet actif de la session. Le projet en cours doit
             // donc être enregistré AVANT, sinon toutes ses écritures sont refusées (409) ensuite.
             const projetEnCours = localStorage.getItem('current_projet_id');
+            // Garde (bug 2026-11-04) : une création ne part jamais d'une page qui porte encore un
+            // projet ouvert — elle enregistrerait d'abord ce projet depuis un état peut-être déjà
+            // vidé. Le bouton « Créer un nouveau projet » ferme le projet et recharge la page avant.
+            if (!(projetIdEdit && projetIdEdit.value) && projetEnCours) {
+                this.showMessage('Un projet est encore ouvert dans cette page : cliquez sur « Créer un nouveau projet » pour repartir d\'un formulaire vierge. Rien n\'a été enregistré.', 'warning');
+                return;
+            }
             const basculeProjet = !!projetEnCours
                 && (!(projetIdEdit && projetIdEdit.value) || String(projetIdEdit.value) !== String(projetEnCours));
             if (basculeProjet) {
                 this.showMessage('Enregistrement du projet en cours...', 'info');
                 const enregistrement = await this.saveCurrentProjectBeforeSwitch();
                 const action = projetIdEdit && projetIdEdit.value ? 'enregistrer ce projet' : 'créer le nouveau projet';
-                if (!this.confirmerMalgreEchecEnregistrement(enregistrement, action)) {
+                if (!(await this.confirmerMalgreEchecEnregistrement(enregistrement, action))) {
                     this.showMessage('Opération annulée : le projet en cours reste ouvert. Réessayez avec l\'icône « Sauvegarder ».', 'warning');
                     return;
                 }
@@ -4208,15 +4273,19 @@ export class DataManager {
                     console.log('⚠️ Duplication détectée par le serveur');
                 }
 
-                this.showMessage(
-                    projetIdEdit && projetIdEdit.value ?
-                        'Projet modifié avec succès!' :
-                        'Projet créé avec succès!',
-                    'success'
-                );
-
                 // Lire le nom AVANT de réinitialiser le formulaire
                 const projectId = result.projet_id || (projetIdEdit && projetIdEdit.value);
+                // Création (demande 2026-11-04) : message de confirmation au centre de l'écran, affiché
+                // plus bas une fois le formulaire passé sur le nouveau projet.
+                const creationAvecId = !(projetIdEdit && projetIdEdit.value) && !!projectId;
+                if (!creationAvecId) {
+                    this.showMessage(
+                        projetIdEdit && projetIdEdit.value ?
+                            'Projet modifié avec succès!' :
+                            'Projet créé avec succès!',
+                        'success'
+                    );
+                }
 
                 // Chargé(e) d'études : reporté tout de suite dans solarProjectData.projectInfo du
                 // projet actif (lu par la page de garde du rapport, cf. ExportService.addCoverPage).
@@ -4232,8 +4301,9 @@ export class DataManager {
                     (result.projet && result.projet.nom_projet) ||
                     document.querySelector('#form_parametre_projet #nom_projet')?.value || '';
 
-                // Réinitialiser le formulaire
-                this.resetForm();
+                // Réinitialiser le formulaire — sauf après une création : le formulaire reste affiché,
+                // rattaché au projet créé (demande 2026-11-04, cf. plus bas).
+                if (!creationAvecId) this.resetForm();
 
                 if (projectId) {
                     // CORRECTION : ce bloc s'exécute aussi bien après une création qu'après une
@@ -4247,7 +4317,7 @@ export class DataManager {
                     // enregistré ici comme avant.
                     if (!basculeProjet) {
                         const enregistrement = await this.saveCurrentProjectBeforeSwitch();
-                        if (!this.confirmerMalgreEchecEnregistrement(enregistrement, 'recharger ce projet')) {
+                        if (!(await this.confirmerMalgreEchecEnregistrement(enregistrement, 'recharger ce projet'))) {
                             this.showMessage('Projet enregistré, mais la page n\'est pas rechargée : enregistrez le projet (icône « Sauvegarder »).', 'warning');
                             return;
                         }
@@ -4308,9 +4378,14 @@ export class DataManager {
                         // sauvegarde, activation serveur, fermeture du modal, auto-ouverture de
                         // "Consommation d'énergie").
                         this.pendingProjectOpen = { id: projectId, name: projectName };
-                        if (window.uiManagerInstance && typeof window.uiManagerInstance.switchToSection === 'function') {
-                            window.uiManagerInstance.switchToSection('button_mes_projets');
-                        }
+                        // Demande 2026-11-04 : l'utilisateur RESTE sur le formulaire de création (plus de
+                        // bascule vers « Mes projets »). Le formulaire passe en modification du projet créé
+                        // (#projet_id_edit) : un nouveau clic sur le bouton enregistre CE projet au lieu
+                        // d'en créer un second, et le bouton devient « Sauvegarder les paramètres du
+                        // projet ». « Suivant » ouvre le projet (ParametresProjet.js, ouvrirProjetCree),
+                        // « Précédent » mène à « Mes projets », où il est coché « Actif ».
+                        this.passerFormulaireSurProjetCree(projectId);
+                        this.afficherConfirmationCreation(projectName);
                     } else {
                         // Modification d'un projet existant : rechargement direct, puis étape suivante
                         // du parcours (demande explicite : Paramètres projet -> Profil de
@@ -4684,28 +4759,32 @@ export class DataManager {
         setTimeout(() => notification.remove(), 5000);
     }
 
-    showMessage(message, type) {
+    /**
+     * Message du formulaire. options.centre (création du projet, demande 2026-11-04) : au centre de
+     * l'écran, reste affiché jusqu'à sa fermeture (×), « Suivant » ou « Précédent ». Sinon : en haut à
+     * droite, masqué après 5 s (8 s pour une erreur), délai suspendu tant que la souris le survole.
+     * Texte sélectionnable dans les deux cas (demande 2026-11-04).
+     */
+    showMessage(message, type, options = {}) {
+        const centre = !!(options && options.centre);
         let messageElement = document.getElementById('form-message');
         if (!messageElement) {
             messageElement = document.createElement('div');
             messageElement.id = 'form-message';
-            messageElement.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                padding: 15px 20px;
-                border-radius: 5px;
-                color: white;
-                font-weight: bold;
-                z-index: 9999;
-                max-width: 500px;
-                max-height: 80vh;
-                overflow-y: auto;
-                transition: opacity 0.3s ease;
-                box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            `;
+            messageElement.setAttribute('role', 'status');
             document.body.appendChild(messageElement);
+            messageElement.addEventListener('mouseenter', () => { messageElement._survol = true; });
+            messageElement.addEventListener('mouseleave', () => {
+                messageElement._survol = false;
+                if (messageElement._masquerApresSurvol) this._planifierMasquage(messageElement, 1500);
+            });
         }
+        const position = centre
+            ? 'top: 50%; left: 50%; right: auto; transform: translate(-50%, -50%); max-width: min(560px, calc(100vw - 32px)); padding: 22px 44px 22px 26px; font-size: 16px; text-align: center; box-shadow: 0 12px 32px rgba(0,0,0,0.3);'
+            : 'top: 20px; right: 20px; left: auto; transform: none; max-width: 500px; padding: 15px 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
+        messageElement.style.cssText = `position: fixed; ${position} border-radius: 6px; color: white; font-weight: bold;
+            z-index: 9999; max-height: 80vh; overflow-y: auto; transition: opacity 0.3s ease;
+            user-select: text; -webkit-user-select: text; cursor: text;`;
 
         const colors = {
             success: '#28a745',
@@ -4718,18 +4797,45 @@ export class DataManager {
         // Utiliser innerHTML au lieu de textContent pour supporter le HTML
         messageElement.innerHTML = message;
         messageElement.style.opacity = '1';
+        clearTimeout(messageElement._minuterie);
+        messageElement._masquerApresSurvol = false;
+        messageElement.dataset.centre = centre ? '1' : '';
+
+        if (centre) {
+            const fermer = document.createElement('button');
+            fermer.type = 'button';
+            fermer.setAttribute('aria-label', 'Fermer');
+            fermer.textContent = '×';
+            fermer.style.cssText = 'position:absolute; top:6px; right:10px; background:none; border:none; color:#fff; font-size:22px; line-height:1; cursor:pointer;';
+            fermer.addEventListener('click', () => this.masquerMessage());
+            messageElement.appendChild(fermer);
+            return;
+        }
 
         // Augmenter le délai pour les messages d'erreur avec plusieurs items
-        const timeout = type === 'error' ? 8000 : 5000;
+        this._planifierMasquage(messageElement, type === 'error' ? 8000 : 5000);
+    }
 
+    _planifierMasquage(messageElement, delai) {
+        clearTimeout(messageElement._minuterie);
+        messageElement._minuterie = setTimeout(() => {
+            // Survolé (texte en cours de sélection) : masqué à la sortie de la souris.
+            if (messageElement._survol) { messageElement._masquerApresSurvol = true; return; }
+            this.masquerMessage();
+        }, delai);
+    }
+
+    /** Retire le message du formulaire (s'il est affiché). */
+    masquerMessage() {
+        const messageElement = document.getElementById('form-message');
+        if (!messageElement) return;
+        clearTimeout(messageElement._minuterie);
+        messageElement.style.opacity = '0';
         setTimeout(() => {
-            messageElement.style.opacity = '0';
-            setTimeout(() => {
-                if (messageElement.parentNode) {
-                    messageElement.parentNode.removeChild(messageElement);
-                }
-            }, 300);
-        }, timeout);
+            if (messageElement.parentNode && messageElement.style.opacity === '0') {
+                messageElement.parentNode.removeChild(messageElement);
+            }
+        }, 300);
     }
     resetForm() {
         this.parametresModifies = false;
@@ -4786,10 +4892,209 @@ export class DataManager {
     // TOUJOURS visible : #save-btn-informations-projet n'existe plus, cette méthode est donc sans effet
     // (conservée pour ses appelants, editProject()/resetForm()).
     updateSauvegarderInformationsProjetVisibility() {
+        this.majLibelleBoutonSauvegarde();
         const btn = document.getElementById('save-btn-informations-projet');
         if (!btn) return;
         const projetIdEdit = document.getElementById('projet_id_edit');
         btn.style.display = (projetIdEdit && projetIdEdit.value) ? '' : 'none';
+    }
+
+    /**
+     * Libellé du bouton d'enregistrement du formulaire (demande 2026-11-04) : « Créer mon projet »
+     * pour un nouveau projet, « Sauvegarder les paramètres du projet » une fois le projet créé ou
+     * ouvert en modification. Appelée par resetForm() et editProject() (via
+     * updateSauvegarderInformationsProjetVisibility) et après une création.
+     */
+    majLibelleBoutonSauvegarde() {
+        const bouton = document.getElementById('save-btn-projet');
+        if (!bouton) return;
+        const projetIdEdit = document.getElementById('projet_id_edit');
+        const libelle = (projetIdEdit && projetIdEdit.value) ? 'Sauvegarder les paramètres du projet' : 'Créer mon projet';
+        bouton.innerHTML = `<i class="fas fa-save"></i> ${libelle}`;
+    }
+
+    /**
+     * Après une création : le formulaire affiché devient celui du projet créé (mode modification),
+     * sans le recharger depuis la base — les valeurs affichées sont celles qui viennent d'être
+     * enregistrées.
+     */
+    passerFormulaireSurProjetCree(projectId) {
+        let hiddenInput = document.getElementById('projet_id_edit');
+        if (!hiddenInput) {
+            hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.id = 'projet_id_edit';
+            hiddenInput.name = 'projet_id';
+            const form = document.getElementById('form_parametre_projet');
+            if (form) form.appendChild(hiddenInput);
+        }
+        hiddenInput.value = projectId;
+        this.parametresModifies = false;
+        this.updateSauvegarderInformationsProjetVisibility();
+    }
+
+    /** Message de confirmation de création, au centre de l'écran (demande 2026-11-04). */
+    afficherConfirmationCreation(projectName) {
+        const nom = projectName ? ` « ${this.escapeHtml(projectName)} »` : '';
+        this.showMessage(
+            `Le projet${nom} a été créé avec succès.<br>`
+            + 'Cliquez sur « Suivant » pour continuer, ou sur « Précédent » pour revenir à « Mes projets ».',
+            'success',
+            { centre: true }
+        );
+    }
+
+    /**
+     * « Suivant » juste après une création (pendingProjectOpen) : le projet créé est ouvert par un
+     * rechargement de la page (état JavaScript propre, comme après la modification d'un projet), puis
+     * « Consommation d'énergie » s'ouvre (ou le Calepinage pour le parcours Chiffrage, cf.
+     * navigation-modales.js). Saisies faites depuis la création : enregistrées d'abord.
+     * @returns {Promise<boolean>} true : ouverture lancée (false : rien en attente, ou échec signalé)
+     */
+    async ouvrirProjetCree() {
+        const enAttente = this.pendingProjectOpen;
+        if (!enAttente || !enAttente.id) return false;
+        if (String(localStorage.getItem('current_projet_id')) !== String(enAttente.id)) {
+            // Projet changé entre-temps (autre onglet...) : on ne rouvre pas un projet périmé.
+            this.pendingProjectOpen = null;
+            return false;
+        }
+        if (this.parametresNonEnregistres()) {
+            const res = await this.syncParametreProjetSilently({ projetId: enAttente.id });
+            if (!res || res.success === false) {
+                this.showMessage(`Paramètres du projet non enregistrés : ${(res && res.message) || 'erreur'}. Cliquez sur « Sauvegarder les paramètres du projet » puis réessayez.`, 'error');
+                return false;
+            }
+        }
+        this.pendingProjectOpen = null;
+        this.masquerMessage();
+        sessionStorage.setItem('autoOpenConsEnergie', 'true');
+        window.location.href = `${window.SKV_URL_ACCUEIL}?activated_project=${encodeURIComponent(enAttente.id)}`;
+        return true;
+    }
+
+    /**
+     * Bouton « Créer un (nouveau) projet » — point d'entrée unique (bug 2026-11-04, intermittent : le
+     * projet actif n'était pas désélectionné et le formulaire restait en MODIFICATION du projet
+     * existant, avec risque de l'écraser).
+     * Cause : switchToSection() ne purgeait rien quand #projet_id_edit était renseigné (formulaire
+     * ouvert par « Paramètres projet », ou projet juste créé : passerFormulaireSurProjetCree), ni quand
+     * le formulaire était déjà l'onglet affiché. Le résultat dépendait donc du chemin suivi avant le clic.
+     * Correctif : s'il y a un projet à quitter, il est enregistré, retiré de la session serveur et du
+     * navigateur, puis la page est RECHARGÉE ; le formulaire vierge s'ouvre au chargement suivant
+     * (?nouveau_projet=1, cf. ParametresProjet.js), sur un état JavaScript neuf.
+     * @param {{apresRechargement?: boolean}} [options] - true : appelé au chargement qui suit (jamais de
+     *   second rechargement).
+     */
+    async demarrerNouveauProjet({ apresRechargement = false } = {}) {
+        if (this._nouveauProjetEnCours) return false;
+        const actif = localStorage.getItem('current_projet_id');
+        const idEdit = document.getElementById('projet_id_edit');
+        const aQuitter = !!(actif || (idEdit && idEdit.value) || window.ACTIVE_PROJECT_ID);
+        if (apresRechargement || !aQuitter) return this.ouvrirFormulaireCreationVierge();
+
+        this._nouveauProjetEnCours = true;
+        const bouton = document.getElementById('create-project-btn');
+        if (bouton) bouton.disabled = true;
+        let recharge = false;
+        try {
+            if (actif) {
+                this.showMessage('Enregistrement du projet en cours avant la création d\'un nouveau projet…', 'info');
+                // Formulaire Paramètres du projet quitté (non envoyé par saveCurrentProjectBeforeSwitch).
+                let echecParametres = null;
+                if (this.parametresNonEnregistres()) {
+                    const res = await this.syncParametreProjetSilently({ projetId: actif });
+                    if (!res || res.success === false) echecParametres = `Paramètres du projet : ${(res && res.message) || 'erreur'}`;
+                }
+                const enregistrement = await this.saveCurrentProjectBeforeSwitch();
+                const echecs = [echecParametres, enregistrement && enregistrement.ok === false ? enregistrement.message : null].filter(Boolean);
+                const bilan = echecs.length ? { ok: false, message: echecs.join(' ; ') } : enregistrement;
+                if (!(await this.confirmerMalgreEchecEnregistrement(bilan, 'créer un nouveau projet'))) {
+                    this.showMessage('Création annulée : le projet en cours reste ouvert. Réessayez avec l\'icône « Sauvegarder ».', 'warning');
+                    return false;
+                }
+            }
+
+            // Session serveur vidée AVANT toute modification locale : en cas d'échec, rien ne bascule.
+            let reponse = null;
+            try {
+                const r = await fetch('/concevoir_mon_projet/parametre-projet/desactiver', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                reponse = r.ok ? await r.json().catch(() => null) : null;
+            } catch (e) { /* réseau : traité ci-dessous */ }
+            if (!reponse || reponse.success !== true) {
+                this.showMessage('Impossible de fermer le projet en cours (connexion interrompue ?). Aucune donnée n\'a été modifiée ; réessayez.', 'error');
+                return false;
+            }
+
+            // Navigateur : plus aucun projet actif (minuteur de sauvegarde arrêté, aucune écriture
+            // possible vers l'ancien projet pendant le déchargement — cf. beforeunload de
+            // CalepinageDataService, qui ne sauvegarde que si currentProjetId est renseigné).
+            oublierCachesProjetQuitte(actif);
+            if (window.calepinageService && typeof window.calepinageService.clearCurrentProjet === 'function') {
+                window.calepinageService.clearCurrentProjet();
+            }
+            localStorage.removeItem('current_projet_id');
+            localStorage.removeItem('current_projet_nom');
+            this.pendingProjectOpen = null;
+            this.projetQuitteEnregistre = null;
+            if (idEdit) idEdit.remove();
+
+            recharge = true;
+            const url = new URL(window.SKV_URL_ACCUEIL || window.location.pathname, window.location.origin);
+            url.searchParams.set('nouveau_projet', '1');
+            window.location.href = url.pathname + url.search;
+            return true;
+        } finally {
+            if (!recharge) {
+                this._nouveauProjetEnCours = false;
+                if (bouton) bouton.disabled = false;
+            }
+        }
+    }
+
+    /**
+     * Formulaire vierge en mode création : aucun identifiant d'édition, aucun projet actif, état local
+     * purgé (switchToSection(..., true)). Vérifié après coup : la moindre trace d'un projet existant
+     * bloque l'enregistrement (message) plutôt que de risquer d'écrire dedans.
+     */
+    async ouvrirFormulaireCreationVierge() {
+        this.pendingProjectOpen = null;
+        this.projetQuitteEnregistre = null;
+        const message = document.getElementById('form-message');
+        if (message && message.dataset.centre === '1') this.masquerMessage();
+        // Retire #projet_id_edit : sans cela, switchToSection() refuse la purge (garde « édition »).
+        this.resetForm();
+
+        if (window.parametreProjetManager && typeof window.parametreProjetManager.openModal === 'function') {
+            const modal = document.getElementById('parametres-modal');
+            if (!modal || modal.style.display === 'none' || !modal.classList.contains('show')) {
+                window.parametreProjetManager.openModal('parametres');
+            }
+        }
+        const ui = window.uiManagerInstance;
+        if (ui && typeof ui.switchToSection === 'function') {
+            try {
+                await ui.switchToSection('button_parametre_projet', true);
+            } catch (e) {
+                console.warn('Ouverture du formulaire de création :', e);
+            }
+        }
+        this.appliquerDefautsNouveauProjetSiVierge();
+        this.updateSauvegarderInformationsProjetVisibility();
+
+        const resteIdEdit = document.getElementById('projet_id_edit');
+        if ((resteIdEdit && resteIdEdit.value) || localStorage.getItem('current_projet_id')) {
+            console.error('Nouveau projet : un projet existant est encore sélectionné', {
+                projet_id_edit: resteIdEdit && resteIdEdit.value,
+                current_projet_id: localStorage.getItem('current_projet_id')
+            });
+            this.showMessage('Le formulaire n\'a pas pu être remis à zéro : rechargez la page (F5) avant de créer le projet.', 'error');
+            return false;
+        }
+        return true;
     }
 
     // NOUVEAU (demande explicite : bouton "Annuler les modifications") : décharge tout état
@@ -4803,6 +5108,8 @@ export class DataManager {
     // même bouton X).
     cancelEditAndReturnToMesProjets() {
         this.resetForm();
+        const message = document.getElementById('form-message');
+        if (message && message.dataset.centre === '1') this.masquerMessage();
 
         const tabsList = document.getElementById('myTab');
         if (tabsList) tabsList.style.display = 'none';

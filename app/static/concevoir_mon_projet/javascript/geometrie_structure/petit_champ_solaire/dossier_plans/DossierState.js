@@ -1,6 +1,6 @@
 import { TEXTES_TYPES, SECTIONS_REGLEMENTATION } from './reglementation_modele.js';
 import { nettoyerReglementation, objetSur, piecesSures, enTexte } from '../../dossier_reglementation_validation.js?v=1';
-import { ajouterPieceDevis } from '../../dossier_devis.js?v=4';
+import { ajouterPieceDevis } from '../../dossier_devis.js?v=5';
 
 /**
  * État du dossier de plans « Petit champ solaire » : réglages (indice, maître d'ouvrage, pièces

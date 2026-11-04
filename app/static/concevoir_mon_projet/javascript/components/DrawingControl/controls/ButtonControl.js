@@ -1,7 +1,7 @@
 // import DOMUtils from '../utils/DOMUtils.js';
 import { DRAWING_CONSTANTS, STYLES, CUSTOM_EVENTS } from "../constants.js";
 import MeasurementControl from "./MeasurementControl.js";
-import ExportService from "../../../services/ExportService.js?v=12"; // ?v= : cf. GoogleMaps.js (même valeur, singleton getInstance() — un import module ES sans cache-busting jusqu'ici)
+import ExportService from "../../../services/ExportService.js?v=13"; // ?v= : cf. GoogleMaps.js (même valeur, singleton getInstance() — un import module ES sans cache-busting jusqu'ici)
 import GraphModal from "../../../components/GraphModal.js";
 import PDFGenerator from "../../../services/PDFGenerator.js";
 import DecalageParcelles from "../../decalage_parcelles/DecalageParcelles.js";
@@ -940,7 +940,8 @@ export default class ButtonControl {
           // en base — calepinages, Loi APER, devis, étude économique, puissance projet et variante
           // active (services/sauvegarde_projet.js, qui affiche le résultat).
           if (window.SauvegardeProjet && typeof window.SauvegardeProjet.sauvegarderProjet === 'function') {
-            await window.SauvegardeProjet.sauvegarderProjet();
+            // Projet avec variantes : choix de la variante à enregistrer (fenêtre, cf. sauvegarde_projet.js).
+            await window.SauvegardeProjet.sauvegarderProjet({ choisirVariante: true });
             return;
           }
           try {

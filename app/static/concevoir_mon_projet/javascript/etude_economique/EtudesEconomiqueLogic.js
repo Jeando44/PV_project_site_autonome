@@ -402,7 +402,9 @@ function toggleSystemeFields() {
     const isHybride = document.querySelector('input[name="type_systeme"]:checked').value === 'hybride';
 
     // 1. Gérer la visibilité des blocs principaux
-    document.getElementById('section_revenus_globale').style.display = isHybride ? 'none' : 'block';
+    // '' (et non 'block') : la mise en page CSS de la section (grille Revenus & tarifs, vues PRO
+    // verticale et résidentielle) n'est pas écrasée par un display en ligne.
+    document.getElementById('section_revenus_globale').style.display = isHybride ? 'none' : '';
     document.getElementById('section_hybride_capex').style.display = isHybride ? 'block' : 'none';
 
     // 2. Masquage des 3 champs spécifiques (Hybride = Masqués)
@@ -908,7 +910,7 @@ function generatePaliers() {
             <div class="form-group" id="pal3_box" style="border:1px solid #ddd; padding:15px; border-radius:5px; display:none">
                 <label id="label_pal_3">Tarif Post-Contrat (${dev}/MWh)</label>
                 <input type="number" id="pal_t_3" value="0" min="0" max="500" step="any">
-                <label style="margin-top:10px">Années</label>
+                <label style="margin-top:10px">Période d'application (Années)</label>
                 <div style="display:flex; gap:5px">
                     <input type="number" id="pal_s_3" value="21">
                     <input type="number" id="pal_e_3" value="30">
@@ -1100,6 +1102,11 @@ window.venteSurplusActive = venteSurplusActive;
 // ─────────────────────────────────────────────────────────────────────────────
 
 function collectInputs() {
+    // CAPEX du tableau « Chiffrage CAPEX (Devis) » recalculé juste avant la lecture de
+    // #total_capex_display, quel que soit le mode (Prix au Wc / CAPEX total / Chiffrage détaillé) :
+    // en « Prix au Wc », il suit la puissance courante.
+    const capexDevisTable = window.ResidentielChiffrage && window.ResidentielChiffrage.Capex;
+    if (capexDevisTable && typeof capexDevisTable.synchroniserMoteur === 'function') capexDevisTable.synchroniserMoteur();
     const dev = document.querySelector('input[name="devise"]:checked').value;
     const useDette = document.querySelector('input[name="dette_toggle"]:checked').value === 'oui';
     const fpPct = parseFloat(document.getElementById('fp_pct').value) || 0;
@@ -1454,6 +1461,16 @@ function validateStrictData() {
         } else {
             el.style.border = '';
         }
+    }
+
+    // CAPEX en « Prix au Wc » / « CAPEX total » : saisie obligatoire et dans ses bornes (sinon le
+    // moteur recevrait un CAPEX nul).
+    const capexTable = window.ResidentielChiffrage && window.ResidentielChiffrage.Capex;
+    if (capexTable && typeof capexTable.erreursCapexSimple === 'function') {
+        capexTable.erreursCapexSimple().forEach((message) => {
+            isValid = false;
+            errors.push(`[Chiffrage CAPEX] ${message}`);
+        });
     }
 
     // Règle 3 : Assainissement du texte (Champs dynamiques)
@@ -2629,7 +2646,19 @@ function exportPDF() {
     const capexMode = document.querySelector('input[name="capex_mode_select"]:checked').value;
     const capexRows = [];
     const capexDevis = window.ResidentielChiffrage && window.ResidentielChiffrage.Capex;
-    if (capexDevis && typeof capexDevis.isProActive === 'function' && capexDevis.isProActive()) {
+    const capexSimple = capexDevis && typeof capexDevis.getCapexSimple === 'function' ? capexDevis.getCapexSimple() : null;
+    if (capexSimple && (capexSimple.mode === 'wc' || capexSimple.mode === 'fixe') && typeof capexDevis.isProActive === 'function' && capexDevis.isProActive()) {
+        // PRO, mode simplifié : une ligne (prix au Wc x puissance, ou CAPEX total saisi), en k€ HT.
+        const devPdf = document.querySelector('input[name="devise"]:checked')?.value || '€';
+        capexRows.push([capexSimple.mode === 'wc'
+            ? `CAPEX au prix de ${capexSimple.prixWc} ${devPdf}/Wc HT`
+            : 'CAPEX total (forfait HT)', (capexSimple.capexK || 0).toFixed(2)]);
+        const typeSystemeSimple = document.querySelector('input[name="type_systeme"]:checked');
+        if (typeSystemeSimple && typeSystemeSimple.value === 'hybride') {
+            capexRows.push(['Groupe électrogène', (parseFloat(document.getElementById('cap_ge').value) || 0).toFixed(2)]);
+        }
+        capexRows.push(["Total HT", document.getElementById('total_capex_display').textContent]);
+    } else if (capexDevis && typeof capexDevis.isProActive === 'function' && capexDevis.isProActive()) {
         // PRO : un poste du devis par ligne, en k€ HT (lignes masquées exclues, aides déduites).
         capexDevis.getData().postes.forEach((poste) => {
             const totalHt = capexDevis.getPosteTotals(poste).totalHt;
@@ -2853,6 +2882,9 @@ function calcHeuresNeg() {
     const maxLimit = parseFloat(maxEl ? maxEl.value : 300) || 300;
     const seuil = parseFloat(seuilEl ? seuilEl.value : 15) || 15;
     const appliquer_net = optionNetEl ? optionNetEl.checked : true;
+    // Libellé « Productible tranche 2 (> limite) » : suit la limite saisie (était figé à 1600).
+    const libelleLimite = document.getElementById('hn_libelle_limite');
+    if (libelleLimite) libelleLimite.textContent = String(limite);
 
     // Condition : le nombre d'heures négatives ne peut pas dépasser le seuil maximal
     // Règle 2 : Auto-correction supprimée

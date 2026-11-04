@@ -4,7 +4,7 @@ import {
 } from '../../../declaration_prealable/DpLayout.js?v=2';
 import { PIECES, LIBELLES_FORMAT, codesPieces, ECHELLE_SITUATION_PROCHE } from './DossierState.js?v=8';
 import { SECTIONS_REGLEMENTATION } from './reglementation_modele.js';
-import { dessinerPieceDevis, titreDossierPlans } from '../../dossier_devis.js?v=4';
+import { dessinerPieceDevis, titreDossierPlans } from '../../dossier_devis.js?v=5';
 import { emprise, placement, dessinerEntites, decouperEntites, echelleAjustee } from './DossierVectoriel.js';
 
 /**

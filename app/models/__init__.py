@@ -16,7 +16,7 @@ from app.models.pompage_solaire_config import PompageSolaireConfig
 from app.models.etude_economique_config import EtudeEconomiqueConfig
 from app.models.resultat_prodsolaire import ResultatProdSolaire, AutonomieSite
 from app.models.residentiel_chiffrage_config import ResidentielChiffrageConfig
-from app.models.projet_revision import ProjetRevision
+from app.models.projet_revision import ProjetRevision, ProjetRevisionFichier
 from app.models.parametre_rapport_perso import PersonnalisationRapport
 from app.models.consommation_file import ConsommationFile, ConsommationFileAcc
 from app.models.loi_aper import AperConfig, AperPolygone
@@ -46,6 +46,7 @@ __all__ = [
     'AutonomieSite',
     'ResidentielChiffrageConfig',
     'ProjetRevision',
+    'ProjetRevisionFichier',
     'PersonnalisationRapport',
     'ConsommationFile',
     'ConsommationFileAcc',

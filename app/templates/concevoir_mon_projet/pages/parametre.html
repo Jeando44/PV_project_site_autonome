@@ -450,6 +450,14 @@
                                         }
                                     };
                                     createBtn.addEventListener('click', function () {
+                                        // Bug 2026-11-04 (projet actif pas toujours désélectionné) : point
+                                        // d'entrée unique — enregistre et ferme le projet en cours, recharge
+                                        // la page, puis ouvre le formulaire vierge en mode création.
+                                        if (window.dataManager && typeof window.dataManager.demarrerNouveauProjet === 'function') {
+                                            Promise.resolve(window.dataManager.demarrerNouveauProjet())
+                                                .catch(function (e) { console.warn('Création d\'un nouveau projet :', e); });
+                                            return;
+                                        }
                                         if (window.uiManagerInstance && typeof window.uiManagerInstance.switchToSection === 'function') {
                                             Promise.resolve(window.uiManagerInstance.switchToSection('button_parametre_projet', true))
                                                 .catch(function (e) { console.warn('Ouverture de « Créer un projet » :', e); })
@@ -2501,8 +2509,11 @@
                                                 class="btn btn-nav">← Précédent</button>
                                             <button type="button" id="scrollToTopBtn1" class="btn btn-nav-outline">↑
                                                 Haut</button>
+                                            <!-- Libellé (demande 2026-11-04) : « Créer mon projet » pour un nouveau projet,
+                                                 « Sauvegarder les paramètres du projet » une fois le projet créé ou ouvert
+                                                 (DataManager.majLibelleBoutonSauvegarde, parametreProjetFormManager.js). -->
                                             <button type="submit" id="save-btn-projet" class="btn btn-nav btn-nav-save">
-                                                <i class="fas fa-save"></i> Sauvegarder les paramètres du projet</button>
+                                                <i class="fas fa-save"></i> Créer mon projet</button>
                                             <!-- « Annuler les modifications » supprimé (demande explicite : plus de sens avec
                                                  Précédent / Suivant). cancelEditAndReturnToMesProjets() reste utilisé à la
                                                  fermeture du modal (closeMainModal, ParametresProjet.js). -->
@@ -3366,7 +3377,7 @@
      jusqu'ici reliés à aucune sauvegarde/chargement. On active ici un script dédié et autonome
      plutôt que de réactiver tout ParametresProjet.js (fichier volumineux jamais exécuté en
      production, dont le reste du contenu n'a jamais été vérifié à l'exécution). -->
-<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/personnalisationRapport.js') }}?v=3"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/personnalisationRapport.js') }}?v=4"></script>
 <script>
     // « Personnalisation du rapport » optionnelle : repliée par défaut, dépliée au clic. Se déplie aussi
     // d'elle-même si l'un de ses champs est signalé invalide (.is-invalid), pour ne jamais masquer une

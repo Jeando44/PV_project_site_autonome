@@ -124,7 +124,7 @@
         }
         /* Indexation Vente Palier 1/2 : même largeur de saisie que le tarif de vente surplus, lequel
            est dans une carte (bordure 1px + marge intérieure 15px, cf. generatePaliers()). */
-        #etudes-eco-standard-view.eco-vertical #section_revenus_globale > .grid:not(#paliers_grid) > .form-group {
+        :is(#etudes-eco-standard-view.eco-vertical, #etudes-eco-residentiel-view) #section_revenus_globale > .grid:not(#paliers_grid) > .form-group {
             padding: 0 16px;
         }
 
@@ -339,48 +339,191 @@
             gap: 12px;
         }
 
-        /* #section_revenus_globale (colonnes 2+3 du wrapper) devient lui-même une grille à 2
-           colonnes : #paliers_grid (Tarif Vente Surplus, dynamique via generatePaliers() — jamais
-           modifié, reste un bloc normal, PAS display:contents) à gauche, la grille d'indexation
-           (Palier 1/2) à droite, À LA MÊME HAUTEUR.
-           CORRECTIF (bug rapporté : "Indexation Vente Palier 1 s'affiche en dessous de Période
-           d'application, pas à droite") : le conteneur (vide visuellement, mais PAS display:none
-           lui-même) du bouton "Calcul de revenu année 1" masqué se trouve, dans le DOM, ENTRE
-           #paliers_grid et la grille d'indexation — avec seulement grid-column posé sur h2/ce
-           conteneur (span complet) et #paliers_grid/indexation laissés en placement AUTOMATIQUE,
-           ce conteneur pleine-largeur forçait l'algorithme de placement auto à sauter toute la
-           ligne où #paliers_grid venait de s'installer (colonne 1 seule occupée), reléguant la
-           grille d'indexation sur une ligne encore plus bas, colonne 1 — jamais colonne 2. Fixé en
-           donnant à CHAQUE élément une position EXPLICITE (grid-row/grid-column), qui ne dépend
-           plus de l'ordre des éléments dans le DOM. */
-        :is(#etudes-eco-residentiel-view #resi-revenus-tarifs-wrapper, #etudes-eco-standard-view.eco-vertical #pro-revenus-tarifs-wrapper) > #section_revenus_globale {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 12px 16px;
-            align-items: start;
-        }
-        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale > h2 {
-            grid-column: 1 / -1;
-            grid-row: 1;
-        }
-        :is(#etudes-eco-residentiel-view #resi-revenus-tarifs-wrapper, #etudes-eco-standard-view.eco-vertical #pro-revenus-tarifs-wrapper) > #section_revenus_globale > #paliers_grid {
-            grid-column: 1;
-            grid-row: 2;
-        }
-        /* Indexation Vente Palier 1 (visible) / Palier 2 (masqué par défaut) : empilés verticalement
-           dans leur propre colonne, à droite de Tarif Vente Surplus, même ligne. */
-        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale > .grid:not(#paliers_grid) {
-            grid-column: 2;
-            grid-row: 2;
+        /* #section_revenus_globale (colonnes 2+3 du wrapper) : titre, cartes de tarifs (#paliers_grid)
+               puis indexations, empilés. Cartes et indexations sur la MÊME grille à 2 colonnes (même
+               écart que le wrapper) : chaque colonne a la largeur d'une colonne du wrapper, donc
+               « Indexation Vente Palier 1 » est sous « Tarif Vente Surplus » et « Indexation Vente
+               Palier 2 » sous « Tarif Post-Contrat », à la même largeur (demande : champs trop longs,
+               aligner sur les champs du dessus). NB : toggleSystemeFields() ne pose plus de
+               display:block en ligne sur cette section (il annulait cette grille). */
+        :is(#etudes-eco-residentiel-view #resi-revenus-tarifs-wrapper, #etudes-eco-standard-view.eco-vertical #pro-revenus-tarifs-wrapper)>#section_revenus_globale {
             display: flex;
             flex-direction: column;
             gap: 12px;
+            min-width: 0;
         }
-        /* Conteneur du bouton "Calcul de revenu année 1" (masqué, non pertinent en résidentiel) :
-           sa propre ligne, après tout le reste — jamais entre les 2 colonnes ci-dessus. */
-        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale > div:not(.grid) {
+
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale>h2 {
+            margin-bottom: 0;
+        }
+
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale>.grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px 16px;
+            align-items: start;
+        }
+
+        /* Cartes : Tarif Vente Surplus en colonne 1, Tarif Post-Contrat en colonne 2 (même ligne), la
+               tranche 2 (France, hors limite de production) se place dans la case libre suivante. */
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #paliers_grid>.form-group:first-child {
+            grid-column: 1;
+            grid-row: 1;
+        }
+
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #paliers_grid>#pal3_box {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale #groupe_indexation_vente_12 {
+            grid-column: 1;
+        }
+
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale #ind_pal3_container {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale #batterie-virtuelle-optin-container {
             grid-column: 1 / -1;
-            grid-row: 3;
+        }
+
+        /* Conteneur du bouton "Calcul de revenu année 1" (bouton toujours masqué) : retiré de la colonne. */
+        :is(#etudes-eco-residentiel-view, #etudes-eco-standard-view.eco-vertical) #section_revenus_globale>div:not(.grid) {
+            display: none !important;
+        }
+
+        /* Période d'application (Années) des cartes de tarif, dont celle du Post-Contrat : les deux
+               champs restent DANS la carte, sous leur libellé, à gauche (sans min-width:0, un champ
+               number à width:100% dans un flex débordait à droite de la carte quand la colonne est
+               étroite — champ « Années » du Post-Contrat invisible). */
+        #paliers_grid .form-group>div {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+            min-width: 0;
+            justify-content: flex-start;
+        }
+
+        #paliers_grid .form-group>div>input {
+            flex: 1 1 0;
+            min-width: 0;
+            width: auto;
+        }
+
+        #paliers_grid .form-group {
+            min-width: 0;
+            box-sizing: border-box;
+        }
+
+        /* OPEX (PRO) : « Opex simple » à la largeur d'une colonne, comme les champs en grille 2 x 2
+               en dessous (Indexation des OPEX, coûts onduleur / batterie). */
+        #etudes-eco-standard-view.eco-vertical #opex_simple_div {
+            width: calc(50% - 10px);
+        }
+
+        @media (max-width: 700px) {
+            #etudes-eco-standard-view.eco-vertical #opex_simple_div {
+                width: 100%;
+            }
+        }
+
+        /* Mode de chiffrage du CAPEX (ResidentielCapexTable.js::renderModeCapex) : 3 boutons exclusifs. */
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-section-header>.resi-capex-mode {
+            display: inline-flex;
+            border: 1px solid #005A9E;
+            border-radius: 6px;
+            overflow: hidden;
+            gap: 0;
+        flex-wrap: nowrap;
+        margin: 4px 0 2px;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-mode .resi-capex-mode-btn {
+            background: #fff;
+            color: #005A9E;
+            border: none;
+            border-right: 1px solid #005A9E;
+            padding: 7px 18px;
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            line-height: 1.2;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-mode .resi-capex-mode-btn:last-child {
+            border-right: none;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-mode .resi-capex-mode-btn.active {
+            background: #005A9E;
+            color: #fff;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-mode .resi-capex-mode-btn:not(.active):hover {
+            background: #eaf3fb;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-section-header>.resi-capex-simple {
+            display: flex;
+            flex-direction: column;
+        align-items: flex-start;
+            gap: 6px;
+            margin-top: 4px;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-simple-champ {
+            display: flex !important;
+            flex-direction: column;
+            gap: 4px;
+            font-weight: 600;
+            margin: 0 !important;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-simple .resi-capex-simple-input {
+            width: 220px !important;
+            max-width: 100%;
+            padding: 7px 8px;
+            border: 1px solid var(--border-color, #ccc);
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-simple .resi-capex-simple-input.is-invalid {
+            border-color: #dc2626;
+            background-color: #fef2f2;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-simple .resi-field-error {
+            font-size: 0.8rem;
+        }
+
+        :is(#etudes-eco-residentiel-view, #pro-capex-container) .resi-capex-simple-info {
+            font-size: 0.85rem;
+            color: var(--text-secondary, #555);
+        }
+
+        /* Modale « Analyse P90/Heures négatives » : contenu centré, hauteur limitée à la fenêtre du
+               modal éco avec défilement (avant : max-height 60vh + overflow hidden, le bas du tableau et
+               le bouton « Valider & Fermer » étaient coupés sur un écran de portable). */
+        #etudes-economique-modal #heuresNegModal {
+            align-items: center;
+            justify-content: center;
+        }
+
+        #etudes-economique-modal #heuresNegModal .modal-content {
+            margin: auto;
+            max-height: calc(100% - 24px);
+            overflow-y: auto;
+            box-sizing: border-box;
+        }
+
+        #etudes-economique-modal #heuresNegModal .results-table td,
+        #etudes-economique-modal #heuresNegModal .results-table th {
+            padding: 4px 6px !important;
+            line-height: 1.25;
         }
 
         /* CORRECTIF (demande explicite : "centrer et colorer le bouton Lancer le calcul en vert,
@@ -1703,7 +1846,7 @@
 
     <!-- Modale Analyse heures négatives -->
     <div id="heuresNegModal" class="modal">
-        <div class="modal-content" style="max-width: 420px; padding: 10px; max-height: 60vh; height: fit-content; min-height: 0; overflow: hidden;">
+        <div class="modal-content" style="max-width: 440px; padding: 10px; height: fit-content; min-height: 0;">
             <div style="display:flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 5px; margin-bottom: 10px;">
                 <h2 style="border: none; padding: 0; margin: 0; width: auto; font-size: 1.1rem;">Analyse P90/Heures négatives</h2>
                 <span class="close-btn" onclick="closeModal('heuresNegModal')" style="cursor:pointer; font-size: 24px; font-weight: bold; color: #aaa;">&times;</span>
@@ -1725,7 +1868,7 @@
                         <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_prod_limite" value="1600" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;" oninput="calcHeuresNeg()"></td>
                     </tr>
                     <tr>
-                        <td style="padding: 5px; border: 1px solid #ddd;">Productible tranche 2 (&gt; h =1600 kWh/kWc/an)</td>
+                        <td style="padding: 5px; border: 1px solid #ddd;">Productible tranche 2 (&gt; <span id="hn_libelle_limite">1600</span> kWh/kWc/an)</td>
                         <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><span id="hn_prod_tranche2" style="font-weight: bold;">0</span></td>
                     </tr>
                     <tr>
@@ -1805,7 +1948,7 @@
 <!-- Scripts JavaScript -->
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/EtudesEconomiqueModal.js') }}?v=3"></script>
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/StockageVieillissement.js') }}?v=2"></script>
-<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/EtudesEconomiqueLogic.js') }}?v=23"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/EtudesEconomiqueLogic.js') }}?v=24"></script>
 <!-- Puissance, productible, taux d'autoconsommation, parts hiver/été : lus en base (calcul ProSolaire) + contrôle bloquant. -->
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/ReferenceProSolaire.js') }}?v=2"></script>
 
@@ -2016,12 +2159,12 @@ document.addEventListener('solarProjectDataSaved', injectProjectDataToEconomicSt
 <!-- Chiffrage & Devis Résidentiel (actif uniquement si typologie === 'Résidentielle', cf.
      ResidentielEtudeEcoView.js) — ?v= incrémenté à chaque correctif pour forcer le rechargement
      (évite qu'un navigateur serve une version en cache de ces fichiers, cf. correctifs round 3). -->
-<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielValidationRules.js') }}?v=19"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielValidationRules.js') }}?v=20"></script>
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielReusedSections.js') }}?v=15"></script>
-<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielCapexTable.js') }}?v=22"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielCapexTable.js') }}?v=23"></script>
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielFavorisChiffrage.js') }}?v=5"></script>
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielOpexTable.js') }}?v=13"></script>
-<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/DevisPdfGenerator.js') }}?v=17"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/DevisPdfGenerator.js') }}?v=19"></script>
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielChiffrageDB.js') }}?v=20"></script>
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/residentiel/ResidentielEtudeEcoView.js') }}?v=19"></script>
 <!-- Vue PRO / Grand projet : affichage vertical + Chiffrage CAPEX (Devis) du résidentiel. -->

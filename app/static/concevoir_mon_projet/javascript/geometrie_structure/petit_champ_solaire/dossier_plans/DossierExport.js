@@ -1,5 +1,5 @@
 import { download, loadJSZip } from '../../../declaration_prealable/DpExport.js';
-import { preparerDevis } from '../../dossier_devis.js?v=4';
+import { preparerDevis } from '../../dossier_devis.js?v=5';
 import { construireContexte, capturerTout } from './DossierCaptures.js?v=9';
 import { buildPdf, piecesOrdonnees, nomFichier } from './DossierPieces.js?v=13';
 import { codesPieces } from './DossierState.js?v=8';

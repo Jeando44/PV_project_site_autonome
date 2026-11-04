@@ -1,6 +1,6 @@
 import { charger as chargerPetitChampHorsEcran } from './petit_champ_solaire/dossier_plans/ConfigurateurHorsEcran.js?v=1';
 import { familleStructure as famille, libelleType } from './dossier_profils.js?v=1';
-import { controlerChiffrageAJour } from './dossier_devis.js?v=4';
+import { controlerChiffrageAJour } from './dossier_devis.js?v=5';
 
 /**
  * « Exporter le rapport » (ex « Exporter le dossier plans ») du parcours Chiffrage : point d'entrée UNIQUE, appelé par le bouton

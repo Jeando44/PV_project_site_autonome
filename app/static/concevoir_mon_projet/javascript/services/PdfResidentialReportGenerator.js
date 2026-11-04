@@ -85,27 +85,58 @@ export default class PdfResidentialReportGenerator {
     /**
      * PAGE "Notre entreprise - Pourquoi nous faire confiance ?"
      */
-    async addCompanyPage(doc, perso) {
+    async addCompanyPage(doc, perso, options = {}) {
         const p = perso || {};
+        // options.saisiesSeules (rapport PRO / Site autonome) : seules les rubriques renseignées
+        // sont imprimées, sans texte par défaut.
+        const saisiesSeules = !!options.saisiesSeules;
         let yPos = this.addSectionTitle(doc, 'Notre entreprise - Pourquoi nous faire confiance ?', this.marginTop);
 
-        yPos += 4;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(13);
-        doc.setTextColor(0, 128, 0);
-        doc.text('Notre mission', this.marginSide, yPos);
-        doc.setTextColor(0, 0, 0);
-        yPos += 8;
-        yPos = this.addBodyText(doc, clampWordCount(p.mission_text, MAX_MOTS_MISSION_SERVICES) || DEFAULT_MISSION, yPos);
+        // Nom de l'entreprise et chargé(e) d'affaires saisis dans la Personnalisation du rapport.
+        const nomEntreprise = String(p.nom_entreprise || '').trim();
+        const chargeAffaires = String(p.charge_affaires || '').trim();
+        if (nomEntreprise || chargeAffaires) {
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(14);
+            doc.setTextColor(22, 101, 52);
+            if (nomEntreprise) {
+                doc.text(nomEntreprise, this.marginSide, yPos, { maxWidth: this.getUsableWidth(doc) });
+                yPos += 7;
+            }
+            if (chargeAffaires) {
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(11);
+                doc.setTextColor(60, 60, 60);
+                doc.text(`Votre chargé(e) d'affaires : ${chargeAffaires}`, this.marginSide, yPos, { maxWidth: this.getUsableWidth(doc) });
+                yPos += 6;
+            }
+            doc.setTextColor(0, 0, 0);
+        }
 
-        yPos += 6;
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(13);
-        doc.setTextColor(0, 128, 0);
-        doc.text('Nos services', this.marginSide, yPos);
-        doc.setTextColor(0, 0, 0);
-        yPos += 8;
-        yPos = this.addBodyText(doc, clampWordCount(p.services_text, MAX_MOTS_MISSION_SERVICES) || DEFAULT_SERVICES, yPos);
+        const mission = clampWordCount(p.mission_text, MAX_MOTS_MISSION_SERVICES).trim();
+        if (mission || !saisiesSeules) {
+            yPos += 4;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.setTextColor(0, 128, 0);
+            doc.text('Notre mission', this.marginSide, yPos);
+            doc.setTextColor(0, 0, 0);
+            yPos += 8;
+            yPos = this.addBodyText(doc, mission || DEFAULT_MISSION, yPos);
+            yPos += 2;
+        }
+
+        const services = clampWordCount(p.services_text, MAX_MOTS_MISSION_SERVICES).trim();
+        if (services || !saisiesSeules) {
+            yPos += 4;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(13);
+            doc.setTextColor(0, 128, 0);
+            doc.text('Nos services', this.marginSide, yPos);
+            doc.setTextColor(0, 0, 0);
+            yPos += 8;
+            yPos = this.addBodyText(doc, services || DEFAULT_SERVICES, yPos);
+        }
 
         // Statistiques (3 chiffres clés), bornées pour éviter tout affichage aberrant même si une
         // valeur invalide a échappé au bornage client/serveur.
@@ -318,6 +349,8 @@ export default class PdfResidentialReportGenerator {
         // alignées à gauche (puce + libellé en gras + valeur) séparées par un filet discret —
         // remplace l'ancien bloc plein jaune à texte centré.
         const contacts = [
+            p.nom_entreprise ? { label: 'Entreprise', value: p.nom_entreprise } : null,
+            p.charge_affaires ? { label: "Chargé(e) d'affaires", value: p.charge_affaires } : null,
             p.telephone ? { label: 'Téléphone', value: p.telephone } : null,
             p.email ? { label: 'Email', value: p.email } : null,
             p.site_web ? { label: 'Site web', value: p.site_web } : null,

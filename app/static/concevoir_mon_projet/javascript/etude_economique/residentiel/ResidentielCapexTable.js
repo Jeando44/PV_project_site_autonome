@@ -54,10 +54,76 @@
         // Poste « Main-d'œuvre » compté dans le devis (case décochée par défaut : certaines
         // entreprises n'affichent pas ce prix). Décoché, le poste vaut 0 partout (totaux, marge,
         // moteur, devis imprimé) ; persisté avec le chiffrage (getData / setData).
-        inclureMainOeuvre: false
+        inclureMainOeuvre: false,
+        // Mode de chiffrage du CAPEX : 'wc' (prix au Wc x puissance), 'fixe' (CAPEX total en k€) ou
+        // 'detaille' (tableau du devis, défaut et chiffrages existants). Les deux saisies simples
+        // sont sur la base du moteur (HT en PRO, TTC en résidentiel) et persistées avec le
+        // chiffrage (getData / setData) ; les lignes du devis sont conservées, hors totaux.
+        capexMode: 'detaille',
+        capexPrixWc: null,
+        capexFixeK: null
     };
 
     const POSTE_MAIN_OEUVRE = 'main_oeuvre';
+
+    // ---------------------------------------------------------------------------------------------
+    // Modes de chiffrage simplifiés (« Prix au Wc » / « CAPEX total »)
+    // ---------------------------------------------------------------------------------------------
+
+    function modeSimple() {
+        return state.capexMode === 'wc' || state.capexMode === 'fixe';
+    }
+
+    /** Lit le mode et les deux saisies simples d'un chiffrage enregistré (absents = détaillé). */
+    function lireModeCapex(data) {
+        const mode = data && data.capexMode;
+        state.capexMode = Rules().CAPEX_MODES.includes(mode) ? mode : 'detaille';
+        const nombre = (v) => (v != null && v !== '' && Number.isFinite(Number(v)) ? Number(v) : null);
+        state.capexPrixWc = data ? nombre(data.capexPrixWc) : null;
+        state.capexFixeK = data ? nombre(data.capexFixeK) : null;
+    }
+
+    /** Validation de la saisie du mode simple courant (vide accepté : pas encore saisie). */
+    function validationCapexSimple() {
+        const rules = Rules();
+        if (state.capexMode === 'wc') return rules.validateCapexPrixWc(state.capexPrixWc);
+        if (state.capexMode === 'fixe') return rules.validateCapexFixe(state.capexFixeK, currentPuissanceKwc());
+        return { valid: true, message: '' };
+    }
+
+    /**
+     * CAPEX total (k€, base du moteur : HT en PRO, TTC en résidentiel) du mode simple courant, ou
+     * null si la saisie est vide / invalide ou la puissance inconnue en mode « Prix au Wc ».
+     * €/Wc x kWc x 1000 Wc / 1000 = k€ : CAPEX (k€) = prix au Wc x puissance (kWc).
+     */
+    function capexSimpleK() {
+        if (!modeSimple() || !validationCapexSimple().valid) return null;
+        if (state.capexMode === 'fixe') return state.capexFixeK;
+        const puissance = currentPuissanceKwc();
+        return state.capexPrixWc != null && puissance > 0 ? state.capexPrixWc * puissance : null;
+    }
+
+    /**
+     * Saisie manquante ou invalide du mode simple, pour le contrôle bloquant avant le calcul de
+     * rentabilité (EtudesEconomiqueLogic.js::validateStrictData). Vide en mode détaillé.
+     */
+    function erreursCapexSimple() {
+        if (!modeSimple()) return [];
+        const v = validationCapexSimple();
+        if (!v.valid) return [v.message];
+        const devise = Rules().getDeviseSymbol();
+        if (state.capexMode === 'wc' && state.capexPrixWc == null) return [`Prix au Wc (${devise}/Wc) : valeur requise (mode de chiffrage « Prix au Wc »).`];
+        if (state.capexMode === 'fixe' && state.capexFixeK == null) return [`CAPEX total (k${devise}) : valeur requise (mode de chiffrage « CAPEX total »).`];
+        if (capexSimpleK() == null) return ['Puissance du projet inconnue : lancez d’abord le calcul de production.'];
+        return [];
+    }
+
+    function changerModeCapex(mode) {
+        if (!Rules().CAPEX_MODES.includes(mode) || mode === state.capexMode) return;
+        state.capexMode = mode;
+        render();
+        pushTotalToEngine();
+    }
 
     /** Poste hors devis : « Main-d'œuvre » quand la case n'est pas cochée. */
     function posteExclu(poste) {
@@ -291,6 +357,8 @@
 
     /** Capex hors aides, sur la base HT (PRO) ou TTC (résidentiel) ; main-d'œuvre selon la case. */
     function baseMarge() {
+        // Mode simplifié : la saisie est déjà sur la base HT (PRO) / TTC (résidentiel).
+        if (modeSimple()) return (capexSimpleK() || 0) * 1000;
         const cle = state.profil === 'pro' ? 'totalHt' : 'totalTtc';
         return state.postes.reduce((s, poste) => (poste.deduction ? s : s + posteTotals(poste)[cle]), 0);
     }
@@ -792,8 +860,12 @@
     }
 
     /** Point d'intégration moteur : pousse le total CAPEX TTC (k€) dans #total_capex_display. */
-    function pushTotalToEngine() {
-        memoriserPrixActivationBv();
+    /**
+     * @param {boolean} [silencieux] - écrire le CAPEX du moteur sans signaler de modification (pas
+     *   d'enregistrement différé) : resynchronisation avant la collecte des saisies du calcul.
+     */
+    function pushTotalToEngine(silencieux) {
+        if (!silencieux) memoriserPrixActivationBv();
         const totals = grandTotals();
         if (state.profil === 'pro') {
             // PRO : updateCapexDisplays() lit getEngineCapexK() (HT), y ajoute le groupe électrogène
@@ -801,12 +873,15 @@
             // à jour la dette.
             if (typeof window.updateFinanceCalculations === 'function') window.updateFinanceCalculations();
             else if (typeof window.updateCapexDisplays === 'function') window.updateCapexDisplays();
-            document.dispatchEvent(new CustomEvent('residentielCapexChanged', { detail: totals }));
+            if (!silencieux) document.dispatchEvent(new CustomEvent('residentielCapexChanged', { detail: totals }));
             return;
         }
+        // Mode « Prix au Wc » / « CAPEX total » : la saisie (TTC) remplace le total du devis ; 0
+        // tant qu'elle manque (le calcul est alors bloqué par validateStrictData).
+        const totalTtcMoteur = modeSimple() ? (capexSimpleK() || 0) * 1000 : totals.totalTtc;
         const el = document.getElementById('total_capex_display');
         if (el) {
-            el.textContent = (totals.totalTtc / 1000).toFixed(2);
+            el.textContent = (totalTtcMoteur / 1000).toFixed(2);
         }
         // Ratio CAPEX (€/Wc) consommé par le moteur/l'affichage Pro-Grand — jamais de suffixe unité
         // ici (déjà fourni par le template autour de #ratio_capex_display).
@@ -814,13 +889,13 @@
         const puissanceKwc = currentPuissanceKwc();
         const puissanceWc = puissanceKwc * 1000;
         if (ratioEl) {
-            ratioEl.textContent = puissanceWc > 0 ? (totals.totalTtc / puissanceWc).toFixed(2) : '0';
+            ratioEl.textContent = puissanceWc > 0 ? (totalTtcMoteur / puissanceWc).toFixed(2) : '0';
         }
         // CORRECTIF (unité €/kWc disparaissait) : #resi_ratio_capex_kwc est un élément propre à la
         // vue résidentielle dont le texte INCLUT déjà l'unité (posé par render(), toujours appelé
         // juste avant pushTotalToEngine() dans ce fichier) — ne plus l'écraser ici avec la valeur
         // brute sans unité.
-        document.dispatchEvent(new CustomEvent('residentielCapexChanged', { detail: totals }));
+        if (!silencieux) document.dispatchEvent(new CustomEvent('residentielCapexChanged', { detail: totals }));
     }
 
     function inverterDatalistOptions() {
@@ -928,55 +1003,164 @@
         return html;
     }
 
+    /** Boutons « Prix au Wc » / « CAPEX total » / « Chiffrage détaillé » (choix exclusif). */
+    function renderModeCapex() {
+        const boutons = [
+            ['wc', 'Prix au Wc', 'CAPEX = prix au Wc x puissance du projet'],
+            ['fixe', 'CAPEX total', 'CAPEX total saisi directement en k' + Rules().getDeviseSymbol()],
+            ['detaille', 'Chiffrage détaillé', 'CAPEX = total du devis détaillé (postes et lignes)']
+        ];
+        return `<div class="resi-capex-mode" role="group" aria-label="Mode de chiffrage du CAPEX">
+                ${boutons.map(([mode, libelle, aide]) => `<button type="button" class="resi-capex-mode-btn${state.capexMode === mode ? ' active' : ''}" data-mode="${mode}" aria-pressed="${state.capexMode === mode}" title="${aide}">${libelle}</button>`).join('')}
+            </div>`;
+    }
+
+    /** Bloc de saisie du mode « Prix au Wc » ou « CAPEX total » (résultat mis à jour par majCapexSimple). */
+    function renderCapexSimple() {
+        const rules = Rules();
+        const devise = rules.getDeviseSymbol();
+        const taxe = suffixeTaxe();
+        const wc = state.capexMode === 'wc';
+        const valeur = wc ? state.capexPrixWc : state.capexFixeK;
+        const libelle = wc ? `Prix au Wc (${devise}/Wc ${taxe})` : `CAPEX total (k${devise} ${taxe})`;
+        return `<div class="resi-capex-simple">
+                <label class="resi-capex-simple-champ">${libelle}
+                    <input type="number" class="resi-capex-simple-input" step="any" value="${valeur == null ? '' : valeur}">
+                </label>
+                <div class="resi-field-error resi-capex-simple-erreur" style="display:none;"></div>
+                <div class="resi-capex-simple-info"></div>
+            </div>`;
+    }
+
+    /** Ratios et chips du total : base HT (PRO) ou TTC (résidentiel), mode simple ou devis. */
+    function chiffresTotal() {
+        const totals = grandTotals();
+        const puissanceKwc = currentPuissanceKwc();
+        const baseDevis = state.profil === 'pro' ? totals.totalHt : totals.totalTtc;
+        const base = modeSimple() ? (capexSimpleK() || 0) * 1000 : baseDevis;
+        return {
+            totals,
+            base,
+            ratioWc: puissanceKwc > 0 ? (base / (puissanceKwc * 1000)).toFixed(2) : '0',
+            ratioKwc: puissanceKwc > 0 ? (base / puissanceKwc).toFixed(2) : '0'
+        };
+    }
+
+    /**
+     * Met à jour le bloc de saisie simple et la ligne « Total Capex » sans re-rendu (la saisie en
+     * cours garde le focus) : bornes, message d'erreur sous le champ, CAPEX et ratios.
+     */
+    function majCapexSimple() {
+        if (!state.container || !modeSimple()) return;
+        const bloc = state.container.querySelector('.resi-capex-simple');
+        if (!bloc) return;
+        const rules = Rules();
+        const devise = rules.getDeviseSymbol();
+        const taxe = suffixeTaxe();
+        const puissance = currentPuissanceKwc();
+        const fmt = (v, d = 2) => Number(v).toLocaleString('fr-FR', { maximumFractionDigits: d });
+        const input = bloc.querySelector('.resi-capex-simple-input');
+        let bornes = null;
+        if (state.capexMode === 'wc') {
+            bornes = { min: rules.CAPEX_PRIX_WC_RULE.min, max: rules.CAPEX_PRIX_WC_RULE.max, unite: `${devise}/Wc` };
+        } else {
+            const t = rules.trancheCapexFixe(puissance);
+            if (t) bornes = { min: t.min, max: t.max, unite: `k${devise}`, libelle: t.libelle };
+        }
+        if (bornes) {
+            input.min = bornes.min;
+            input.max = bornes.max;
+            input.placeholder = `${fmt(bornes.min)} à ${fmt(bornes.max)}`;
+        } else {
+            input.removeAttribute('min');
+            input.removeAttribute('max');
+            input.placeholder = '';
+        }
+
+        const v = validationCapexSimple();
+        input.classList.toggle('is-invalid', !v.valid);
+        const erreur = bloc.querySelector('.resi-capex-simple-erreur');
+        erreur.textContent = v.message;
+        erreur.style.display = v.valid ? 'none' : 'block';
+
+        const k = capexSimpleK();
+        const pTxt = puissance > 0 ? `${fmt(puissance)} kWc` : 'inconnue';
+        let info = `Puissance du projet : ${pTxt}`;
+        if (bornes) info += ` — saisie autorisée : ${fmt(bornes.min)} à ${fmt(bornes.max)} ${bornes.unite}${bornes.libelle ? ` (${bornes.libelle})` : ''}`;
+        if (k != null) {
+            info += state.capexMode === 'wc'
+                ? ` — CAPEX total : ${fmt(k)} k${devise} ${taxe}`
+                : ` — soit ${fmt(k / puissance, 3)} ${devise}/Wc ${taxe}`;
+        }
+        bloc.querySelector('.resi-capex-simple-info').textContent = info;
+
+        const c = chiffresTotal();
+        const chipTotal = state.container.querySelector('#resi_total_capex_simple');
+        if (chipTotal) chipTotal.textContent = `${c.base.toFixed(2)} ${devise} ${taxe}`;
+        const chipWc = state.container.querySelector('#resi_ratio_capex_wc');
+        if (chipWc) chipWc.textContent = `${c.ratioWc} ${devise}/Wc${state.profil === 'pro' ? ' HT' : ''}`;
+        const chipKwc = state.container.querySelector('#resi_ratio_capex_kwc');
+        if (chipKwc) chipKwc.textContent = `${c.ratioKwc} ${devise}/kWc${state.profil === 'pro' ? ' HT' : ''}`;
+        majMarge();
+    }
+
     function render() {
         if (!state.container) return;
 
         const devise = Rules().getDeviseSymbol();
-        const totals = grandTotals();
-        const puissanceKwc = currentPuissanceKwc();
+        const { totals, ratioWc, ratioKwc, base } = chiffresTotal();
         // PRO : ratios sur le HT, base du calcul de rentabilité (TVA récupérable).
-        const baseRatio = state.profil === 'pro' ? totals.totalHt : totals.totalTtc;
         const suffixeRatio = state.profil === 'pro' ? ' HT' : '';
-        const ratioWc = puissanceKwc > 0 ? (baseRatio / (puissanceKwc * 1000)).toFixed(2) : '0';
-        const ratioKwc = puissanceKwc > 0 ? (baseRatio / puissanceKwc).toFixed(2) : '0';
+        const simple = modeSimple();
+        // Parcours Chiffrage (avant-projet) : le devis détaillé est le livrable, les boutons de mode ne
+        // sont proposés que pour revenir au détaillé d'un chiffrage déjà passé en mode simplifié.
+        const chiffrage = typeof window.isChiffrageProject === 'function' && window.isChiffrageProject();
+        const boutonsMode = (chiffrage && !simple) ? '' : renderModeCapex();
+        const masque = simple ? ' style="display:none;"' : '';
+
+        const chipsTotal = simple
+            ? `<span class="resi-total-chip" id="resi_total_capex_simple">${base.toFixed(2)} ${devise} ${suffixeTaxe()}</span>`
+            : `<span class="resi-total-chip" id="resi_total_capex_ht">${totals.totalHt.toFixed(2)} ${devise} HT</span>
+                <span class="resi-total-chip" id="resi_total_capex_ttc">${totals.totalTtc.toFixed(2)} ${devise} TTC</span>`;
 
         let html = `
             <div class="resi-section-header">
                 <div id="resi-capex-title-row" style="display:flex; align-items:center; justify-content:space-between; gap:15px; flex-wrap:wrap; width:100%;">
                     <h2 style="margin:0; flex:0 1 auto;">Chiffrage CAPEX (Devis)</h2>
-                    <div class="resi-capex-actions">
+                    <div class="resi-capex-actions"${masque}>
                         <button type="button" class="btn btn-secondary resi-favoris-btn" title="Prix enregistrés dans ce navigateur, à appliquer au chiffrage">&#9733; Favoris chiffrage</button>
                         <button type="button" class="btn btn-secondary resi-chiffrage-initial-btn" title="Reprendre le chiffrage réalisé en type d'étude Chiffrage (enregistré en base)">Ouvrir le chiffrage initial</button>
                         <button type="button" class="btn btn-secondary resi-sync-calepinage-btn">Synchroniser depuis le calepinage</button>
                     </div>
                 </div>
-                <div class="radio-group resi-view-toggle" style="display:flex; gap:15px;">
+                ${boutonsMode}
+                ${simple ? renderCapexSimple() : `<div class="radio-group resi-view-toggle" style="display:flex; gap:15px;">
                     <label><input type="radio" name="resi_capex_view" value="synthetique" ${state.viewMode === 'synthetique' ? 'checked' : ''}> Vue synthétique</label>
                     <label><input type="radio" name="resi_capex_view" value="detaille" ${state.viewMode === 'detaille' ? 'checked' : ''}> Vue détaillée</label>
                     <label class="resi-inclure-mo" title="Décoché : le poste Main-d'œuvre vaut 0 et n'apparaît pas sur le devis"><input type="checkbox" class="resi-inclure-mo-case" ${state.inclureMainOeuvre ? 'checked' : ''}> Inclure la main-d’œuvre dans le devis</label>
-                </div>
-                ${renderTvaGlobale()}
+                </div>`}
+                ${simple ? `<div class="resi-tva-globale-row">${renderMarge()}</div>` : renderTvaGlobale()}
             </div>
-            <div class="resi-postes-list">
+            ${simple ? '' : `<div class="resi-postes-list">
                 ${state.viewMode === 'synthetique' ? renderSynthTable() : renderDetailBlocks()}
-            </div>
+            </div>`}
             <p class="resi-capex-grand-total">
                 <strong>Total Capex :</strong>
-                <span class="resi-total-chip" id="resi_total_capex_ht">${totals.totalHt.toFixed(2)} ${devise} HT</span>
-                <span class="resi-total-chip" id="resi_total_capex_ttc">${totals.totalTtc.toFixed(2)} ${devise} TTC</span>
-                <span class="resi-total-chip resi-total-chip-ratio">${ratioWc} ${devise}/Wc${suffixeRatio}</span>
+                ${chipsTotal}
+                <span class="resi-total-chip resi-total-chip-ratio" id="resi_ratio_capex_wc">${ratioWc} ${devise}/Wc${suffixeRatio}</span>
                 <span class="resi-total-chip resi-total-chip-ratio" id="resi_ratio_capex_kwc">${ratioKwc} ${devise}/kWc${suffixeRatio}</span>
                 <span class="resi-total-marge">
                     <span class="resi-total-chip resi-total-chip-cible" title="Prix de vente cible (ligne TVA)">Prix de vente cible : <strong class="resi-total-prix-cible">–</strong></span>
                     <span class="resi-total-chip resi-total-chip-cible" title="Marge de vente calculée sur ce Capex">Marge de vente : <strong class="resi-total-marge-vente">–</strong></span>
                 </span>
             </p>
-            <p class="resi-devis-controls-row">
+            <p class="resi-devis-controls-row"${masque}>
                 <span id="resi-devis-controls-anchor" style="display:contents;"></span>
             </p>`;
 
         state.container.innerHTML = html;
         attachEvents();
+        majCapexSimple();
     }
 
     /**
@@ -1019,6 +1203,22 @@
         if (tvaGlobaleSelect) tvaGlobaleSelect.addEventListener('change', () => changerTvaGlobale(tvaGlobaleSelect.value));
         const inclureMoCase = state.container.querySelector('.resi-inclure-mo-case');
         if (inclureMoCase) inclureMoCase.addEventListener('change', () => changerInclureMainOeuvre(inclureMoCase.checked));
+        state.container.querySelectorAll('.resi-capex-mode-btn').forEach((btn) => {
+            btn.addEventListener('click', () => changerModeCapex(btn.dataset.mode));
+        });
+        const simpleInput = state.container.querySelector('.resi-capex-simple-input');
+        if (simpleInput) {
+            simpleInput.addEventListener('input', () => {
+                const brut = simpleInput.value.trim();
+                // Saisie brute conservée (jamais corrigée) ; hors bornes : champ en rouge, message
+                // dessous et enregistrement bloqué (erreursValidation), CAPEX moteur à 0.
+                const valeur = brut === '' || !Number.isFinite(Number(brut)) ? null : Number(brut);
+                if (state.capexMode === 'wc') state.capexPrixWc = valeur;
+                else state.capexFixeK = valeur;
+                majCapexSimple();
+                pushTotalToEngine();
+            });
+        }
         brancherMarge();
 
         const syncBtn = state.container.querySelector('.resi-sync-calepinage-btn');
@@ -1173,8 +1373,10 @@
             lireModeTva(initialData);
             lireCibles(initialData);
             lireMainOeuvre(initialData);
+            lireModeCapex(initialData);
         } else {
             lireCibles(null);
+            lireModeCapex(null);
             state.inclureMainOeuvre = false;
             state.postes = rules.buildDefaultPostes(currentPuissanceKwc());
             // Détaillée par défaut sur un projet neuf : la vue Synthétique n'affiche que des
@@ -1226,6 +1428,15 @@
                 puissanceInput.addEventListener('change', reapplyDefaultTvaRates);
                 puissanceInput.addEventListener('input', majMarge);
                 puissanceInput.addEventListener('change', majMarge);
+                // Mode « Prix au Wc » : CAPEX = prix x puissance ; « CAPEX total » : bornes selon la
+                // puissance. Recalculés et transmis au moteur à chaque changement de puissance.
+                const suivrePuissance = () => {
+                    if (!modeSimple()) return;
+                    majCapexSimple();
+                    pushTotalToEngine();
+                };
+                puissanceInput.addEventListener('input', suivrePuissance);
+                puissanceInput.addEventListener('change', suivrePuissance);
             }
         }
     }
@@ -1246,7 +1457,14 @@
                 erreurs.push(conv.error || 'Taux de conversion invalide (0 < taux < 1000).');
             }
         }
-        state.postes.forEach((poste) => {
+        // Saisies simples contrôlées dans tous les modes (enregistrées même inactives), comme le
+        // serveur (valider_capex_simple) : CAPEX total selon la puissance seulement s'il est actif.
+        // Mode simplifié : lignes du devis conservées, hors totaux et hors contrôle.
+        const vWc = rules.validateCapexPrixWc(state.capexPrixWc);
+        if (!vWc.valid) erreurs.push(vWc.message);
+        const vFixe = rules.validateCapexFixe(state.capexFixeK, currentPuissanceKwc(), state.capexMode === 'fixe');
+        if (!vFixe.valid) erreurs.push(vFixe.message);
+        if (!modeSimple()) state.postes.forEach((poste) => {
             if (posteExclu(poste)) return;
             (poste.lines || []).forEach((line) => {
                 if (estExclue(line)) return;
@@ -1278,6 +1496,10 @@
             margeCible: state.margeCible,
             // Lu par DevisPdfGenerator.js (poste retiré du devis) et par le recalcul serveur des totaux.
             inclureMainOeuvre: state.inclureMainOeuvre,
+            // Mode de chiffrage et saisies simples (validés par le serveur avant enregistrement).
+            capexMode: state.capexMode,
+            capexPrixWc: state.capexPrixWc,
+            capexFixeK: state.capexFixeK,
             tauxConversion: (conv && conv.active && conv.valid) ? conv.rate : 1,
             conversionDevise: conv
         };
@@ -1300,6 +1522,7 @@
         lireModeTva(data);
         lireCibles(data);
         lireMainOeuvre(data && Array.isArray(data.postes) && data.postes.length ? data : null);
+        lireModeCapex(data);
         applyConversionLocks();
         syncActivationBv();
         syncPanneauxCalepinage(false);
@@ -1319,7 +1542,19 @@
         erreursValidation,
         // Profil PRO (EtudesEconomiqueLogic.js::updateCapexDisplays, pro/ProEtudeEcoView.js).
         isProActive: () => !!state.container && state.profil === 'pro',
-        getEngineCapexK: () => grandTotals().totalHt / 1000,
+        // Mode simplifié : saisie (HT en PRO) ; 0 tant qu'elle manque (calcul bloqué par
+        // erreursCapexSimple dans validateStrictData).
+        getEngineCapexK: () => (modeSimple() ? (capexSimpleK() || 0) : grandTotals().totalHt / 1000),
+        // Mode de chiffrage du CAPEX (EtudesEconomiqueLogic.js : contrôle avant calcul, rapport PDF).
+        getModeCapex: () => state.capexMode,
+        getCapexSimple: () => ({ mode: state.capexMode, prixWc: state.capexPrixWc, fixeK: state.capexFixeK, capexK: capexSimpleK() }),
+        erreursCapexSimple,
+        changerModeCapex,
+        /** Recalcule et transmet le CAPEX au moteur (appelé avant chaque collecte des saisies). */
+        synchroniserMoteur() {
+            if (!state.container) return;
+            pushTotalToEngine(true);
+        },
         /** Relit les types de structure (calepinage ou type de projet) ; re-rendu si changement. */
         refreshTypesStructure() {
             if (state.profil !== 'pro') return;

@@ -9,7 +9,7 @@ import {
 import { echelleAjustee } from '../../petit_champ_solaire/dossier_plans/DossierVectoriel.js?v=5';
 import { LIBELLES_FORMAT, codesPieces, ECHELLE_SITUATION_PROCHE, champsAvecPlans } from './OmbriereDossierState.js?v=9';
 import { SECTIONS_REGLEMENTATION } from './reglementation_modele.js?v=5';
-import { dessinerPieceDevis, titreDossierPlans } from '../../dossier_devis.js?v=4';
+import { dessinerPieceDevis, titreDossierPlans } from '../../dossier_devis.js?v=5';
 
 /**
  * Phase d'ASSEMBLAGE du dossier de plans « projet entier » (profil ombrières, toitures ou mixte :

@@ -36,6 +36,15 @@
 
     const MESSAGE_VERROU = 'Cet onglet n\'enregistre plus rien (projet modifié ailleurs ou changé dans un autre onglet) : rechargez la page.';
 
+    // Projet tout juste créé (ou autre projet modifié) mais pas encore ouvert dans cette page
+    // (DataManager.projetQuitteEnregistre, parametreProjetFormManager.js) : les modules de la page
+    // portent encore l'état du projet quitté, déjà enregistré. Rien ne doit partir vers le nouveau
+    // projet avant son ouverture (demande 2026-11-04 : le formulaire reste affiché après la création).
+    function projetPasEncoreCharge(projetId) {
+        const dm = window.dataManager;
+        return !!(dm && dm.projetQuitteEnregistre && projetId && String(dm.projetQuitteEnregistre) === String(projetId));
+    }
+
     function verrouille() {
         return typeof window.projetActifVerrouille === 'function' && window.projetActifVerrouille();
     }
@@ -138,13 +147,13 @@
      * Version synchrone : seulement les écarts déjà connus (fermeture de l'onglet).
      */
     function modificationsNonEnregistreesConnues() {
-        if (!projetActif() || verrouille()) return [];
+        if (!projetActif() || verrouille() || projetPasEncoreCharge(projetActif())) return [];
         return sources({}).filter((s) => s.actif && s.nonEnregistre(false) === true).map((s) => s.libelle);
     }
 
     /** Idem, en lisant au besoin la référence en base (liens du menu). */
     async function modificationsNonEnregistrees() {
-        if (!projetActif() || verrouille()) return [];
+        if (!projetActif() || verrouille() || projetPasEncoreCharge(projetActif())) return [];
         const actives = sources({}).filter((s) => s.actif);
         const etats = await Promise.all(actives.map((s) => Promise.resolve(s.nonEnregistre(true)).catch(() => false)));
         return actives.filter((s, i) => etats[i] === true).map((s) => s.libelle);
@@ -161,6 +170,7 @@
         }
         const projetId = projetActif();
         if (!projetId) return { ok: false, bloquant: true, echecs: [], message: 'Aucun projet ouvert.' };
+        if (projetPasEncoreCharge(projetId)) return { ok: true, bloquant: false, echecs: [], skipped: true };
 
         const echecs = [];
         for (const source of sources({ ...options, projetId })) {
@@ -184,17 +194,32 @@
         return { ok: echecs.length === 0, bloquant: echecs.length > 0, echecs, message };
     }
 
-    /** Met à jour la variante ouverte (A-D) avec l'état en base ; aucune variante : rien n'est créé. */
-    async function enregistrerVarianteActive(projetId) {
-        const base = `/concevoir_mon_projet/parametre-projet/${encodeURIComponent(projetId)}`;
-        const etat = await (await fetch(`${base}/revisions`)).json();
-        if (!etat || !etat.success) return { success: false, message: (etat && etat.message) || 'Variantes illisibles.' };
-        if (!etat.active_indice) return { success: true, skipped: true };
+    const baseProjet = (projetId) => `/concevoir_mon_projet/parametre-projet/${encodeURIComponent(projetId)}`;
+
+    async function lireVariantes(projetId) {
+        return (await fetch(`${baseProjet(projetId)}/revisions`)).json();
+    }
+
+    /**
+     * Enregistre l'état en base dans une variante.
+     * Sans `choix` : met à jour la variante ouverte (A-D) ; aucune variante : rien n'est créé.
+     * Avec `choix` ({action, indice, libelle}, fenêtre de l'icône « Sauvegarder ») : variante choisie.
+     */
+    async function enregistrerVarianteActive(projetId, choix) {
+        const base = baseProjet(projetId);
+        if (!choix) {
+            const etat = await lireVariantes(projetId);
+            if (!etat || !etat.success) return { success: false, message: (etat && etat.message) || 'Variantes illisibles.' };
+            if (!etat.active_indice) return { success: true, skipped: true };
+        }
         if (String(projetActif()) !== String(projetId)) return { success: false, message: 'Projet changé pendant l\'enregistrement.' };
+        const corps = { action: (choix && choix.action) || 'enregistrer' };
+        if (choix && choix.action === 'ecraser') corps.indice = choix.indice;
+        if (choix && typeof choix.libelle === 'string') corps.libelle = choix.libelle;
         const res = await (await fetch(`${base}/revision/save`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action: 'enregistrer' }),
+            body: JSON.stringify(corps),
         })).json();
         if (res && res.success) {
             document.dispatchEvent(new CustomEvent('varianteActiveChangee', {
@@ -205,14 +230,24 @@
     }
 
     let sauvegardeEnCours = null;
+    let dernierClicIcone = 0;
+    document.addEventListener('click', (e) => {
+        if (e.target && e.target.closest && e.target.closest('#save-projet-button')) dernierClicIcone = Date.now();
+    }, true);
 
     /**
      * Sauvegarde complète du projet ouvert : données, puissance projet, variante active.
-     * @param {{silencieux?: boolean}} [options] - silencieux : pas de message de réussite.
+     * @param {{silencieux?: boolean, choisirVariante?: boolean}} [options] - silencieux : pas de message
+     *   de réussite ; choisirVariante (clic sur l'icône « Sauvegarder ») : si le projet a déjà une
+     *   variante, fenêtre de choix (mettre à jour l'ouverte, en écraser une autre, en créer une) AVANT
+     *   tout enregistrement — annuler n'enregistre rien. Les autres appels (fenêtre « Modifications non
+     *   enregistrées »…) mettent toujours à jour la variante ouverte, sans question.
      * @returns {Promise<{ok: boolean, message?: string, indice?: string}>}
      */
     function sauvegarderProjet(options = {}) {
         if (sauvegardeEnCours) return sauvegardeEnCours;
+        // Clic sur l'icône juste avant (ButtonControl.js pouvant rester en cache sans l'option).
+        if (!options.silencieux && Date.now() - dernierClicIcone < 1500) options = { ...options, choisirVariante: true };
         sauvegardeEnCours = executerSauvegarde(options).finally(() => { sauvegardeEnCours = null; });
         return sauvegardeEnCours;
     }
@@ -226,6 +261,23 @@
         if (!projetId) {
             notifier('Aucun projet ouvert : rien à enregistrer.', true);
             return { ok: false };
+        }
+
+        let choixVariante = null;
+        const ui = window.uiManagerInstance;
+        if (options.choisirVariante && ui && typeof ui.choisirVarianteSauvegarde === 'function') {
+            let etat = null;
+            try { etat = await lireVariantes(projetId); } catch (err) { console.warn('[SauvegardeProjet] variantes :', err); }
+            if (!etat || !etat.success) {
+                notifier(`Projet non enregistré : ${(etat && etat.message) || 'variantes du projet illisibles (connexion interrompue ?)'}.`, true);
+                return { ok: false };
+            }
+            const choix = await ui.choisirVarianteSauvegarde(etat);
+            if (!choix) {
+                notifier('Enregistrement annulé : rien n\'a été modifié.', false);
+                return { ok: false, annule: true };
+            }
+            if (!choix.aucune) choixVariante = choix;
         }
         notifier('Enregistrement du projet…', false, true);
 
@@ -249,7 +301,7 @@
 
         let indice = null;
         try {
-            const variante = await enregistrerVarianteActive(projetId);
+            const variante = await enregistrerVarianteActive(projetId, choixVariante);
             if (variante && variante.success === false) {
                 notifier(`Données enregistrées, mais la variante n'a pas été mise à jour : ${variante.message || 'erreur'}.`, true);
                 return { ok: false, message: variante.message };

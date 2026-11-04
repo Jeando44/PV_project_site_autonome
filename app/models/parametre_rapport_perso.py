@@ -27,6 +27,8 @@ class PersonnalisationRapport(db.Model):
     adresse = db.Column(db.String(300), nullable=True)
     email = db.Column(db.String(200), nullable=True)
     site_web = db.Column(db.String(300), nullable=True)
+    # Prénom & nom du/de la chargé(e) d'affaires (page de garde, devis, page « Passez à l'action »).
+    charge_affaires = db.Column(db.String(100), nullable=True)
 
     # Contenu de la page "Notre entreprise" (Résidentielle uniquement) — bornage (mots/valeurs)
     # appliqué côté app (client ET serveur), pas au niveau de la colonne.
@@ -48,6 +50,7 @@ class PersonnalisationRapport(db.Model):
             'adresse': self.adresse,
             'email': self.email,
             'site_web': self.site_web,
+            'charge_affaires': self.charge_affaires,
             'mission_text': self.mission_text,
             'services_text': self.services_text,
             'stat_installations': self.stat_installations,

@@ -26,7 +26,7 @@
  * l'export propre à l'autoconsommation), qui appelle le même service singleton que le bouton
  * "Rapport projet" du calepinage (cf. ButtonControl.js), depuis LA PAGE PARENTE (pas l'iframe).
  */
-import ExportService from '../../services/ExportService.js?v=12';
+import ExportService from '../../services/ExportService.js?v=13';
 
 (function () {
     'use strict';

@@ -14,7 +14,17 @@ résidentiel n'était pas dans la copie, toutes les variantes affichaient le mê
 Restauration symétrique : une table présente dans la copie avec 0 ligne VIDE la table de travail
 (sinon une variante sans IRVE héritait de l'IRVE de la variante ouverte avant elle). Seule une table
 ABSENTE de la copie (ajoutée au registre après la capture) est laissée telle quelle.
+
+Courbes de charge (2026-11-04, remplace la décision « conso commune » du 2026-10-09) : chaque variante
+a ses propres fichiers de consommation (consommation_files, consommation_files_acc). Leur contenu
+binaire (plusieurs Mo) n'entre pas dans le JSON de la copie : il est rangé dans
+projets_revisions_fichiers et référencé par son empreinte sha256 (cf. capturer_etat(fichiers=...),
+synchroniser_fichiers, lire_fichiers).
 """
+import hashlib
+import html
+import re
+import unicodedata
 from datetime import date, datetime
 from app.utils.dates import utc_maintenant
 
@@ -27,12 +37,11 @@ FORMAT_VERSION = 2
 
 # Données communes à toutes les variantes (jamais capturées ni restaurées) :
 #  - parametres_projet hors COLONNES_PROJET_VARIANTE (nom, adresse, zones climatiques, type d'étude...) ;
-#  - consommation_files / consommation_files_acc : consommation du SITE, pas une hypothèse de conception ;
 #  - project_shares, quotas (dossiers, DP, ACC, Switchgrid) ;
 #  - calepinages : ancien moteur de calepinage, remplacé par calepinages_maison.
 #  - projet_versions : version des données du projet (verrou optimiste, services/version_projet.py).
 TABLES_COMMUNES = (
-    'consommation_files', 'consommation_files_acc', 'project_shares', 'calepinages',
+    'project_shares', 'calepinages', 'projets_revisions_fichiers',
     'ombriere_dossier_quotas', 'petit_champ_dossier_quotas', 'dossier_plans_quotas', 'dp_usage_quotas',
     'switchgrid_consents', 'switchgrid_orders',
     'projet_versions',
@@ -60,13 +69,18 @@ COLONNES_PROJET_DERIVEES = ('surface_projetee_maison_m2',)
 COLONNE_INDICE = 'indice_projet'
 
 # Colonnes jamais copiées : clé technique, rattachement au projet, horodatage propre à la ligne.
-_COLONNES_EXCLUES = {'id', 'projet_id', 'created_at', 'updated_at', COLONNE_INDICE}
+_COLONNES_EXCLUES = {'id', 'projet_id', 'parametre_projet_id', 'created_at', 'updated_at', COLONNE_INDICE}
+
+# Colonne binaire des tables de fichiers : remplacée dans la copie JSON par son empreinte (clé ci-dessous).
+COLONNE_FICHIER = 'file_data'
+CLE_EMPREINTE = '_fichier_sha256'
 
 
 def tables_variante():
     """(clé de la copie, modèle) de chaque table de travail propre à la variante. Import différé :
     ce module est importé par les routes, avant que tous les modèles ne soient chargés."""
     from app.models.calepinage import CalepinageMaison, GeometrieProjet
+    from app.models.consommation_file import ConsommationFile, ConsommationFileAcc
     from app.models.dossier_plans import DossierPlans
     from app.models.etude_economique_config import EtudeEconomiqueConfig
     from app.models.irve import IrveConfig
@@ -90,11 +104,32 @@ def tables_variante():
         ('autonomies_site', AutonomieSite),
         ('aper_configs', AperConfig),
         ('aper_polygones', AperPolygone),
+        # Courbes de charge du site (ACI et participants ACC), propres à chaque variante.
+        ('consommation_files', ConsommationFile),
+        ('consommation_files_acc', ConsommationFileAcc),
     )
 
 
+def _colonne_projet(modele):
+    """Nom de la colonne de rattachement au projet (projet_id, ou parametre_projet_id pour la conso)."""
+    return 'projet_id' if 'projet_id' in modele.__table__.columns else 'parametre_projet_id'
+
+
+def _lignes_du_projet(modele, projet_id):
+    return modele.query.filter_by(**{_colonne_projet(modele): projet_id})
+
+
 def _colonnes_copiees(modele):
-    return [c for c in modele.__table__.columns if c.name not in _COLONNES_EXCLUES]
+    return [c for c in modele.__table__.columns
+            if c.name not in _COLONNES_EXCLUES and c.name != COLONNE_FICHIER]
+
+
+def _a_fichier(modele):
+    return COLONNE_FICHIER in modele.__table__.columns
+
+
+def empreinte(contenu):
+    return hashlib.sha256(contenu or b'').hexdigest()
 
 
 def _vers_json(colonne, valeur):
@@ -113,13 +148,27 @@ def _depuis_json(colonne, valeur):
     return valeur
 
 
-def capturer_etat(projet):
-    """Copie de l'état de conception du projet, sérialisable en JSON (colonne ProjetRevision.donnees)."""
+def capturer_etat(projet, fichiers=None):
+    """Copie de l'état de conception du projet, sérialisable en JSON (colonne ProjetRevision.donnees).
+
+    `fichiers` (dict) reçoit le contenu binaire des fichiers référencés ({sha256: octets}), à ranger
+    avec synchroniser_fichiers(). Sans dict, les tables de fichiers ne sont pas capturées (absentes de
+    la copie, elles seraient laissées telles quelles à l'ouverture)."""
     tables = {}
     for cle, modele in tables_variante():
+        if _a_fichier(modele) and fichiers is None:
+            continue
         colonnes = _colonnes_copiees(modele)
-        lignes = modele.query.filter_by(projet_id=projet.id).all()
-        tables[cle] = [{c.name: _vers_json(c, getattr(ligne, c.name)) for c in colonnes} for ligne in lignes]
+        copie = []
+        for ligne in _lignes_du_projet(modele, projet.id).all():
+            valeurs = {c.name: _vers_json(c, getattr(ligne, c.name)) for c in colonnes}
+            if _a_fichier(modele):
+                contenu = getattr(ligne, COLONNE_FICHIER) or b''
+                sha = empreinte(contenu)
+                fichiers[sha] = contenu
+                valeurs[CLE_EMPREINTE] = sha
+            copie.append(valeurs)
+        tables[cle] = copie
 
     colonnes_projet = {c.name: c for c in projet.__table__.columns}
     projet_valeurs = {
@@ -141,25 +190,36 @@ def copie_restaurable(donnees):
         and isinstance(donnees.get('tables'), dict)
 
 
-def restaurer_etat(projet, donnees):
+def restaurer_etat(projet, donnees, fichiers=None):
     """Réécrit les tables de travail du projet depuis une copie (sans commit : à l'appelant de
-    valider la transaction, tout ou rien). Retourne les avertissements (tables absentes de la copie)."""
+    valider la transaction, tout ou rien). Retourne les avertissements (tables absentes de la copie).
+
+    `fichiers` : {sha256: octets} de la variante (lire_fichiers). Un fichier référencé introuvable
+    lève ValueError : mieux vaut refuser l'ouverture que restaurer une courbe vide."""
     if not copie_restaurable(donnees):
         raise ValueError('Copie de variante dans un format non restaurable')
 
+    fichiers = fichiers or {}
     avertissements = []
     tables = donnees['tables']
     for cle, modele in tables_variante():
         if cle not in tables:
             avertissements.append(f"{cle} : absente de la copie, données actuelles conservées")
             continue
-        modele.query.filter_by(projet_id=projet.id).delete(synchronize_session=False)
+        avec_fichier = _a_fichier(modele)
+        if avec_fichier:
+            manquants = [v for v in tables[cle] or [] if (v or {}).get(CLE_EMPREINTE) not in fichiers]
+            if manquants:
+                raise ValueError(f"{cle} : {len(manquants)} fichier(s) de la variante introuvable(s)")
+        _lignes_du_projet(modele, projet.id).delete(synchronize_session=False)
         colonnes = {c.name: c for c in _colonnes_copiees(modele)}
         for valeurs in tables[cle] or []:
-            ligne = modele(projet_id=projet.id)
+            ligne = modele(**{_colonne_projet(modele): projet.id})
             for nom, valeur in (valeurs or {}).items():
                 if nom in colonnes:  # colonne supprimée du modèle depuis la capture : ignorée
                     setattr(ligne, nom, _depuis_json(colonnes[nom], valeur))
+            if avec_fichier:
+                setattr(ligne, COLONNE_FICHIER, fichiers[valeurs[CLE_EMPREINTE]])
             db.session.add(ligne)
 
     colonnes_projet = {c.name: c for c in projet.__table__.columns}
@@ -178,7 +238,7 @@ def rattacher_indice(projet, indice):
     db.session.flush()  # lignes tout juste restaurées par restaurer_etat() comprises
     for _cle, modele in tables_variante():
         if COLONNE_INDICE in modele.__table__.columns:
-            modele.query.filter_by(projet_id=projet.id).update(
+            _lignes_du_projet(modele, projet.id).update(
                 {COLONNE_INDICE: indice}, synchronize_session=False)
 
 
@@ -189,3 +249,51 @@ def prochain_indice_libre(indices_existants):
         if indice not in existants:
             return indice
     return None
+
+
+
+def synchroniser_fichiers(revision, fichiers):
+    """Range le contenu des fichiers capturés ({sha256: octets}) dans la variante (sans commit) :
+    ajoute les nouveaux, supprime ceux qui ne sont plus référencés, ne réécrit pas les autres."""
+    from app.models.projet_revision import ProjetRevisionFichier
+    if revision.id is None:
+        db.session.flush()
+    existants = {sha for (sha,) in db.session.query(ProjetRevisionFichier.sha256)
+                 .filter_by(revision_id=revision.id).all()}
+    perimes = existants - set(fichiers)
+    if perimes:
+        ProjetRevisionFichier.query.filter(
+            ProjetRevisionFichier.revision_id == revision.id,
+            ProjetRevisionFichier.sha256.in_(perimes),
+        ).delete(synchronize_session=False)
+    for sha, contenu in fichiers.items():
+        if sha not in existants:
+            db.session.add(ProjetRevisionFichier(revision_id=revision.id, sha256=sha, file_data=contenu))
+
+
+def lire_fichiers(revision):
+    """{sha256: octets} des fichiers rangés dans la variante."""
+    from app.models.projet_revision import ProjetRevisionFichier
+    return {f.sha256: f.file_data for f in ProjetRevisionFichier.query.filter_by(revision_id=revision.id).all()}
+
+
+_BALISE = re.compile(r'<[^>]*>')
+_ESPACES = re.compile(r'\s+')
+
+
+def nettoyer_libelle(valeur, longueur_max=None):
+    """Libellé court d'une variante : texte brut sur une ligne, sans balise ni caractère de contrôle,
+    espaces regroupés. Retourne (libellé ou None si vide, message d'erreur ou None).
+    Refus (pas de troncature silencieuse) au-delà de `longueur_max` caractères."""
+    from app.models.projet_revision import LIBELLE_MAX
+    longueur_max = longueur_max or LIBELLE_MAX
+    if valeur is None:
+        return None, None
+    if not isinstance(valeur, str):
+        return None, 'Le libellé de la variante doit être un texte.'
+    texte = html.unescape(_BALISE.sub('', valeur))
+    texte = ''.join(' ' if unicodedata.category(ch)[0] == 'C' else ch for ch in texte)
+    texte = _ESPACES.sub(' ', unicodedata.normalize('NFC', texte)).strip()
+    if len(texte) > longueur_max:
+        return None, f'Le libellé de la variante ne doit pas dépasser {longueur_max} caractères ({len(texte)} saisis).'
+    return (texte or None), None

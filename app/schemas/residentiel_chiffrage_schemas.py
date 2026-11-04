@@ -188,6 +188,12 @@ class ResidentielCapexSchema(BaseModel):
     # bornes (cf. poste_hors_devis). Absent (chiffrage antérieur à la case) : compté, comme avant.
     inclureMainOeuvre: Optional[bool] = None
     tauxConversion: Optional[float] = None
+    # Mode de chiffrage du CAPEX et saisies simples (absents sur un chiffrage antérieur : détaillé).
+    # Bornes contrôlées par valider_capex_simple() (la tranche du CAPEX total dépend de la puissance
+    # du projet, connue du serveur seulement).
+    capexMode: Optional[Literal['wc', 'fixe', 'detaille']] = None
+    capexPrixWc: Optional[float] = None
+    capexFixeK: Optional[float] = None
 
     @field_validator('margeCible')
     @classmethod
@@ -236,6 +242,81 @@ class ResidentielCapexSchema(BaseModel):
                     f"Prix cible : entre {mini:g} et {maxi:g} {unite} (saisi : {self.prixCible.valeur:g})."
                 )
         return self
+
+
+# Modes de chiffrage du CAPEX simplifiés — miroir de CAPEX_PRIX_WC_RULE / CAPEX_FIXE_TRANCHES
+# (ResidentielValidationRules.js). Saisies sur la base du moteur (HT en PRO, TTC en résidentiel).
+CAPEX_MODES_SIMPLES = ('wc', 'fixe')
+CAPEX_PRIX_WC_BORNES = (0.1, 5.0)  # €/Wc
+# (puissance min incluse, puissance max exclue — incluse pour la dernière —, CAPEX min, CAPEX max en k€)
+CAPEX_FIXE_TRANCHES = (
+    (0.0, 3.0, 0.1, 10.0, 'moins de 3 kWc'),
+    (3.0, 9.0, 3.0, 30.0, 'de 3 à 9 kWc'),
+    (9.0, 100.0, 9.0, 180.0, 'de 9 à 100 kWc'),
+    (100.0, 500.0, 50.0, 800.0, 'de 100 à 500 kWc'),
+    (500.0, 5000.0, 200.0, 10000.0, 'de 500 à 5 000 kWc'),
+)
+# CAPEX total enregistré pour un mode inactif : seulement l'enveloppe de toutes les tranches (la
+# puissance a pu changer depuis la saisie).
+CAPEX_FIXE_ENVELOPPE = (0.1, 10000.0)
+
+
+def _bornes_converties(mini: float, maxi: float, facteur: float) -> Tuple[float, float]:
+    # Convention de cette édition (cf. PrixCibleSchema / validate_capex_business_rules) : min réduit
+    # seulement si facteur < 1 (arrondi au 1/10 000), max arrondi au centime.
+    return (round(mini * facteur, 4) if facteur < 1.0 else mini), round(maxi * facteur, 2)
+
+
+def tranche_capex_fixe(puissance_kwc, facteur: float = 1.0):
+    """(min, max, libellé) du CAPEX total (k€) pour la puissance du projet, ou None hors 0-5 000 kWc.
+    Puissance arrondie au centième, comme le champ « Puissance installée » lu par le navigateur."""
+    if puissance_kwc is None or isinstance(puissance_kwc, bool):
+        return None
+    try:
+        p = round(float(puissance_kwc), 2)
+    except (TypeError, ValueError):
+        return None
+    if p <= 0:
+        return None
+    for i, (p_min, p_max, c_min, c_max, libelle) in enumerate(CAPEX_FIXE_TRANCHES):
+        derniere = i == len(CAPEX_FIXE_TRANCHES) - 1
+        if p >= p_min and (p <= p_max if derniere else p < p_max):
+            mini, maxi = _bornes_converties(c_min, c_max, facteur)
+            return mini, maxi, libelle
+    return None
+
+
+def valider_capex_simple(capex: 'ResidentielCapexSchema', puissance_kwc, taux_conversion: Optional[float] = None) -> None:
+    """Contrôle des saisies « Prix au Wc » (€/Wc) et « CAPEX total » (k€) avant enregistrement —
+    miroir de ResidentielCapexTable.js::erreursValidation. Valeur absente acceptée (pas encore
+    saisie : le calcul de rentabilité l'exige côté navigateur). Prix au Wc toujours borné ; CAPEX total
+    borné selon la tranche de puissance s'il est le mode actif, sinon par l'enveloppe des tranches.
+    Lève ResidentielRuleError (jamais de correction)."""
+    facteur = valider_taux_conversion(taux_conversion) if taux_conversion is not None else 1.0
+    if capex.capexPrixWc is not None:
+        mini, maxi = _bornes_converties(*CAPEX_PRIX_WC_BORNES, facteur)
+        if not mini <= capex.capexPrixWc <= maxi:
+            raise ResidentielRuleError(
+                'capexPrixWc', f"Prix au Wc : entre {mini:g} et {maxi:g} devise/Wc (saisi : {capex.capexPrixWc:g}).")
+    if capex.capexFixeK is None:
+        return
+    if capex.capexMode != 'fixe':
+        mini, maxi = _bornes_converties(*CAPEX_FIXE_ENVELOPPE, facteur)
+        if not mini <= capex.capexFixeK <= maxi:
+            raise ResidentielRuleError(
+                'capexFixeK', f"CAPEX total : entre {mini:g} et {maxi:g} k devise (saisi : {capex.capexFixeK:g}).")
+        return
+    tranche = tranche_capex_fixe(puissance_kwc, facteur)
+    if tranche is None:
+        raise ResidentielRuleError(
+            'capexFixeK',
+            "CAPEX total : puissance du projet inconnue ou hors du domaine prévu (jusqu'à 5 000 kWc) — "
+            "lancez d'abord le calcul de production.")
+    mini, maxi, libelle = tranche
+    if not mini <= capex.capexFixeK <= maxi:
+        raise ResidentielRuleError(
+            'capexFixeK',
+            f"CAPEX total, puissance {libelle} : entre {mini:g} et {maxi:g} k devise (saisi : {capex.capexFixeK:g}).")
 
 
 # NOUVEAU (demande explicite : "validation stricte des données d'entrée pour les Charges annuelles

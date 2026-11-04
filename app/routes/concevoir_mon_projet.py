@@ -14,7 +14,10 @@ from app.models import (
 )
 from app.models import IrveConfig, EtudeEconomiqueConfig, ResidentielChiffrageConfig, ProjetRevision
 from app.models import PompageSolaireConfig
-from app.services.variantes_projet import capturer_etat, restaurer_etat, prochain_indice_libre, rattacher_indice
+from app.services.variantes_projet import (
+    capturer_etat, restaurer_etat, prochain_indice_libre, rattacher_indice,
+    synchroniser_fichiers, lire_fichiers, nettoyer_libelle,
+)
 from app.models import PersonnalisationRapport
 from app.models import ConsommationFile, ConsommationFileAcc
 from app.models.calcul_prodsolaire.calcul_autoconso import extract_consumption
@@ -28,7 +31,8 @@ from app.services.irve_controle import (
 from app.schemas.pompage_solaire_schemas import PompageSolaireSauvegarde, TAILLE_MAX_SAUVEGARDE_POMPAGE
 from app.schemas.residentiel_chiffrage_schemas import (
     ResidentielCapexSchema, ResidentielOpexSchema, ResidentielRuleError, validate_capex_business_rules,
-    calculer_totaux_capex, TOLERANCE_TOTAUX_EUR, extraire_taux_conversion, valider_taux_conversion
+    calculer_totaux_capex, TOLERANCE_TOTAUX_EUR, extraire_taux_conversion, valider_taux_conversion,
+    valider_capex_simple, CAPEX_MODES_SIMPLES
 )
 from app.models.parametre_projet import normaliser_typologie, normaliser_type_etude
 from app.schemas.calepinage_dimensionnement_schemas import (
@@ -353,6 +357,7 @@ def _resume_revision(revision):
         'id': revision.id,
         'indice': revision.indice,
         'description': revision.description,
+        'libelle': revision.libelle,
         'restaurable': revision.restaurable,
         'updated_at': revision.updated_at.isoformat() if revision.updated_at else None,
     }
@@ -382,10 +387,13 @@ def list_project_revisions(projet_id):
 @login_required
 def save_project_revision(projet_id):
     """Fige l'état de conception du projet (tables de travail, déjà enregistrées par le navigateur)
-    dans une variante. Le client ne choisit jamais la lettre, seulement l'action :
+    dans une variante. Actions :
       - 'enregistrer' : aucune variante -> crée l'Indice A ; sinon met à jour la variante ACTIVE ;
       - 'creer_variante' : crée la prochaine lettre libre (B, C, D), seulement si A existe ;
-        la nouvelle variante devient active."""
+        la nouvelle variante devient active ;
+      - 'ecraser' + 'indice' : remplace la variante EXISTANTE choisie par l'état actuel ; elle devient
+        active, la variante ouverte avant garde sa dernière copie enregistrée (décision 2026-11-04).
+    'libelle' (facultatif, 30 caractères max, nettoyé) : absent = libellé inchangé, '' = effacé."""
     try:
         projet = _get_project_with_permission(projet_id, g.user)
         if not projet:
@@ -396,12 +404,22 @@ def save_project_revision(projet_id):
 
         req_data = request.get_json(silent=True) or {}
         action = req_data.get('action', 'enregistrer')
-        if action not in ('enregistrer', 'creer_variante'):
+        if action not in ('enregistrer', 'creer_variante', 'ecraser'):
             return jsonify({'success': False, 'message': 'Action de sauvegarde de variante inconnue'}), 400
+
+        libelle_fourni = 'libelle' in req_data
+        libelle, erreur_libelle = nettoyer_libelle(req_data.get('libelle'))
+        if erreur_libelle:
+            return jsonify({'success': False, 'message': erreur_libelle}), 400
 
         revisions = {r.indice.upper(): r for r in _revisions_du_projet(projet_id)}
 
-        if action == 'creer_variante':
+        if action == 'ecraser':
+            indice = str(req_data.get('indice') or '').strip().upper()
+            if indice not in revisions:
+                return jsonify({'success': False, 'message': f"La variante {indice or '?'} n'existe pas : rien n'a été écrasé."}), 400
+            revision = revisions[indice]
+        elif action == 'creer_variante':
             if 'A' not in revisions:
                 return jsonify({'success': False, 'message': "Enregistrez d'abord le projet (variante A) avant de créer une variante."}), 400
             indice = prochain_indice_libre(revisions.keys())
@@ -424,7 +442,11 @@ def save_project_revision(projet_id):
             )
             db.session.add(revision)
 
-        revision.donnees = capturer_etat(projet)
+        fichiers = {}
+        revision.donnees = capturer_etat(projet, fichiers)
+        synchroniser_fichiers(revision, fichiers)
+        if libelle_fourni:
+            revision.libelle = libelle
         revision.updated_at = utc_maintenant()
         projet.active_indice = indice
         rattacher_indice(projet, indice)
@@ -465,7 +487,7 @@ def load_project_revision(projet_id, indice):
                 f"contient pas le calepinage : elle ne peut pas être ouverte. Ouvrez le projet sur cette "
                 f"variante et enregistrez-la de nouveau depuis le rapport.")}), 409
 
-        avertissements = restaurer_etat(projet, revision.donnees)
+        avertissements = restaurer_etat(projet, revision.donnees, lire_fichiers(revision))
         projet.active_indice = indice
         rattacher_indice(projet, indice)
         projet.updated_at = utc_maintenant()
@@ -715,11 +737,17 @@ def puissance_etude(projet_id):
     projet = _get_project_with_permission(projet_id, g.user)
     if not projet:
         return jsonify({'success': False, 'message': 'Projet introuvable ou accès non autorisé'}), 404
+    source, puissance = _puissance_etude_kwc(projet)
+    return jsonify({'success': True, 'source': source, 'puissance_kwc': puissance})
+
+
+def _puissance_etude_kwc(projet):
+    """(source, puissance kWc ou None) : calepinage enregistré pour un projet « Chiffrage », sinon
+    calcul ProSolaire enregistré. Même valeur que le champ « Puissance installée » de l'étude éco."""
     if str(normaliser_type_etude(projet.type_etude) or '').strip().lower() == 'chiffrage':
-        return jsonify({'success': True, 'source': 'calepinage', 'puissance_kwc': puissance_calepinage_kwc(projet)})
+        return 'calepinage', puissance_calepinage_kwc(projet)
     reference = resultats_prodsolaire.reference_eco(projet.id)
-    return jsonify({'success': True, 'source': 'prosolaire',
-                    'puissance_kwc': reference.get('puissance_kwc') if reference else None})
+    return 'prosolaire', (reference.get('puissance_kwc') if reference else None)
 
 
 @concevoir_mon_projet_bp.route('/parametre-projet/<int:projet_id>/resultats-prodsolaire/verifier', methods=['POST'])
@@ -813,12 +841,18 @@ def save_residentiel_chiffrage_config(projet_id):
             if capex_payload:
                 capex_with_rate = {**capex_payload, 'tauxConversion': taux_conv} if isinstance(capex_payload, dict) else capex_payload
                 capex = ResidentielCapexSchema.model_validate(capex_with_rate)
-                validate_capex_business_rules(
-                    [p.model_dump() for p in capex.postes], capex.conversionType,
-                    profil=profil, lignes_exclues=capex.lignesExclues or (),
-                    inclure_main_oeuvre=capex.inclureMainOeuvre,
-                    taux_conversion=taux_conv,
-                )
+                # « Prix au Wc » / « CAPEX total » : saisies bornées (tranche selon la puissance du
+                # projet, décidée ici) ; lignes du devis conservées mais hors totaux, donc non
+                # contrôlées — comme ResidentielCapexTable.js::erreursValidation.
+                puissance_kwc = _puissance_etude_kwc(projet)[1] if capex.capexMode == 'fixe' else None
+                valider_capex_simple(capex, puissance_kwc, taux_conv)
+                if capex.capexMode not in CAPEX_MODES_SIMPLES:
+                    validate_capex_business_rules(
+                        [p.model_dump() for p in capex.postes], capex.conversionType,
+                        profil=profil, lignes_exclues=capex.lignesExclues or (),
+                        inclure_main_oeuvre=capex.inclureMainOeuvre,
+                        taux_conversion=taux_conv,
+                    )
             # PRO / Grand projet : l'OPEX reste celui du formulaire standard (etude-economique/save).
             if opex_payload and profil == 'residentiel':
                 opex_with_rate = {**opex_payload, 'tauxConversion': taux_conv} if isinstance(opex_payload, dict) else opex_payload
@@ -935,6 +969,11 @@ def verifier_totaux_chiffrage(projet_id):
         taux_conv = extraire_taux_conversion(req_data, capex_payload)
         capex_with_rate = {**capex_payload, 'tauxConversion': taux_conv}
         capex = ResidentielCapexSchema.model_validate(capex_with_rate)
+        if capex.capexMode in CAPEX_MODES_SIMPLES:
+            libelle = 'Prix au Wc' if capex.capexMode == 'wc' else 'CAPEX total'
+            return jsonify({'success': False, 'message': (
+                f"Devis indisponible : le CAPEX est chiffré en « {libelle} ». Choisissez « Chiffrage "
+                "détaillé » dans « Chiffrage CAPEX (Devis) » pour générer un devis.")}), 400
         validate_capex_business_rules(
             [p.model_dump() for p in capex.postes], capex.conversionType,
             profil=_profil_chiffrage(projet), lignes_exclues=capex.lignesExclues or (),
@@ -2163,6 +2202,19 @@ def activer_parametre_projet(projet_id):
         return jsonify({'success': False, 'message': str(e)}), 404
 
 
+@concevoir_mon_projet_bp.route('/parametre-projet/desactiver', methods=['POST'])
+@login_required
+def desactiver_parametre_projet():
+    """
+    « Créer un nouveau projet » (bug 2026-11-04 : le formulaire restait en modification du projet
+    actif) : la page est rechargée sans projet actif. La session est vidée AVANT le rechargement,
+    sinon la page rendue reprendrait l'adresse et la typologie de l'ancien projet (cf. main.index).
+    Le projet lui-même n'est pas touché.
+    """
+    session.pop('active_projet_id', None)
+    return jsonify({'success': True})
+
+
 @concevoir_mon_projet_bp.route('/parametre-projet/<int:projet_id>', methods=['DELETE'])
 @login_required
 def supprimer_parametre_projet(projet_id):
@@ -2677,6 +2729,8 @@ def save_personnalisation_rapport():
             profil.email = str(data['email'] or '')[:200]
         if 'site_web' in data:
             profil.site_web = str(data['site_web'] or '')[:300]
+        if 'charge_affaires' in data:
+            profil.charge_affaires = str(data['charge_affaires'] or '').strip()[:100]
         if 'mission_text' in data:
             profil.mission_text = _clamp_word_count(data['mission_text'], 30, 400)
         if 'services_text' in data:

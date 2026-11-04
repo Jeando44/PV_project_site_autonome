@@ -4,7 +4,8 @@
 <head>
     <!-- Version des données du projet : cette modale intégrée reprend l'onglet de la page parente
          (services/version_projet.js) — à charger avant tout script qui enregistre. -->
-    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/version_projet.js?v=3"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/version_projet.js?v=4"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/boite_message.js?v=1"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dimensionnement IRVE - Solakvan BET Solar</title>
@@ -1588,6 +1589,8 @@
                                             <option value="industriel">Industriel</option>
                                             <option value="supermarche">Supermarché</option>
                                             <option value="agricole">Agricole</option>
+                                            <option value="boulangerie">Boulangerie</option>
+                                            <option value="discount">Magasin discount / bazar</option>
                                             <option value="autres">Autres (profil plat)</option>
                                         </select>
                                     </div>
@@ -2353,7 +2356,7 @@
                 <script
                     src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/irveValidation.js') }}?v=6"></script>
                 <script
-                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/equipmentData.js') }}?v=5"></script>
+                    src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/equipmentData.js') }}?v=7"></script>
                 <script
                     src="{{ url_for('static', filename='concevoir_mon_projet/javascript/Irve/loadProfileCommon.js') }}?v=5"></script>
                 <script

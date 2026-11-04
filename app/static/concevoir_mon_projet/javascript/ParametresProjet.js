@@ -58,6 +58,10 @@ window.showActiveProjectRequiredMessage = showActiveProjectRequiredMessage;
 // (syncAllProjectDataToDatabase). Ouverture d'une variante : pastilles A-D de « Mes projets »
 // (parametreProjetFormManager.js).
 
+// Libellé court d'une variante (A-D) : même limite que le serveur (projets_revisions.libelle,
+// app/services/variantes_projet.py::nettoyer_libelle).
+export const LIBELLE_VARIANTE_MAX = 30;
+
 export class UIManager {
     constructor() {
         this.currentSection = 'mes_projets';
@@ -148,24 +152,41 @@ export class UIManager {
             return null;
         }
 
-        const choix = await new Promise((resolve) => this.showVersioningModal(etat, resolve));
+        const choix = await new Promise((resolve) => this.showVersioningModal(etat, resolve, 'rapport'));
         if (!choix || choix.skip) return null;
-        const res = await this.enregistrerVariante(projectId, choix.action);
+        const res = await this.enregistrerVariante(projectId, choix.action, choix);
         return res ? { indice: res.active_indice } : null;
     }
 
     /**
+     * Icône « Sauvegarder » (services/sauvegarde_projet.js) : choix de la variante à enregistrer quand
+     * le projet en a déjà au moins une. Renvoie {action, indice, libelle}, null si l'utilisateur
+     * annule, {aucune: true} si le projet n'a pas encore de variante (rien à choisir).
+     * @param {{revisions: Array, active_indice: ?string, next_suggested: ?string}} etat - réponse de /revisions
+     */
+    async choisirVarianteSauvegarde(etat) {
+        if (!etat || !Array.isArray(etat.revisions) || etat.revisions.length === 0) return { aucune: true };
+        const choix = await new Promise((resolve) => this.showVersioningModal(etat, resolve, 'sauvegarde'));
+        return (!choix || choix.skip) ? null : choix;
+    }
+
+    /**
      * Enregistre l'état du projet (déjà en base) dans une variante.
-     * @param {'enregistrer'|'creer_variante'} action - 'enregistrer' : A s'il n'existe aucune
-     *   variante, sinon la variante active ; 'creer_variante' : lettre libre suivante (si A existe).
+     * @param {'enregistrer'|'creer_variante'|'ecraser'} action - 'enregistrer' : A s'il n'existe aucune
+     *   variante, sinon la variante active ; 'creer_variante' : lettre libre suivante (si A existe) ;
+     *   'ecraser' : variante existante `options.indice`, qui devient la variante ouverte.
+     * @param {{indice?: string, libelle?: string}} [options] - libelle absent = libellé inchangé.
      * @returns {Promise<object|null>} réponse du serveur, null en cas d'échec (déjà signalé).
      */
-    async enregistrerVariante(projectId, action) {
+    async enregistrerVariante(projectId, action, options = {}) {
         try {
+            const corps = { action };
+            if (action === 'ecraser') corps.indice = options.indice;
+            if (typeof options.libelle === 'string') corps.libelle = options.libelle;
             const response = await fetch(`/concevoir_mon_projet/parametre-projet/${projectId}/revision/save`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action })
+                body: JSON.stringify(corps)
             });
             const res = await response.json();
             if (!res.success) {
@@ -185,16 +206,24 @@ export class UIManager {
     }
 
     /**
-     * Fenêtre « Génération du rapport » (fermer = annuler la génération).
+     * Fenêtre de choix de la variante à enregistrer (fermer = annuler).
+     *  - mode 'rapport' : avant la génération du rapport (aucune variante -> la variante A est créée) ;
+     *  - mode 'sauvegarde' : icône « Sauvegarder » (seulement si le projet a déjà une variante).
+     * Liste toutes les variantes : la variante ouverte est présélectionnée (mise à jour) ; en choisir une
+     * autre l'ÉCRASE (confirmation dans la fenêtre) et l'ouvre ; ou créer la lettre libre suivante.
+     * Libellé court facultatif (LIBELLE_VARIANTE_MAX caractères, contrôlé aussi par le serveur).
      * @param {{revisions: Array, active_indice: ?string, next_suggested: ?string}} etat - réponse de /revisions
-     * @param {function({skip: boolean, action?: string})} onChoice
+     * @param {function({skip: boolean, action?: string, indice?: string, libelle?: string})} onChoice
+     * @param {'rapport'|'sauvegarde'} [mode]
      */
-    showVersioningModal(etat, onChoice) {
+    showVersioningModal(etat, onChoice, mode = 'rapport') {
         if (this.isVersioningModalOpen) {
             onChoice({ skip: true });
             return;
         }
         this.isVersioningModalOpen = true;
+        const LIBELLE_MAX = LIBELLE_VARIANTE_MAX;
+        const NOUVELLE = '__nouvelle__';
 
         if (!document.getElementById('versioning-modal-styles')) {
             const style = document.createElement('style');
@@ -208,7 +237,7 @@ export class UIManager {
                 }
                 .versioning-modal-box {
                     background: #fff; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.15);
-                    width: 500px; max-width: 90%; overflow: hidden; border-top: 5px solid #dc2626;
+                    width: 540px; max-width: 92%; max-height: 92vh; overflow: auto; border-top: 5px solid #dc2626;
                     animation: slideDownVersioning 0.3s ease-out;
                 }
                 @keyframes slideDownVersioning {
@@ -221,33 +250,58 @@ export class UIManager {
                 }
                 .versioning-modal-header h4 { margin: 0; color: #1f2937; font-size: 1.15rem; font-weight: 600; }
                 .versioning-modal-close { background: none; border: none; font-size: 24px; cursor: pointer; color: #9ca3af; }
-                .versioning-modal-body { padding: 20px; color: #374151; font-size: 0.95rem; line-height: 1.5; text-align: left; }
-                .versioning-options { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+                .versioning-modal-body { padding: 18px 20px; color: #374151; font-size: 0.95rem; line-height: 1.5; text-align: left; }
+                .versioning-modal-body > p { margin: 0 0 10px; }
+                .versioning-options { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+                .versioning-section-titre { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: #6b7280; margin: 6px 0 0; }
                 .versioning-option-card {
-                    border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px 15px;
+                    border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px 14px;
                     display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
                     transition: border-color 0.2s, background-color 0.2s;
                 }
                 .versioning-option-card:hover { border-color: #dc2626; background-color: #fef2f2; }
+                .versioning-option-card.selectionnee { border-color: #dc2626; background-color: #fef2f2; }
                 .versioning-option-card.disabled { opacity: 0.5; cursor: not-allowed; }
                 .versioning-option-card.disabled:hover { border-color: #e5e7eb; background-color: transparent; }
-                .versioning-option-card input[type="radio"] { margin-top: 3px; accent-color: #dc2626; cursor: pointer; }
+                .versioning-option-card input[type="radio"] { margin-top: 4px; accent-color: #dc2626; cursor: pointer; }
                 .versioning-option-card.disabled input[type="radio"] { cursor: not-allowed; }
-                .versioning-option-card label { cursor: pointer; display: flex; flex-direction: column; gap: 2px; flex-grow: 1; }
+                .versioning-option-card label { cursor: pointer; display: flex; flex-direction: column; gap: 2px; flex-grow: 1; margin: 0; }
                 .versioning-option-card.disabled label { cursor: not-allowed; }
                 .versioning-option-card label strong { color: #1f2937; }
                 .versioning-option-card label span { font-size: 0.82rem; color: #6b7280; }
+                .versioning-option-card label em { font-style: normal; color: #374151; }
+                .versioning-pastille { display: inline-block; min-width: 22px; text-align: center; background: #dc2626; color: #fff; border-radius: 4px; padding: 0 6px; margin-right: 6px; font-weight: 700; }
+                .versioning-ouverte { font-size: 0.72rem; font-weight: 700; color: #166534; background: #dcfce7; border-radius: 10px; padding: 1px 8px; margin-left: 6px; }
+                .versioning-libelle { margin-top: 14px; }
+                .versioning-libelle label { display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 4px; color: #1f2937; }
+                .versioning-libelle-ligne { display: flex; gap: 8px; align-items: center; }
+                .versioning-libelle input { flex: 1; border: 1px solid #d1d5db; border-radius: 4px; padding: 7px 9px; font-size: 0.92rem; }
+                .versioning-libelle input.invalide { border-color: #dc2626; outline-color: #dc2626; }
+                .versioning-compteur { font-size: 0.8rem; color: #6b7280; min-width: 44px; text-align: right; }
+                .versioning-compteur.invalide { color: #dc2626; font-weight: 700; }
+                .versioning-erreur { display: none; margin-top: 6px; font-size: 0.82rem; color: #991b1b; }
+                .versioning-confirmation { display: none; margin-top: 14px; padding: 10px 12px; border-radius: 6px; background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; font-size: 0.88rem; }
                 .versioning-modal-footer { padding: 15px 20px; background-color: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 10px; }
                 .versioning-modal-footer .btn { padding: 8px 16px; border: none; border-radius: 4px; font-weight: 500; font-size: 0.9rem; cursor: pointer; }
-                .versioning-modal-footer .btn-primary { background-color: #dc2626; color: white; }
+                .versioning-modal-footer .btn-primary { background-color: #dc2626; color: white; font-weight: 600; }
                 .versioning-modal-footer .btn-primary:hover { background-color: #b91c1c; }
+                .versioning-modal-footer .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
                 .versioning-modal-footer .btn-secondary { background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
                 .versioning-modal-footer .btn-secondary:hover { background-color: #e5e7eb; }
             `;
             document.head.appendChild(style);
         }
 
-        const revisions = Array.isArray(etat.revisions) ? etat.revisions : [];
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const longueur = (v) => Array.from(v || '').length;
+        const dateCourte = (iso) => {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return isNaN(d) ? '' : d.toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        };
+
+        const revisions = (Array.isArray(etat.revisions) ? etat.revisions : [])
+            .slice().sort((a, b) => String(a.indice).localeCompare(String(b.indice)));
         const aucuneVariante = revisions.length === 0;
         const indices = revisions.map(r => r.indice);
         // Même repli que le serveur (save_project_revision) quand la variante active est inconnue.
@@ -255,10 +309,25 @@ export class UIManager {
             : (indices.includes('A') ? 'A' : indices[0]);
         const prochaine = etat.next_suggested || null;
         const creationPossible = !aucuneVariante && indices.includes('A') && !!prochaine;
+        const parIndice = Object.fromEntries(revisions.map(r => [r.indice, r]));
 
-        const overlay = document.createElement('div');
-        overlay.className = 'versioning-modal-overlay';
-        overlay.id = 'versioning-modal-overlay';
+        const carteVariante = (rev) => {
+            const estActive = rev.indice === active;
+            const date = dateCourte(rev.updated_at);
+            const libelle = rev.libelle ? `<em>« ${esc(rev.libelle)} »</em>` : '<span>Sans libellé</span>';
+            const detail = estActive
+                ? `Mettre à jour la variante ouverte avec la configuration actuelle.${date ? ` Dernier enregistrement : ${esc(date)}.` : ''}`
+                : `Écraser cette variante par la configuration actuelle ; elle deviendra la variante ouverte.${date ? ` Dernier enregistrement : ${esc(date)}.` : ''}`;
+            return `
+                <div class="versioning-option-card${estActive ? ' selectionnee' : ''}" data-choix="${esc(rev.indice)}">
+                    <input type="radio" name="versioning-choice" id="choice-variante-${esc(rev.indice)}" value="${esc(rev.indice)}" ${estActive ? 'checked' : ''}>
+                    <label for="choice-variante-${esc(rev.indice)}">
+                        <strong><span class="versioning-pastille">${esc(rev.indice)}</span>Variante ${esc(rev.indice)}${estActive ? '<span class="versioning-ouverte">ouverte</span>' : ''}</strong>
+                        ${libelle}
+                        <span>${detail}</span>
+                    </label>
+                </div>`;
+        };
 
         const optionsHtml = aucuneVariante ? `
                 <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 12px 15px; color: #1e3a8a;">
@@ -267,68 +336,159 @@ export class UIManager {
                     créer des variantes B, C et D à partir de lui.
                 </div>` : `
                 <div class="versioning-options">
-                    <div class="versioning-option-card" id="card-option-update">
-                        <input type="radio" name="versioning-choice" id="choice-update" value="enregistrer" checked>
-                        <label for="choice-update">
-                            <strong>Enregistrer le projet (variante ${active})</strong>
-                            <span>Met à jour la variante ${active} avec la configuration actuelle.</span>
-                        </label>
-                    </div>
-                    <div class="versioning-option-card ${creationPossible ? '' : 'disabled'}" id="card-option-create">
-                        <input type="radio" name="versioning-choice" id="choice-create" value="creer_variante" ${creationPossible ? '' : 'disabled'}>
+                    <p class="versioning-section-titre">Variantes du projet</p>
+                    ${revisions.map(carteVariante).join('')}
+                    <p class="versioning-section-titre">Nouvelle variante</p>
+                    <div class="versioning-option-card ${creationPossible ? '' : 'disabled'}" data-choix="${NOUVELLE}">
+                        <input type="radio" name="versioning-choice" id="choice-create" value="${NOUVELLE}" ${creationPossible ? '' : 'disabled'}>
                         <label for="choice-create">
-                            <strong>Créer une variante à partir du projet${creationPossible ? ` (variante ${prochaine})` : ''}</strong>
+                            <strong>${creationPossible ? `<span class="versioning-pastille">${esc(prochaine)}</span>Créer la variante ${esc(prochaine)}` : 'Créer une nouvelle variante'}</strong>
                             <span>${creationPossible
-                                ? `La configuration actuelle devient la variante ${prochaine}, qui sera ouverte. La variante ${active} reste inchangée.`
-                                : 'Limite atteinte : les variantes A à D existent déjà.'}</span>
+                                ? `La configuration actuelle devient la variante ${esc(prochaine)}, qui sera ouverte. La variante ${esc(active)} reste inchangée.`
+                                : 'Limite atteinte : les variantes A à D existent déjà. Écrasez l\'une d\'elles.'}</span>
                         </label>
                     </div>
                 </div>`;
 
+        const titre = mode === 'sauvegarde' ? '💾 Enregistrer le projet' : '📄 Génération du rapport';
+        const intro = mode === 'sauvegarde'
+            ? 'Choisissez la variante dans laquelle enregistrer la configuration actuelle du projet.'
+            : 'La configuration du projet va être enregistrée, et le rapport portera la lettre de cette variante.';
+        const libelleBouton = mode === 'sauvegarde' ? 'Enregistrer' : 'Enregistrer et générer le rapport';
+
+        const overlay = document.createElement('div');
+        overlay.className = 'versioning-modal-overlay';
+        overlay.id = 'versioning-modal-overlay';
         overlay.innerHTML = `
-            <div class="versioning-modal-box">
+            <div class="versioning-modal-box" role="dialog" aria-modal="true" aria-labelledby="versioning-modal-titre">
                 <div class="versioning-modal-header">
-                    <h4>📄 Génération du rapport</h4>
-                    <button type="button" class="versioning-modal-close" id="btn-close-versioning-modal">&times;</button>
+                    <h4 id="versioning-modal-titre">${titre}</h4>
+                    <button type="button" class="versioning-modal-close" id="btn-close-versioning-modal" aria-label="Fermer">&times;</button>
                 </div>
                 <div class="versioning-modal-body">
-                    <p>La configuration du projet va être enregistrée, et le rapport portera la lettre de cette variante.</p>
+                    <p>${intro}</p>
                     ${optionsHtml}
+                    <div class="versioning-libelle">
+                        <label for="versioning-libelle-input" id="versioning-libelle-label">Libellé de la variante (facultatif)</label>
+                        <div class="versioning-libelle-ligne">
+                            <input type="text" id="versioning-libelle-input" maxlength="${LIBELLE_MAX}" autocomplete="off"
+                                   placeholder="Ex. : Toiture sud seule">
+                            <span class="versioning-compteur" id="versioning-libelle-compteur">0/${LIBELLE_MAX}</span>
+                        </div>
+                        <div class="versioning-erreur" id="versioning-libelle-erreur"></div>
+                    </div>
+                    <div class="versioning-confirmation" id="versioning-confirmation" role="alert"></div>
                 </div>
                 <div class="versioning-modal-footer">
-                    <button type="button" class="btn btn-primary" id="btn-confirm-versioning" style="width: 100%; padding: 10px; font-weight: 600;">Enregistrer et générer le rapport</button>
+                    <button type="button" class="btn btn-secondary" id="btn-cancel-versioning">Annuler</button>
+                    <button type="button" class="btn btn-primary" id="btn-confirm-versioning">${libelleBouton}</button>
                 </div>
             </div>
         `;
-
         document.body.appendChild(overlay);
 
-        // Clic sur une carte d'option = clic sur son bouton radio
-        [['card-option-update', 'choice-update'], ['card-option-create', 'choice-create']].forEach(([carteId, radioId]) => {
-            const carte = document.getElementById(carteId);
-            const radio = document.getElementById(radioId);
-            if (carte && radio && !radio.disabled) carte.addEventListener('click', () => { radio.checked = true; });
+        const champ = overlay.querySelector('#versioning-libelle-input');
+        const compteur = overlay.querySelector('#versioning-libelle-compteur');
+        const erreur = overlay.querySelector('#versioning-libelle-erreur');
+        const etiquette = overlay.querySelector('#versioning-libelle-label');
+        const confirmation = overlay.querySelector('#versioning-confirmation');
+        const boutonOk = overlay.querySelector('#btn-confirm-versioning');
+        let saisieModifiee = false;
+        let ecrasementConfirme = false;
+
+        const choixCourant = () => {
+            if (aucuneVariante) return 'A';
+            const radio = overlay.querySelector('input[name="versioning-choice"]:checked');
+            return radio ? radio.value : active;
+        };
+        const lettreChoisie = (choix) => (choix === NOUVELLE ? prochaine : choix);
+
+        const majCompteur = () => {
+            const n = longueur(champ.value);
+            const invalide = n > LIBELLE_MAX;
+            compteur.textContent = `${n}/${LIBELLE_MAX}`;
+            compteur.classList.toggle('invalide', invalide);
+            champ.classList.toggle('invalide', invalide);
+            erreur.style.display = invalide ? 'block' : 'none';
+            erreur.textContent = invalide ? `Le libellé ne doit pas dépasser ${LIBELLE_MAX} caractères.` : '';
+            boutonOk.disabled = invalide;
+            return !invalide;
+        };
+
+        const majBouton = () => {
+            const choix = choixCourant();
+            const ecrase = !aucuneVariante && choix !== NOUVELLE && choix !== active;
+            if (ecrase && ecrasementConfirme) boutonOk.textContent = `Confirmer : écraser la variante ${choix}`;
+            else boutonOk.textContent = libelleBouton;
+            confirmation.style.display = ecrase && ecrasementConfirme ? 'block' : 'none';
+        };
+
+        const surChangementChoix = () => {
+            const choix = choixCourant();
+            overlay.querySelectorAll('.versioning-option-card').forEach((c) => c.classList.toggle('selectionnee', c.dataset.choix === choix));
+            etiquette.textContent = `Libellé de la variante ${lettreChoisie(choix) || ''} (facultatif)`;
+            if (!saisieModifiee) {
+                champ.value = (choix !== NOUVELLE && parIndice[choix] && parIndice[choix].libelle) || '';
+            }
+            ecrasementConfirme = false;
+            majCompteur();
+            majBouton();
+        };
+
+        overlay.querySelectorAll('.versioning-option-card').forEach((carte) => {
+            const radio = carte.querySelector('input[type="radio"]');
+            if (!radio || radio.disabled) return;
+            carte.addEventListener('click', () => {
+                if (!radio.checked) radio.checked = true;
+                surChangementChoix();
+            });
+            radio.addEventListener('change', surChangementChoix);
         });
+        champ.addEventListener('input', () => { saisieModifiee = true; majCompteur(); });
+        surChangementChoix();
 
         const fermer = (choix) => {
+            document.removeEventListener('keydown', clavier, true);
             overlay.remove();
             this.isVersioningModalOpen = false;
             onChoice(choix);
         };
+        const clavier = (e) => { if (e.key === 'Escape') { e.preventDefault(); fermer({ skip: true }); } };
+        document.addEventListener('keydown', clavier, true);
+
+        const valider = () => {
+            if (!majCompteur()) { champ.focus(); return; }
+            const libelle = champ.value.replace(/\s+/g, ' ').trim();
+            const choix = choixCourant();
+            if (aucuneVariante) { fermer({ skip: false, action: 'enregistrer', libelle }); return; }
+            if (choix === NOUVELLE) { fermer({ skip: false, action: 'creer_variante', libelle }); return; }
+            if (choix === active) { fermer({ skip: false, action: 'enregistrer', libelle }); return; }
+            // Écrasement d'une autre variante : confirmation explicite dans la fenêtre.
+            if (!ecrasementConfirme) {
+                ecrasementConfirme = true;
+                confirmation.innerHTML = `<strong>Écraser la variante ${esc(choix)} ?</strong><br>
+                    Son contenu actuel sera remplacé par la configuration en cours, sans retour possible.
+                    La variante ${esc(choix)} deviendra la variante ouverte ; la variante ${esc(active)} garde
+                    sa dernière version enregistrée.`;
+                majBouton();
+                return;
+            }
+            fermer({ skip: false, action: 'ecraser', indice: choix, libelle });
+        };
 
         overlay.addEventListener('click', (e) => {
-            if (e.target.id === 'btn-close-versioning-modal' || e.target === overlay) {
+            if (e.target.id === 'btn-close-versioning-modal' || e.target.id === 'btn-cancel-versioning' || e.target === overlay) {
                 e.preventDefault();
                 e.stopPropagation();
                 fermer({ skip: true });
             } else if (e.target.id === 'btn-confirm-versioning') {
                 e.preventDefault();
                 e.stopPropagation();
-                const radioCreate = document.getElementById('choice-create');
-                const action = radioCreate && radioCreate.checked ? 'creer_variante' : 'enregistrer';
-                fermer({ skip: false, action });
+                valider();
             }
         });
+        champ.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); valider(); } });
+        boutonOk.focus();
     }
 
     /**
@@ -386,6 +546,10 @@ export class UIManager {
                 // de remplissage — ce ne sont pas des demandes de "nouveau projet vierge", donc pas
                 // de purge ici non plus (cf. purgeForNewProject plus bas).
                 btn.addEventListener('click', () => {
+                    // Message de création au centre (cf. afficherConfirmationCreation) : retiré.
+                    const message = document.getElementById('form-message');
+                    if (message && message.dataset.centre === '1' && window.dataManager
+                        && typeof window.dataManager.masquerMessage === 'function') window.dataManager.masquerMessage();
                     this.switchToSection(nav.target);
                 });
             }
@@ -397,7 +561,10 @@ export class UIManager {
     async switchToSection(buttonId, purgeForNewProject = false) {
         buttonId = (this.aliasOnglets && this.aliasOnglets[buttonId]) || buttonId;
         const sectionId = this.tabMap[buttonId];
-        if (!sectionId || sectionId === this.currentSection) return;
+        // Nouveau projet demandé alors que le formulaire est déjà affiché (bug 2026-11-04) : la purge
+        // doit quand même avoir lieu — auparavant, ce retour anticipé la sautait.
+        const purgeDemandee = buttonId === 'button_parametre_projet' && purgeForNewProject;
+        if (!sectionId || (sectionId === this.currentSection && !purgeDemandee)) return;
 
         // Les onglets "Créer un projet" et "Données d'irradiation" sont masqués par défaut (cf.
         // #create-project-btn dans parametre.html) et ne doivent apparaître dans la barre d'onglets
@@ -440,8 +607,12 @@ export class UIManager {
         // localStorage) d'un projet en cours d'édition, même par erreur d'appel futur.
         const projetIdEditEl = document.getElementById('projet_id_edit');
         const isEditingExistingProject = !!(projetIdEditEl && projetIdEditEl.value);
+        if (purgeDemandee && isEditingExistingProject) {
+            // Ne doit plus arriver : DataManager.ouvrirFormulaireCreationVierge retire #projet_id_edit avant.
+            console.warn('Purge « nouveau projet » refusée : formulaire en modification du projet', projetIdEditEl.value);
+        }
 
-        if (buttonId === 'button_parametre_projet' && purgeForNewProject && !isEditingExistingProject) {
+        if (purgeDemandee && !isEditingExistingProject) {
             // CORRECTIF (bug "perte de données en créant un nouveau projet") : cette purge effaçait
             // solarProjectData/current_projet_id du projet ACTUELLEMENT actif SANS jamais le sauvegarder
             // en base au préalable — tout calepinage dessiné/calculé mais pas encore explicitement
@@ -1105,8 +1276,20 @@ export class UIManager {
         // Chiffrage, qui n'a pas d'étape de consommation (cf. navigation-modales.js).
         if (gotoConsoBtn && !gotoConsoBtn.dataset.navBound) {
             gotoConsoBtn.dataset.navBound = 'true';
-            gotoConsoBtn.addEventListener('click', (e) => {
+            gotoConsoBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
+                // Juste après la création d'un projet (demande 2026-11-04 : l'utilisateur reste sur
+                // le formulaire) : le projet créé n'est pas encore chargé dans la page. « Suivant »
+                // l'ouvre (rechargement sur ce projet, puis Consommation d'énergie / Calepinage) au
+                // lieu de fermer le modal sur l'état du projet précédent.
+                const dm = window.dataManager;
+                if (dm && dm.pendingProjectOpen && typeof dm.ouvrirProjetCree === 'function') {
+                    if (gotoConsoBtn.disabled) return;
+                    gotoConsoBtn.disabled = true;
+                    let ouvert = false;
+                    try { ouvert = await dm.ouvrirProjetCree(); } finally { if (!ouvert) gotoConsoBtn.disabled = false; }
+                    if (ouvert || dm.pendingProjectOpen) return;
+                }
                 closeMainModal();
                 if (mainModal && mainModal.style.display !== 'none') return; // Aucun projet actif
                 if (typeof window.isChiffrageProject === 'function' && window.isChiffrageProject()) {
@@ -1733,11 +1916,30 @@ if (!window.uiManagerInstance) {
                     }
                 }
 
-                if (redirectedForNoProject || activatedProjectId) {
+                // « Créer un nouveau projet » (DataManager.demarrerNouveauProjet) : projet quitté déjà
+                // enregistré et retiré de la session ; la page rechargée ouvre le formulaire vierge.
+                // apresRechargement : jamais de second rechargement (pas de boucle).
+                const nouveauProjet = params.get('nouveau_projet') === '1';
+                if (nouveauProjet && !activatedProjectId) {
+                    const debut = Date.now();
+                    const ouvrirCreation = () => {
+                        const dm = window.dataManager;
+                        if (dm && typeof dm.demarrerNouveauProjet === 'function') {
+                            Promise.resolve(dm.demarrerNouveauProjet({ apresRechargement: true }))
+                                .catch((e) => console.warn('Ouverture du formulaire de création :', e));
+                        } else if (Date.now() - debut < 15000) {
+                            setTimeout(ouvrirCreation, 100);
+                        }
+                    };
+                    setTimeout(ouvrirCreation, 0);
+                }
+
+                if (redirectedForNoProject || activatedProjectId || nouveauProjet) {
                     // Nettoyer l'URL pour éviter de rouvrir le message/rejouer l'activation à chaque
                     // rechargement manuel
                     params.delete('no_active_project');
                     params.delete('activated_project');
+                    params.delete('nouveau_projet');
                     const cleanQuery = params.toString();
                     const cleanUrl = window.location.pathname + (cleanQuery ? `?${cleanQuery}` : '');
                     window.history.replaceState({}, '', cleanUrl);

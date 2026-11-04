@@ -391,6 +391,9 @@
             });
             clone.querySelectorAll('[name]').forEach((el) => el.removeAttribute('name'));
             clone.querySelectorAll('label[for]').forEach((el) => el.removeAttribute('for'));
+            // Grilles d'icônes du modal (icones_structures.js) copiées par cloneNode sans leurs
+            // écouteurs : retirées, le module en reconstruit une pour chaque <select> du clone.
+            clone.querySelectorAll('.skv-icones-grille').forEach((el) => el.remove());
             remplacerSelectsParBoutons(clone);
             // NOUVEAU (demande explicite : « lorsqu'on clique sur la section Toiture du formulaire
             // PRO, le contenu de Géométrie de la toiture doit s'ouvrir automatiquement, pour éviter
@@ -444,6 +447,9 @@
                 const texte = String(opt.textContent || '').trim();
                 b.textContent = texte.split(' - ')[0];
                 b.title = texte;
+                // Modèle de poteaux du petit champ solaire : icône + infobulle (icones_structures.js).
+                const catalogueIcones = id === 'calepinageMaisonPetitChampModel' ? 'petitChamp' : null;
+                if (catalogueIcones && window.SkvIcones) window.SkvIcones.decorerBouton(b, catalogueIcones, opt.value, texte);
                 // 2 boutons par ligne au plus (4 modèles = 2 lignes), libellé jamais tronqué.
                 b.style.cssText = 'flex:1 1 calc(50% - 6px); min-width:0; white-space:normal;';
                 groupe.appendChild(b);

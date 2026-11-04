@@ -4,7 +4,8 @@
 <head>
     <!-- Version des données du projet : cette modale intégrée reprend l'onglet de la page parente
          (services/version_projet.js) — à charger avant tout script qui enregistre. -->
-    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/version_projet.js?v=3"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/version_projet.js?v=4"></script>
+    <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/services/boite_message.js?v=1"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Analyse de Projet Photovoltaïque</title>
@@ -503,6 +504,8 @@
                             <option value="industriel">Industriel</option>
                             <option value="supermarche">Supermarché</option>
                             <option value="agricole">Agricole</option>
+                            <option value="boulangerie">Boulangerie</option>
+                            <option value="discount">Magasin discount / bazar</option>
                             <option value="autres">Autres (profil plat)</option>
                         </select>
                     </div>
@@ -564,7 +567,7 @@
               iframe, aucun évènement du calepinage ne l'atteint. Le module doit donc y être
               chargé explicitement, AVANT main_autoconso.js qui s'y abonne. -->
          <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/batterie/batterieSelection.js') }}?v=3"></script>
-         <script type="module" src="{{ url_for('static', filename='concevoir_mon_projet/javascript/prodsolaire/main_autoconso.js') }}?v=29"></script>
+         <script type="module" src="{{ url_for('static', filename='concevoir_mon_projet/javascript/prodsolaire/main_autoconso.js') }}?v=31"></script>
 
          <script>
             // Détecte si la page est dans une iframe et ajoute la classe 'embedded-mode'

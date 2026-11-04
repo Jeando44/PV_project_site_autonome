@@ -1,6 +1,6 @@
 import { TEXTES_TYPES, SECTIONS_REGLEMENTATION } from './reglementation_modele.js?v=5';
 import { nettoyerReglementation, objetSur, piecesSures, enTexte } from '../../dossier_reglementation_validation.js?v=1';
-import { ajouterPieceDevis } from '../../dossier_devis.js?v=4';
+import { ajouterPieceDevis } from '../../dossier_devis.js?v=5';
 import { PROFILS, FAMILLES_AVEC_PLANS, profilAvecPlans } from '../../dossier_profils.js?v=1';
 
 /**

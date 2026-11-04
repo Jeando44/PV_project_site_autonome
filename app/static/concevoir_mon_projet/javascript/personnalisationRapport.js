@@ -289,6 +289,16 @@
             els.statClientsPct.addEventListener('blur', validateStatClientsPctField);
         }
 
+        // Aperçu du logo : l'<img> est masquée par défaut (icône générique à la place) — elle doit
+        // être rendue visible aussi au rechargement, pas seulement à l'import d'un fichier.
+        function afficherApercuLogo(src) {
+            els.logoPreview.src = src;
+            els.logoPreview.style.display = 'block';
+            els.logoPreviewContainer.style.display = 'flex';
+            const icone = els.logoPreviewContainer.querySelector('.default-logo-icon');
+            if (icone) icone.style.display = 'none';
+        }
+
         // --- 1. Hydratation depuis le serveur (profil par utilisateur), fallback localStorage ---
         const localFallback = JSON.parse(localStorage.getItem('skv_company_info') || '{}');
 
@@ -297,6 +307,9 @@
             if (profile.nom_entreprise || profile.name) els.name.value = profile.nom_entreprise || profile.name;
             if (profile.telephone || profile.phone) els.phone.value = profile.telephone || profile.phone;
             if (profile.adresse || profile.address) els.address.value = profile.adresse || profile.address;
+            if (els.chargeDaffaire && (profile.charge_affaires || profile.chargeAffaires)) {
+                els.chargeDaffaire.value = profile.charge_affaires || profile.chargeAffaires;
+            }
             if (els.email && (profile.email)) els.email.value = profile.email;
             if (els.website && (profile.site_web || profile.website)) els.website.value = profile.site_web || profile.website;
             if (els.mission && (profile.mission_text || profile.mission)) {
@@ -314,8 +327,7 @@
             const logo = profile.logo_base64 || profile.logo;
             if (logo) {
                 logoBase64 = logo;
-                els.logoPreview.src = logo;
-                els.logoPreviewContainer.style.display = 'flex';
+                afficherApercuLogo(logo);
             }
             if (els.saveCheckbox && !fromServer) els.saveCheckbox.checked = true;
 
@@ -384,6 +396,7 @@
             const payload = {
                 nom_entreprise: (els.name.value || '').slice(0, MAX_LEN_COMPANY_TEXT),
                 adresse: (els.address.value || '').slice(0, MAX_LEN_COMPANY_TEXT),
+                charge_affaires: els.chargeDaffaire ? (els.chargeDaffaire.value || '').trim().slice(0, MAX_LEN_COMPANY_TEXT) : '',
                 mission_text: els.mission ? clampWordCount(els.mission.value, MAX_MOTS_MISSION_SERVICES) : '',
                 services_text: els.services ? clampWordCount(els.services.value, MAX_MOTS_MISSION_SERVICES) : '',
                 stat_installations: els.statInstallations ? clampNumber(els.statInstallations.value, 0, 2000, null) : null,
@@ -418,7 +431,7 @@
             saveTimeout = setTimeout(saveProfile, 400);
         }
 
-        [els.name, els.phone, els.address, els.email, els.website, els.statInstallations, els.statAnnees, els.statClientsPct]
+        [els.name, els.chargeDaffaire, els.phone, els.address, els.email, els.website, els.statInstallations, els.statAnnees, els.statClientsPct]
             .filter(Boolean)
             .forEach((el) => {
                 el.addEventListener('change', scheduleSave);
@@ -447,8 +460,10 @@
             // concevoir_mon_projet.py::save_personnalisation_rapport) — évite un aller-retour
             // réseau inutile pour un fichier que le serveur rejettera de toute façon, et prévient
             // l'utilisateur immédiatement plutôt qu'un échec silencieux.
-            if (!/^image\/(png|jpe?g|gif|webp)$/.test(file.type)) {
-                alert('Format de logo non supporté. Utilisez PNG, JPEG, GIF ou WEBP.');
+            // PNG ou JPEG seulement : ce sont les deux formats que les rapports et le devis PDF
+            // savent imprimer (un GIF/WEBP serait accepté ici puis absent du PDF).
+            if (!/^image\/(png|jpe?g)$/.test(file.type)) {
+                alert('Format de logo non supporté. Utilisez une image PNG ou JPEG.');
                 e.target.value = '';
                 return;
             }
@@ -460,8 +475,7 @@
             const reader = new FileReader();
             reader.onload = function (evt) {
                 logoBase64 = evt.target.result;
-                els.logoPreview.src = logoBase64;
-                els.logoPreviewContainer.style.display = 'flex';
+                afficherApercuLogo(logoBase64);
                 saveProfile();
             };
             reader.readAsDataURL(file);
