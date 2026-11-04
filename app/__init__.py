@@ -78,10 +78,21 @@ def _configurer_base_de_donnees(app, config_name):
         # Encodage du mot de passe pour protéger et rendre lisible les caractères spéciaux (!, @, #, etc.)
         db_pass_encoded = quote_plus(db_pass)
 
-        # Connexion via adresse IP (Cloud Run VPC Connect vers Cloud SQL IP Privée)
-       # app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{db_user}:{db_pass_encoded}@/{db_name}?unix_socket=/cloudsql/{db_host}"
-        # Connexion TCP standard via IP privée (Direct VPC Egress vers Cloud SQL)
-        app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{db_user}:{db_pass_encoded}@{db_host}/{db_name}"
+        # Deux façons de joindre Cloud SQL, choisies d'après la forme de DB_HOST :
+        #  - nom de connexion d'instance « projet:region:instance » (ou chemin /cloudsql/...) :
+        #    socket Unix monté par Cloud Run (connexion Cloud SQL ajoutée au service), comme
+        #    Solakvan_Projet — aucun VPC nécessaire ;
+        #  - adresse IP / nom d'hôte : TCP standard (IP privée via Direct VPC Egress).
+        if db_host.startswith('/cloudsql/') or db_host.count(':') == 2:
+            socket_cloudsql = db_host if db_host.startswith('/cloudsql/') else f"/cloudsql/{db_host}"
+            app.config['SQLALCHEMY_DATABASE_URI'] = (
+                f"mysql+pymysql://{db_user}:{db_pass_encoded}@/{db_name}"
+                f"?unix_socket={socket_cloudsql}&charset=utf8mb4"
+            )
+        else:
+            app.config['SQLALCHEMY_DATABASE_URI'] = (
+                f"mysql+pymysql://{db_user}:{db_pass_encoded}@{db_host}/{db_name}?charset=utf8mb4"
+            )
 
         # Correctif de sécurité réseau Cloud SQL (Évite les coupures de connexion)
         # pool_size/max_overflow explicites (au lieu des défauts SQLAlchemy 5/10) : avec

@@ -1,0 +1,671 @@
+/* ==========================================================================
+   AFFICHAGE TÉLÉPHONE (demande explicite : application Site autonome utilisable sur téléphone)
+
+   Couche de surcharge chargée EN DERNIER sur la page principale (index.html) : toutes les règles
+   sont dans des media queries « téléphone » — l'affichage sur ordinateur n'est jamais modifié.
+   Téléphone = largeur <= 768 px, ou écran tactile de faible hauteur (téléphone tenu en paysage).
+
+   Pourquoi autant de !important : la plupart des modales sont construites avec des styles en ligne
+   (style="..." dans les templates, style.cssText dans le JS) — seuls !important les surchargent.
+
+   Couvre : menus (horizontal + latéral), Mes projets / Paramètres projet (#parametres-modal),
+   Profil de consommation (#universal-modal, iframe app_irve -> cf. responsive_mobile_irve.css),
+   Calepinage (carte + palette, modale #calepinageMaisonModal), Études économiques
+   (#etudes-economique-modal), Configuration des chaînes et perte système (#chainesPertesModal),
+   Synthèse du calepinage (.summary-modal), Loi APER, petites modales d'information.
+   Comportements associés (bouton menu, tactile sur le canevas) : javascript/responsive_mobile.js.
+   ========================================================================== */
+
+/* Éléments créés par responsive_mobile.js : jamais affichés sur ordinateur. */
+#skv-mobile-menu-btn,
+#skv-mobile-menu-voile {
+  display: none;
+}
+
+@media (max-width: 768px), (pointer: coarse) and (max-height: 500px) {
+
+  /* ---------- Bases ---------- */
+  :root {
+    /* Menu latéral replié hors écran : la barre horizontale et la carte prennent toute la largeur. */
+    --skv-sidebar-w: 0px;
+  }
+
+  html,
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  /* iOS zoome automatiquement sur un champ < 16 px au focus : on garde 16 px dans les formulaires. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+
+  /* ---------- Menu latéral (rouge) : tiroir ouvert par le bouton ☰ ---------- */
+  .sidebar {
+    width: min(260px, 82vw) !important;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease !important;
+    box-shadow: none;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 18px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Dans le tiroir, toujours les libellés à côté des icônes (pas d'infobulle au survol en tactile). */
+  .sidebar li a {
+    justify-content: flex-start !important;
+    padding: 0 12px !important;
+  }
+
+  .sidebar li a .links_name {
+    display: block !important;
+  }
+
+  .sidebar li .tooltip {
+    display: none !important;
+  }
+
+  /* Bouton ☰ créé par responsive_mobile.js, à gauche de la barre horizontale. */
+  #skv-mobile-menu-btn {
+    display: flex;
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 10003;
+    width: 46px;
+    height: var(--skv-topbar-h, 50px);
+    align-items: center;
+    justify-content: center;
+    border: none;
+    background: #b00000;
+    color: #fff;
+    font-size: 26px;
+    line-height: 1;
+    padding: 0;
+  }
+
+  #skv-mobile-menu-voile.visible {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 10001;
+    background: rgba(0, 0, 0, 0.35);
+  }
+
+  /* ---------- Menu horizontal : défilement au doigt, place pour le bouton ☰ ---------- */
+  .demo-nav {
+    left: 0 !important;
+    width: 100% !important;
+    padding-left: 46px;
+  }
+
+  .demo-nav nav ul {
+    justify-content: flex-start !important;
+    column-gap: 2px !important;
+    padding: 4px 6px !important;
+    -webkit-overflow-scrolling: touch;
+    scroll-snap-type: x proximity;
+  }
+
+  .demo-nav nav ul > li {
+    scroll-snap-align: start;
+  }
+
+  .demo-nav li a {
+    font-size: 0.85rem !important;
+    padding: 10px 10px !important;
+  }
+
+  #active-project-name-text {
+    max-width: 40vw !important;
+  }
+
+  /* ---------- Page Calepinage (carte) ---------- */
+  .Modele {
+    padding-left: 0 !important;
+    flex-direction: column !important;
+  }
+
+  .map-container {
+    min-width: 0 !important;
+    width: 100%;
+    min-height: 55vh;
+  }
+
+  /* Formulaire latéral (parcours non résidentiel) : sous la carte, pleine largeur, sans poignée. */
+  .Modele .resize-handle {
+    display: none !important;
+  }
+
+  .Modele .form-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 45vh;
+    overflow-y: auto;
+  }
+
+  /* Palette d'outils de la carte (ButtonControl.js) : marges réduites. */
+  .drawing-control {
+    margin: 8px !important;
+  }
+
+  /* Boutons « Système » / « Calculer et Visualiser » : en bas de l'écran, centrés (sinon placés
+     350 px à droite de la palette, donc hors de l'écran d'un téléphone). */
+  .drawing-control-actions {
+    position: fixed !important;
+    top: auto !important;
+    left: 50% !important;
+    bottom: 22px !important;
+    transform: translateX(-50%);
+    margin-left: 0 !important;
+    gap: 8px !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: max-content;
+    max-width: calc(100vw - 16px);
+  }
+
+  .drawing-control-actions button {
+    padding: 9px 12px !important;
+    font-size: 0.9rem !important;
+  }
+
+  /* ---------- Modales génériques plein écran ---------- */
+  .modal-overlay.show {
+    padding: 0 !important;
+  }
+
+  .modal-container {
+    min-width: 0 !important;
+    max-width: 100vw !important;
+  }
+
+  .modal-body {
+    padding: 12px 10px !important;
+    margin: 0 !important;
+  }
+
+  .modal-resize-handle {
+    display: none !important;
+  }
+
+  /* ---------- Mes projets / Paramètres projet ---------- */
+  #parametres-modal {
+    padding: 0 !important;
+  }
+
+  /* Sous la barre de menu horizontale, qui reste visible et utilisable (comme sur ordinateur). */
+  #parametres-modal .modal-container {
+    position: fixed !important;
+    top: var(--skv-topbar-h, 50px) !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100vw !important;
+    height: calc(100vh - var(--skv-topbar-h, 50px)) !important;
+    height: calc(100dvh - var(--skv-topbar-h, 50px)) !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  #parametres-modal .modal-header-draggable {
+    cursor: default !important;
+    padding: 0 10px !important;
+  }
+
+  #parametres-modal .modal-header-draggable h2 {
+    font-size: 1.05rem !important;
+  }
+
+  #parametres-modal .modal-body {
+    padding: 6px 4px 12px !important;
+  }
+
+  #parametres-modal .px-2 {
+    padding-left: 2px !important;
+    padding-right: 2px !important;
+  }
+
+  /* Barre d'actions de « Mes projets » : boutons sur plusieurs lignes, recherche pleine largeur. */
+  #mes_projets .row.mt-5 {
+    margin-top: 0.75rem !important;
+  }
+
+  #mes_projets .row.mt-5 > .col-12 {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  #mes_projets .mp-toolbar-btn {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+
+  #mes_projets #open-project-btn-container,
+  #mes_projets #edit-action-btn-container {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  #mes_projets .input-group {
+    flex: 1 1 100% !important;
+    min-width: 0;
+  }
+
+  /* Tableau des projets : défilement horizontal plutôt que des colonnes illisibles de 20 px. */
+  #mes_projets .table-scroll,
+  #mes_projets .table-responsive-md {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #mes_projets table {
+    table-layout: auto !important;
+    min-width: 640px;
+    font-size: 0.85rem;
+  }
+
+  /* Formulaire du projet : cartes, groupes de boutons et barres de navigation qui passent à la ligne. */
+  #parametre_projet .btn-group,
+  #parametre_projet .d-flex {
+    flex-wrap: wrap;
+  }
+
+  #parametres-modal .modal-nav-buttons {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding: 8px !important;
+  }
+
+  #parametres-modal .modal-nav-buttons .btn,
+  #parametres-modal .modal-nav-buttons .btn-nav {
+    flex: 1 1 40%;
+    min-width: 0;
+    margin: 0 !important;
+  }
+
+  #parametres-modal .project-type-card,
+  #parametres-modal .option-card {
+    height: auto !important;
+    min-height: 120px;
+  }
+
+  #parametres-modal .col-11.mx-auto {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  #parametres-modal table {
+    max-width: 100%;
+  }
+
+  /* Petites modales de Paramètres (indices, information, règlement) et perte système. */
+  .modal-backdrop > .modal-content {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    min-width: 0 !important;
+    max-height: calc(100dvh - 16px) !important;
+    overflow-y: auto !important;
+  }
+
+  /* ---------- Modales « plein écran » de menu.html : Profil de consommation (iframe),
+     Études économiques, Loi APER ---------- */
+  #universal-modal,
+  #etudes-economique-modal,
+  #loi-aper-modal {
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    min-width: 0 !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    border-radius: 0 !important;
+    border-width: 0 !important;
+  }
+
+  #universal-modal-header,
+  #etudes-economique-modal > div:first-child,
+  #loi-aper-modal-header {
+    padding: 0.5rem 0.75rem !important;
+    gap: 8px;
+  }
+
+  #universal-modal-title,
+  #etudes-economique-modal > div:first-child h1,
+  #loi-aper-modal-header h1 {
+    font-size: 1rem !important;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Boutons de fermeture/réduction : cible tactile d'au moins 40 px. */
+  #close-universal-modal,
+  #reduire-universal-modal,
+  #close-etudes-economique-modal,
+  #close-loi-aper-modal {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  #universal-iframe {
+    min-height: 0;
+  }
+
+  #universal-modal-footer {
+    gap: 10px !important;
+    padding: 0.5rem !important;
+  }
+
+  #universal-modal-footer button {
+    flex: 1 1 0;
+    padding: 10px 8px !important;
+  }
+
+  /* ---------- Études économiques (contenu inclus : etudes_economique_content.html) ---------- */
+  #etudes-economique-modal .container-eco {
+    padding: 6px 4px !important;
+  }
+
+  /* Grilles à 2-3 colonnes (paramètres, Revenus & tarifs, CAPEX/OPEX, résultats) : une colonne. */
+  #etudes-economique-modal .grid,
+  #etudes-economique-modal .results-grid,
+  #etudes-economique-modal .capex-opex-grid,
+  #etudes-economique-modal .resi-postes-list,
+  #etudes-economique-modal .chiffrage-bandeau-grille,
+  #etudes-economique-modal #chiffrage-entete,
+  #etudes-economique-modal #resi-revenus-tarifs-wrapper,
+  #etudes-economique-modal #pro-revenus-tarifs-wrapper,
+  #etudes-economique-modal #section_revenus_globale,
+  #etudes-economique-modal #section_revenus_globale > .grid,
+  #etudes-economique-modal #paliers_grid,
+  #etudes-economique-modal [style*="grid-template-columns"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #etudes-economique-modal #section_revenus_globale,
+  #etudes-economique-modal [style*="grid-column"] {
+    grid-column: auto !important;
+  }
+
+  #etudes-economique-modal .tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  #etudes-economique-modal .tab-link {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  #etudes-economique-modal h1 {
+    font-size: 1.15rem !important;
+  }
+
+  #etudes-economique-modal h2 {
+    font-size: 1.05rem !important;
+  }
+
+  /* Tableaux (CAPEX, OPEX, flux de trésorerie...) : défilement horizontal. */
+  #etudes-economique-modal table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #etudes-economique-modal canvas {
+    max-width: 100% !important;
+  }
+
+  #etudes-economique-modal [style*="min-width"] {
+    min-width: 0 !important;
+  }
+
+  #etudes-economique-modal .btn {
+    white-space: normal;
+  }
+
+  /* ---------- Calepinage multi typologie (modale #calepinageMaisonModal) ---------- */
+  #calepinageMaisonModal {
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    border-width: 0 !important;
+  }
+
+  /* En-tête : titre masqué, navigation / champs PV / affichages sur 2 lignes défilantes. */
+  #calepinageMaisonModal .modal-header-maison {
+    height: auto !important;
+    min-height: 46px;
+    flex-wrap: wrap !important;
+    padding: 4px 8px !important;
+    row-gap: 4px;
+    cursor: default !important;
+  }
+
+  #calepinageMaisonModal .modal-header-maison > h2 {
+    display: none !important;
+  }
+
+  #calepinageMaisonModal #cmHeaderNav {
+    order: 3;
+    flex: 1 1 100% !important;
+    margin: 0 !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #calepinageMaisonModal .modal-header-maison > div:last-child {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    gap: 6px !important;
+    min-width: 0;
+  }
+
+  #calepinageMaisonModal #cmSourceButtons {
+    max-width: none !important;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin-right: 6px !important;
+  }
+
+  #calepinageMaisonModal #cmHeaderToggles {
+    gap: 8px !important;
+    margin-right: 4px !important;
+  }
+
+  #calepinageMaisonModal .cm-header-toggle-btn {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  #closeCalepinageMaisonBtn {
+    min-width: 40px;
+    min-height: 40px;
+    font-size: 28px !important;
+  }
+
+  /* Corps : canevas en haut, formulaire en dessous ; c'est le corps entier qui défile. */
+  #calepinageMaisonModal #cmModalBody {
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 6px !important;
+    gap: 10px !important;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #calepinageMaisonModal #cmRightPanel {
+    order: 1 !important;
+    flex: 0 0 auto !important;
+    padding-top: 4px !important;
+  }
+
+  #calepinageMaisonModal #cmLeftPanel {
+    order: 2 !important;
+    width: 100% !important;
+    flex-shrink: 0;
+    overflow-y: visible !important;
+    padding-left: 0 !important;
+    border-left: none !important;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 8px;
+  }
+
+  /* Barre d'outils : boutons icônes plus grands pour le doigt. */
+  #calepinageMaisonModal #cmToolbar {
+    gap: 6px !important;
+  }
+
+  #calepinageMaisonModal .cm-icon-btn,
+  #calepinageMaisonModal .cm-obstacle-item {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  #calepinageMaisonModal #cmResultsWrapper {
+    overflow-x: auto;
+  }
+
+  /* Le doigt dessine sur le canevas au lieu de faire défiler la page (cf. responsive_mobile.js). */
+  #calepinageMaisonCanvas {
+    touch-action: none;
+    max-width: 100%;
+  }
+
+  #calepinageMaisonModal table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  #calepinageMaisonModal [style*="grid-template-columns"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  /* ---------- Configuration des chaînes et perte système (#chainesPertesModal) ---------- */
+  #chainesPertesModal > .modal-content {
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+
+  #chainesPertesModal .modal-header {
+    padding: 10px 12px !important;
+    height: auto !important;
+    cursor: default !important;
+  }
+
+  #chainesPertesModal .modal-header {
+    flex-wrap: nowrap !important;
+    gap: 8px;
+  }
+
+  #chainesPertesModal .modal-header h5 {
+    font-size: 1rem !important;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  #chainesPertesModal .modal-header button {
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  #chainesPertesModal > .modal-content > div:nth-child(2) {
+    padding: 10px 8px !important;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  #chainesPertesModal [style*="grid-template-columns"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  #chainesPertesModal [style*="display: flex"],
+  #chainesPertesModal [style*="display:flex"] {
+    flex-wrap: wrap;
+  }
+
+  #chainesPertesModal table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  #chainesPertesModal [id^="chains-field-block"] {
+    padding: 10px 8px 10px 12px !important;
+  }
+
+  #chainesPertesModal [style*="min-width"] {
+    min-width: 0 !important;
+  }
+
+  /* ---------- Synthèse calepinage et géométrie (SummaryModal.js) ---------- */
+  .summary-modal {
+    top: 0 !important;
+    left: 0 !important;
+    transform: none !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    border-radius: 0 !important;
+    padding: 10px 8px !important;
+    cursor: default !important;
+    user-select: text !important;
+  }
+
+  .summary-modal table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  /* ---------- Boîtes de message de l'application (SweetAlert, boite_message.js) ---------- */
+  .swal2-popup {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+  }
+}
+
+/* Très petits téléphones : champs de formulaire en une colonne. */
+@media (max-width: 576px) {
+  #parametres-modal .col-6.form-group {
+    flex: 0 0 100%;
+    max-width: 100%;
+  }
+
+  #parametres-modal .modal-header-draggable h2 {
+    font-size: 0.95rem !important;
+  }
+
+  .demo-nav li a {
+    font-size: 0.8rem !important;
+    padding: 10px 8px !important;
+  }
+}

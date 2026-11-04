@@ -384,6 +384,11 @@
     <script src="/concevoir_mon_projet/static/concevoir_mon_projet/javascript/gestion_calepin/gestion_calepinage.js"></script>
 
     {% include 'concevoir_mon_projet/components/page_navigation.html' %}
+
+    <!-- Affichage téléphone : chargé EN DERNIER pour l'emporter sur les autres feuilles de style ;
+         règles limitées aux écrans de téléphone (aucun effet sur ordinateur). -->
+    <link href="{{ url_for('static', filename='concevoir_mon_projet/CSS/responsive_mobile.css') }}?v=1" rel="stylesheet" />
+    <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/responsive_mobile.js') }}?v=1"></script>
 </body>
 
 </html>
