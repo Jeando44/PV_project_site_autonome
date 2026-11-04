@@ -752,7 +752,10 @@
         CM.contoursAutresChampsCache = null;
         const ctx = CM.canvas.getContext('2d');
         ctx.clearRect(0, 0, CM.canvas.width, CM.canvas.height);
-        if (!CM.state.roofLocal.length) return;
+        if (!CM.state.roofLocal.length) {
+            if (typeof CM.apresRenduCanevas === 'function') CM.apresRenduCanevas();
+            return;
+        }
 
         if (CM.state.showBackgroundImage && CM.state.mapScreenshotImgObj && CM.state.mapScreenshotRef) {
             const ref = CM.state.mapScreenshotRef;
@@ -1080,6 +1083,9 @@
         }
 
         renderWindRose(ctx, CM.canvas.width - 55, 55, 26, metersToCanvas);
+        // 2026-11-04 : bouton d'accès / palette d'outils du champ PV (calepinage_maison_palette_champ.js),
+        // éléments HTML superposés, jamais dessinés sur le canevas (absents des exports).
+        if (typeof CM.apresRenduCanevas === 'function') CM.apresRenduCanevas();
     }
 
     function renderWindRose(ctx, cx, cy, radius, toCanvasFn) {
@@ -1215,6 +1221,7 @@
      * @returns {boolean} true si quelque chose a été annulé
      */
     function annulerOutilChamp() {
+        if (CM.rotationChamp && typeof CM.annulerRotationChamp === 'function' && CM.annulerRotationChamp()) return true;
         if (CM.rectSuppression) {
             CM.rectSuppression = null;
             render();
@@ -1227,7 +1234,7 @@
             render();
             return true;
         }
-        if (CM.state && (CM.state.panelToolMode === 'deleteRect' || CM.state.panelToolMode === 'moveField')) {
+        if (CM.state && (CM.state.panelToolMode === 'deleteRect' || CM.state.panelToolMode === 'moveField' || CM.state.panelToolMode === 'rotateField')) {
             CM.state.panelToolMode = 'none';
             if (typeof CM.updatePanelToolButtonsUI === 'function') CM.updatePanelToolButtonsUI();
             return true;
@@ -1431,6 +1438,12 @@
         }
         // 2026-10-09 : déplacement du champ PV entier (contour + pans + obstacles + panneaux), saisi
         // à l'intérieur de son contour (cf. finaliserDeplacementChamp).
+        // 2026-11-04 : rotation du champ PV entier, outil de la palette du champ
+        // (calepinage_maison_palette_champ.js).
+        if (CM.state.panelToolMode === 'rotateField') {
+            if (typeof CM.debutRotationChamp === 'function') CM.debutRotationChamp(e, meterPt);
+            return;
+        }
         if (CM.state.panelToolMode === 'moveField') {
             if (CM.state.roofLocal.length >= 3 && CM.pointInPolygon(meterPt, CM.state.roofLocal)) {
                 CM.deplacementChamp = { depart: meterPt, dx: 0, dy: 0, geometrie: instantaneGeometrieChamp() };
@@ -1575,6 +1588,11 @@
             demanderRendu(false);
             return;
         }
+        if (CM.rotationChamp && typeof CM.suiviRotationChamp === 'function') {
+            CM.suiviRotationChamp(e, getCanvasMeterPos(e));
+            demanderRendu(false);
+            return;
+        }
         if (CM.isDraggingContourVertex && CM.draggedVertexIndex !== -1) {
             const meterPt = getCanvasMeterPos(e);
             const pts = CM.state.roofLocal;
@@ -1690,6 +1708,10 @@
             CM.deplacementChamp = null;
             if (typeof CM.updatePanelToolButtonsUI === 'function') CM.updatePanelToolButtonsUI();
             finaliserDeplacementChamp(dep);
+            return;
+        }
+        if (CM.rotationChamp && typeof CM.finRotationChamp === 'function') {
+            CM.finRotationChamp();
             return;
         }
         if (CM.isDraggingContourVertex) {
@@ -2856,7 +2878,7 @@
     }
 
     Object.assign(CM, {
-        computeFit, render, clearanceZoneRings, onCanvasWheel, onCanvasMouseDown, onDocumentMouseMove,
+        metersToCanvas, computeFit, render, clearanceZoneRings, onCanvasWheel, onCanvasMouseDown, onDocumentMouseMove,
         onDocumentMouseUp, onCanvasContextMenu, setupPaletteDrag, finalizeContour,
         depassementSurfaceContour, refuserSurfaceContour,
         cancelContourDraw, getMapContainerProjection, captureMapView, renderCoupe,

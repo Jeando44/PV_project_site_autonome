@@ -71,6 +71,9 @@
                     // calepinage grand projet (show-hidden-cotation-button, ButtonControl.js). Pilote
                     // CM.state.showCotations, cf. wireVisibilityToggleButtons() (formulaires.js).
                     { id: 'cmToggleShowCotationsBtn', icon: 'cotations', iconType: 'svg', tooltip: 'Afficher/masquer les cotations' },
+                    // 2026-11-04 (demande explicite) : affiche/masque le bouton d'accès à la palette
+                    // d'outils posé sur chaque champ PV. Câblage : calepinage_maison_palette_champ.js.
+                    { id: 'cmTogglePaletteChampBtn', icon: 'fa-toolbox', iconType: 'fa', tooltip: "Afficher/masquer le bouton d'outils sur les champs PV" },
                 ],
             },
             {

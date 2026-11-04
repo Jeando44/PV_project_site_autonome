@@ -167,6 +167,8 @@
         // 2026-10-09 : suppression par rectangle / déplacement du champ PV entier.
         else if (CM.state.panelToolMode === 'deleteRect') CM.canvas.style.cursor = 'crosshair';
         else if (CM.state.panelToolMode === 'moveField') CM.canvas.style.cursor = 'grab';
+        // 2026-11-04 : rotation du champ PV (palette du champ, calepinage_maison_palette_champ.js).
+        else if (CM.state.panelToolMode === 'rotateField') CM.canvas.style.cursor = 'grab';
         else CM.canvas.style.cursor = 'default';
     }
 
