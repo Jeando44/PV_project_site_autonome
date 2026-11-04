@@ -132,6 +132,11 @@ class ResumeCalepinageControl {
       "RC",
     ];
 
+    // Site autonome : colonne RC masquée (cf. app/utils/parcours.py). Laissée dans le DOM pour que
+    // les index de cellules (cells[5]) utilisés plus bas restent valides.
+    const masquerRC = typeof window.parcoursMasque === "function" && window.parcoursMasque("colonne_rc");
+    const masquerLibelle = typeof window.parcoursMasque === "function" && window.parcoursMasque("colonne_resume_libelle");
+
     const thead = document.createElement("thead");
     const headerRow = document.createElement("tr");
     headers.forEach((header) => {
@@ -147,6 +152,10 @@ class ResumeCalepinageControl {
       `;
       if (header === "RC") {
         th.style.padding = "5px";
+        if (masquerRC) th.style.display = "none";
+      }
+      if (header === "Résumé du calepinage" && masquerLibelle) {
+        th.style.display = "none";
       }
       headerRow.appendChild(th);
     });
@@ -177,8 +186,10 @@ class ResumeCalepinageControl {
         td.title = "Cliquer pour modifier la surface";
         td.classList.add("rc-cell");
         td.addEventListener("click", () => this._handleRCClick());
+        if (masquerRC) td.style.display = "none";
       } else if (headers[i] === "Résumé du calepinage") {
         td.textContent = "Total";
+        if (masquerLibelle) td.style.display = "none";
       } else {
         td.textContent = "0";
       }

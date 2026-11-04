@@ -1177,7 +1177,7 @@ function collectInputs() {
         checkDegradPrime: document.getElementById('check_degrad_prime')?.checked || false,
         hn_nbre: parseFloat(document.getElementById('hn_nbre')?.value) || 0,
         hn_seuil: parseFloat(document.getElementById('hn_seuil')?.value) || 15,
-        hn_max: parseFloat(document.getElementById('hn_max')?.value) || 300,
+        hn_max: (() => { const v = parseFloat(document.getElementById('hn_max')?.value); return isFinite(v) ? v : 300; })(),
         hn_appliquer_net: document.getElementById('hn_appliquer_net')?.checked ?? true,
 
         // Financement
@@ -2868,6 +2868,45 @@ function openHeuresNeg() {
     calcHeuresNeg();
 }
 
+/**
+ * Bornes de la modale Analyse P90 / Heures d'incertitude (miroir de EtudeEconomique, etude_economique.py) :
+ * productible limite 0-2500 kWh/kWc/an, nombre d'heures 0-1000, % d'heures 0-30,
+ * seuil maximal 0-1500 h. Retourne la liste des erreurs et encadre en rouge les champs hors bornes.
+ */
+function erreursBornesHeuresNeg() {
+    const erreurs = [];
+    const controler = (id, min, max, nom) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const v = parseFloat(el.value);
+        const ok = el.value !== '' && isFinite(v) && v >= min && v <= max;
+        el.style.border = ok ? '' : '2px solid red';
+        if (!ok) erreurs.push(`[${nom}] doit être >= ${min} et <= ${max} (Saisie: ${el.value === '' ? 'vide' : el.value}).`);
+    };
+    controler('hn_prod_limite', 0, 2500, 'Productible limite');
+    controler('hn_nbre', 0, 1000, "Nombre d'heures d'incertitude");
+    controler('hn_max', 0, 1500, 'Seuil maximal (h)');
+    const hNeg = parseFloat(document.getElementById('hn_nbre')?.value) || 0;
+    const brut = parseFloat(document.getElementById('hn_prod_init')?.textContent);
+    const prodBrut = isFinite(brut) && brut > 0 ? brut : (parseFloat(document.getElementById('productible')?.value) || 0);
+    if (prodBrut > 0) {
+        const pct = (hNeg / prodBrut) * 100;
+        if (pct > 30) erreurs.push(`[% d'heure négative] doit être >= 0 et <= 30 (Calculé: ${pct.toFixed(2)} %).`);
+    }
+    return erreurs;
+}
+
+/** « Valider & Fermer » : bloque si une valeur est hors bornes, sinon ferme et recalcule. */
+function validerHeuresNeg() {
+    const erreursHn = erreursBornesHeuresNeg();
+    if (erreursHn.length) {
+        alert("Validation bloquante (Aucune auto-correction n'est permise) :\n\n" + erreursHn.join("\n"));
+        return;
+    }
+    closeModal('heuresNegModal');
+    updateFinanceCalculations();
+}
+
 function calcHeuresNeg() {
     const prodEl = document.getElementById('hn_prod_init');
     const nbreEl = document.getElementById('hn_nbre');
@@ -2917,7 +2956,9 @@ function calcHeuresNeg() {
 
     // ÉTAPE 4 : AJUSTEMENT DU PLAFOND ET VENTILATION DES TRANCHES
     let plafond_ajuste_heures = limite;
-    if (isFrance && specFrance && appliquer_net && option_prime) {
+    // Correctif : « option_prime » n'était pas défini (ReferenceError) → la fonction s'arrêtait
+    // avant la mise à jour du productible net.
+    if (isFrance && specFrance && appliquer_net) {
         plafond_ajuste_heures = limite - (n_prix_negatifs * 0.5);
     }
     
@@ -2935,8 +2976,8 @@ function calcHeuresNeg() {
     const pctEl = document.getElementById('hn_pct');
     if (pctEl) pctEl.textContent = prod_brut > 0 ? ((h_neg / prod_brut) * 100).toFixed(2) : 0;
     
-    const energie_totale_nette_mwh = vol_autoconso_mwh + energie_injectee_mwh;
-    const prod_reel_global = p_c > 0 ? (energie_totale_nette_mwh * 1000) / p_c : 0;
+    // Productible net = productible spécifique − nombre d'heures d'incertitude (ex. 1400 − 300 = 1100).
+    const prod_reel_global = Math.max(0, prod_brut - Math.max(0, h_neg));
 
     const prodNetEl = document.getElementById('hn_prod_net');
     if (prodNetEl) {
@@ -3165,6 +3206,7 @@ window.exportPDF = exportPDF;
 
 window.openHeuresNeg = openHeuresNeg;
 window.calcHeuresNeg = calcHeuresNeg;
+window.validerHeuresNeg = validerHeuresNeg;
 window.openRevenus = openRevenus;
 window.calcRevenus = calcRevenus;
 

@@ -265,29 +265,49 @@ export class UIManager {
                 .versioning-option-card.disabled:hover { border-color: #e5e7eb; background-color: transparent; }
                 .versioning-option-card input[type="radio"] { margin-top: 4px; accent-color: #dc2626; cursor: pointer; }
                 .versioning-option-card.disabled input[type="radio"] { cursor: not-allowed; }
-                .versioning-option-card label { cursor: pointer; display: flex; flex-direction: column; gap: 2px; flex-grow: 1; margin: 0; }
-                .versioning-option-card.disabled label { cursor: not-allowed; }
-                .versioning-option-card label strong { color: #1f2937; }
-                .versioning-option-card label span { font-size: 0.82rem; color: #6b7280; }
-                .versioning-option-card label em { font-style: normal; color: #374151; }
-                .versioning-pastille { display: inline-block; min-width: 22px; text-align: center; background: #dc2626; color: #fff; border-radius: 4px; padding: 0 6px; margin-right: 6px; font-weight: 700; }
-                .versioning-ouverte { font-size: 0.72rem; font-weight: 700; color: #166534; background: #dcfce7; border-radius: 10px; padding: 1px 8px; margin-left: 6px; }
-                .versioning-libelle { margin-top: 14px; }
-                .versioning-libelle label { display: block; font-weight: 600; font-size: 0.88rem; margin-bottom: 4px; color: #1f2937; }
-                .versioning-libelle-ligne { display: flex; gap: 8px; align-items: center; }
-                .versioning-libelle input { flex: 1; border: 1px solid #d1d5db; border-radius: 4px; padding: 7px 9px; font-size: 0.92rem; }
-                .versioning-libelle input.invalide { border-color: #dc2626; outline-color: #dc2626; }
+                /* Sélecteurs préfixés par .versioning-modal-box : les règles globales de label
+                   (Modele.css : hauteur 30 px, float, line-height 30 px) faisaient déborder le
+                   texte des cartes les unes sur les autres. */
+                .versioning-modal-box .versioning-option-card label {
+                    cursor: pointer; display: flex; flex-direction: column; gap: 2px; flex: 1 1 auto; min-width: 0;
+                    margin: 0; padding: 0; float: none; width: auto; height: auto; line-height: 1.4;
+                    font-size: 0.92rem; font-weight: 400; color: #374151; text-align: left; white-space: normal;
+                }
+                .versioning-modal-box .versioning-option-card.disabled label { cursor: not-allowed; }
+                .versioning-modal-box .versioning-option-card label strong { display: flex; align-items: center; flex-wrap: wrap; color: #1f2937; font-size: 0.98rem; font-weight: 700; line-height: 1.4; }
+                .versioning-modal-box .versioning-option-card label > span { display: block; font-size: 0.82rem; color: #6b7280; line-height: 1.4; }
+                .versioning-modal-box .versioning-option-card label em { display: block; font-style: normal; color: #374151; line-height: 1.4; }
+                .versioning-modal-box .versioning-option-card input[type="radio"] { flex: 0 0 auto; width: auto; height: auto; margin: 4px 0 0; float: none; }
+                .versioning-modal-box .versioning-pastille { display: inline-block; min-width: 22px; text-align: center; background: #dc2626; color: #fff; border-radius: 4px; padding: 0 6px; margin-right: 6px; font-size: 0.9rem; font-weight: 700; line-height: 1.5; }
+                .versioning-modal-box .versioning-ouverte { display: inline-block; font-size: 0.72rem; font-weight: 700; color: #166534; background: #dcfce7; border-radius: 10px; padding: 1px 8px; margin-left: 6px; line-height: 1.5; }
+                .versioning-libelle { margin-top: 14px; width: 100%; clear: both; }
+                /* Neutralise les règles globales de label (float/largeur/hauteur fixes, ex. Modele.css)
+                   qui coinçaient le champ de saisie à droite avec une largeur quasi nulle. */
+                .versioning-modal-box .versioning-libelle label {
+                    display: block; float: none; width: auto; height: auto; line-height: 1.4;
+                    font-weight: 600; font-size: 0.88rem; margin: 0 0 4px; padding: 0; color: #1f2937; text-align: left;
+                }
+                .versioning-libelle-ligne { display: flex; gap: 8px; align-items: center; width: 100%; clear: both; }
+                .versioning-modal-box .versioning-libelle input {
+                    flex: 1 1 auto; width: 100%; min-width: 0; box-sizing: border-box; float: none; margin: 0;
+                    border: 1px solid #d1d5db; border-radius: 4px; padding: 7px 9px; font-size: 0.92rem; text-align: left;
+                }
+                .versioning-modal-box .versioning-libelle input.invalide { border-color: #dc2626; outline-color: #dc2626; }
                 .versioning-compteur { font-size: 0.8rem; color: #6b7280; min-width: 44px; text-align: right; }
                 .versioning-compteur.invalide { color: #dc2626; font-weight: 700; }
                 .versioning-erreur { display: none; margin-top: 6px; font-size: 0.82rem; color: #991b1b; }
                 .versioning-confirmation { display: none; margin-top: 14px; padding: 10px 12px; border-radius: 6px; background: #fef2f2; border: 1px solid #fca5a5; color: #991b1b; font-size: 0.88rem; }
                 .versioning-modal-footer { padding: 15px 20px; background-color: #f9fafb; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 10px; }
-                .versioning-modal-footer .btn { padding: 8px 16px; border: none; border-radius: 4px; font-weight: 500; font-size: 0.9rem; cursor: pointer; }
-                .versioning-modal-footer .btn-primary { background-color: #dc2626; color: white; font-weight: 600; }
-                .versioning-modal-footer .btn-primary:hover { background-color: #b91c1c; }
+                /* Neutralise .btn global (Entete.css : dégradé rouge, largeur 27,5 %, marges 10 %). */
+                .versioning-modal-footer .btn {
+                    width: auto; margin: 0; padding: 8px 16px; border: none; border-radius: 4px;
+                    font-weight: 500; font-size: 0.9rem; line-height: 1.4; cursor: pointer; white-space: nowrap;
+                }
+                .versioning-modal-footer .btn-primary { background: #dc2626; color: #fff; font-weight: 600; }
+                .versioning-modal-footer .btn-primary:hover { background: #b91c1c; }
                 .versioning-modal-footer .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-                .versioning-modal-footer .btn-secondary { background-color: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
-                .versioning-modal-footer .btn-secondary:hover { background-color: #e5e7eb; }
+                .versioning-modal-footer .btn-secondary { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+                .versioning-modal-footer .btn-secondary:hover { background: #e5e7eb; }
             `;
             document.head.appendChild(style);
         }

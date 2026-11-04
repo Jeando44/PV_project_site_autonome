@@ -1964,7 +1964,10 @@
             <!-- Navigation (demande explicite) : mêmes étapes que le menu horizontal — Mes projets,
                  Paramètres projet, Consommation d'énergie (« Profil de consommation » en Site
                  autonome), Calepinage. Boutons générés par construireNavigationEntete(). -->
-            <nav id="cmHeaderNav" aria-label="Navigation du projet" style="display:flex; align-items:center; gap:6px; margin:0 16px; flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:none;"></nav>
+            <!-- position/width/top/left/z-index/background explicites : neutralisent la règle globale
+                 « nav { position:fixed; top:0; ... } » de menu_list.css, qui sortait sinon cette barre
+                 de l'en-tête pour la plaquer en haut de l'écran. -->
+            <nav id="cmHeaderNav" aria-label="Navigation du projet" style="position:static; top:auto; left:auto; width:auto; z-index:auto; background:transparent; display:flex; align-items:center; gap:6px; margin:0 16px; flex:1 1 auto; min-width:0; overflow-x:auto; scrollbar-width:none;"></nav>
             <div style="display:flex; align-items:center; gap:10px;">
                 <!-- Champs PV / images importées : un bouton par source (demande explicite : sélection sans
                      liste déroulante), placés à gauche des icônes d'affichage. Boutons générés par

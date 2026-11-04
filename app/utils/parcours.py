@@ -50,6 +50,9 @@ TYPE_ETUDE_TECHNICO_ECO = 'Étude technico-économique'
 #   revente_surplus  : case « Prendre en compte la revente du surplus » de l'étude économique
 #   indices_projet   : bouton « Ajouter des indices / Indice projet » de Paramètres projet (devenu inutile)
 #   dimensionnement  : entrée « Dimensionnement » du menu horizontal
+#   carte_enedis     : bouton « Enedis » (réseau électrique) des vues de la carte (ToolBar/mapViews.js)
+#   colonne_rc       : colonne « RC » du résumé du calepinage (ToolBar/resuméCalepinage.js)
+#   colonne_resume_libelle : 1re colonne « Résumé du calepinage / Total » du même résumé
 #
 # Types de structure du calepinage masqués pour la typologie Résidentielle (en plus de `ombrieres`).
 TYPES_OMBRIERE = ['ombriere', 'ombriere_metal', 'ombriere_bois', 'ombriere_solumbra']
@@ -100,7 +103,8 @@ PARCOURS = {
         # Une seule page par typologie du système (cf. irve_nav_menu.js), sans barre d'onglets.
         'titre_consommation': 'Profil de consommation',
         'masquer': ['dp', 'ombrieres', 'plans_ombrieres', 'enedis', 'revente_surplus', 'indices_projet',
-                    'dimensionnement'],
+                    'dimensionnement', 'carte_enedis', 'colonne_rc',
+                    'colonne_resume_libelle'],
         'types_structure_masques_residentiel': ['toiture_inclinee', 'champ_solaire'],
     },
 }

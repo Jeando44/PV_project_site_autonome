@@ -94,6 +94,9 @@ class EtudeEconomiqueService:
             "degradation": (0.2, 3.0, True, True),
             "horizon": (0, 30, True, True),
             "prodLimite": (0, 2500, False, False),
+            # Modale Analyse P90 / Heures négatives (miroir de erreursBornesHeuresNeg, JS).
+            "hn_nbre": (0, 1000, True, True),
+            "hn_max": (0, 1500, True, True),
             "palT1": (1, 250, True, True),
             "palT2": (0, 500, True, True),
             "palT3": (0, 500, True, True),
@@ -213,6 +216,15 @@ class EtudeEconomiqueService:
                 
                 if max_incl and val > eff_max: raise ValueError(f"Rejet : {key} ({val}) doit être <= {eff_max}")
                 elif not max_incl and val >= eff_max: raise ValueError(f"Rejet : {key} ({val}) doit être < {eff_max}")
+
+        # % d'heures d'incertitude (heures / productible spécifique) : 0 à 30 %.
+        try:
+            hn_nbre = float(data.get("hn_nbre") or 0)
+            prod_brut = float(data.get("productible") or 0)
+        except (TypeError, ValueError):
+            hn_nbre, prod_brut = 0.0, 0.0
+        if prod_brut > 0 and hn_nbre / prod_brut * 100 > 30 + 1e-9:
+            raise ValueError(f"Rejet : % d'heures négatives ({hn_nbre / prod_brut * 100:.2f}) doit être <= 30")
 
         # Stockage : prix de recharge réseau obligatoire quand la recharge sur le réseau est active ;
         # année de remplacement cohérente avec l'horizon quand elle est personnalisée.

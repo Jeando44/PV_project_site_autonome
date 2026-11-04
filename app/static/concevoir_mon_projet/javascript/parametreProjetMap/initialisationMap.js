@@ -1,4 +1,4 @@
-import { UIManager } from '../ParametresProjet.js?v=20'; // ?v= : fusion des onglets (cache navigateur)
+import { UIManager } from '../ParametresProjet.js?v=21'; // ?v= : fusion des onglets (cache navigateur)
 import { DataManager } from './parametreProjetFormManager.js?v=41';
 import ShareManager2 from './shareManager.js';
 import { adresseCourteDepuisNominatim } from './adresseCourte.js';

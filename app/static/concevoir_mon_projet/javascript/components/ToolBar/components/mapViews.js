@@ -441,7 +441,9 @@ class MapViewsControl {
    viewsContainer.appendChild(satelliteContainer);
    viewsContainer.appendChild(planContainer);
    viewsContainer.appendChild(cadastreContainer);
-   viewsContainer.appendChild(enedisContainer);
+   // Site autonome : pas de raccordement au réseau, la carte Enedis est masquée (cf. app/utils/parcours.py).
+   const masquerCarteEnedis = typeof window.parcoursMasque === "function" && window.parcoursMasque("carte_enedis");
+   if (!masquerCarteEnedis) viewsContainer.appendChild(enedisContainer);
    viewsContainer.appendChild(tilt3DButton);
 
    // Sélectionner Satellite par défaut au démarrage si la map est prête

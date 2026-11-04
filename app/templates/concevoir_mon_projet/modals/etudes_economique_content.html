@@ -1086,6 +1086,29 @@
             font-weight: 500;
             color: #334155;
         }
+        /* Choix du convertisseur sur une seule ligne horizontale (prioritaire sur les styles
+           globaux des labels / cases à cocher qui les empilaient verticalement). */
+        #devise-converter-container .devise-converter-options {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            align-items: center !important;
+            gap: 22px !important;
+            overflow-x: auto;
+        }
+        #devise-converter-container .devise-converter-options .devise-conv-option {
+            display: inline-flex !important;
+            flex-direction: row !important;
+            align-items: center !important;
+            width: auto !important;
+            flex: 0 0 auto !important;
+            margin: 0 !important;
+            white-space: nowrap;
+        }
+        #devise-converter-container .devise-conv-option input[type="checkbox"] {
+            width: auto !important;
+            margin: 0 !important;
+        }
         .devise-converter-custom-row {
             display: flex;
             align-items: center;
@@ -1865,15 +1888,15 @@
                     </tr>
                     <tr>
                         <td style="padding: 5px; border: 1px solid #ddd;">Productible limite</td>
-                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_prod_limite" value="1600" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;" oninput="calcHeuresNeg()"></td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_prod_limite" value="1600" min="0" max="2500" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;" oninput="calcHeuresNeg()"></td>
                     </tr>
                     <tr>
                         <td style="padding: 5px; border: 1px solid #ddd;">Productible tranche 2 (&gt; <span id="hn_libelle_limite">1600</span> kWh/kWc/an)</td>
                         <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><span id="hn_prod_tranche2" style="font-weight: bold;">0</span></td>
                     </tr>
                     <tr>
-                        <td style="padding: 5px; border: 1px solid #ddd;">Nbre d’heure négative (kWh/kWc/an)</td>
-                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_nbre" value="0" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;" oninput="calcHeuresNeg()"></td>
+                        <td style="padding: 5px; border: 1px solid #ddd;">Nombre d'heures d'incertitude (kWh/kWc/an)</td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_nbre" value="0" min="0" max="1000" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;" oninput="calcHeuresNeg()"></td>
                     </tr>
                     <tr>
                         <td style="padding: 5px; border: 1px solid #ddd;">% d’heure négative</td>
@@ -1885,9 +1908,10 @@
                     </tr>
                     <tr>
                         <td style="padding: 5px; border: 1px solid #ddd;">Seuil maximal (h)</td>
-                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_max" value="300" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;"></td>
+                        <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="number" id="hn_max" value="300" min="0" max="1500" class="form-control" style="width: 80px; margin: 0 auto; text-align: center; padding: 2px;"></td>
                     </tr>
-                    <tr>
+                    <!-- Masqué : non pertinent pour les sites autonomes (case conservée pour les calculs). -->
+                    <tr style="display: none;">
                         <td style="padding: 5px; border: 1px solid #ddd;">Appliquer le productible net (Pertes + Prime)</td>
                         <td style="padding: 5px; border: 1px solid #ddd; text-align: center;"><input type="checkbox" id="hn_appliquer_net" checked onclick="this.dataset.manual='true';" onchange="calcHeuresNeg(); updateFinanceCalculations();"></td>
                     </tr>
@@ -1898,7 +1922,7 @@
                 </tbody>
             </table>
             <div style="text-align:center; display: flex; justify-content: center;">
-                <button type="button" class="btn btn-primary btn-sm" onclick="closeModal('heuresNegModal'); updateFinanceCalculations();">Valider & Fermer</button>
+                <button type="button" class="btn btn-primary btn-sm" onclick="validerHeuresNeg();">Valider & Fermer</button>
             </div>
         </div>
     </div>
@@ -1948,7 +1972,7 @@
 <!-- Scripts JavaScript -->
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/EtudesEconomiqueModal.js') }}?v=3"></script>
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/StockageVieillissement.js') }}?v=2"></script>
-<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/EtudesEconomiqueLogic.js') }}?v=24"></script>
+<script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/EtudesEconomiqueLogic.js') }}?v=25"></script>
 <!-- Puissance, productible, taux d'autoconsommation, parts hiver/été : lus en base (calcul ProSolaire) + contrôle bloquant. -->
 <script src="{{ url_for('static', filename='concevoir_mon_projet/javascript/etude_economique/ReferenceProSolaire.js') }}?v=2"></script>
 
