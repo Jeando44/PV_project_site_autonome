@@ -16,8 +16,11 @@ sont des variables du service Cloud Run (ou des secrets Secret Manager exposés 
 - **Connexions Cloud SQL** : ajouter l'instance (monte `/cloudsql/projet:region:instance`).
 - Compte de service du service : rôle **Client Cloud SQL** (`roles/cloudsql.client`).
 - Mémoire : 2 Gio conseillés (pvlib, pandas, matplotlib). Délai de requête : au moins 300 s.
-- Adresse propre (`*.run.app` ou sous-domaine) : **jamais** sous `solakvan.com/concevoir_mon_projet`
-  (cookie `__session` partagé avec PV_project).
+- Nom du service : `pv-site-autonome`, région `europe-west9` (repris dans `firebase.json` de
+  Solakvan_Projet : à y changer si le nom diffère).
+- Adresse publique : **https://site-autonome.solakvan.com/concevoir_mon_projet/**, servie par un
+  2e site Firebase Hosting (`solakvan-site-autonome`) — **jamais** sous
+  `solakvan.com/concevoir_mon_projet` (cookie `__session` partagé avec PV_project).
 
 ## 3. Variables d'environnement du service
 
@@ -41,7 +44,7 @@ sont des variables du service Cloud Run (ou des secrets Secret Manager exposés 
 | `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_DEFAULT_SENDER`, `MAIL_RECIPIENT`, `ADMIN_EMAIL` | messagerie |
 | `GOOGLE_MAP_KEY` | clé Google Maps (adresse du service ajoutée aux référents autorisés) |
 | `MATERIELS_ADMIN_EMAILS` | adresse(s) autorisée(s) à administrer le catalogue (sinon personne en production) |
-| `PROXYS_DE_CONFIANCE` | `1` si le service est appelé directement en `*.run.app` ; laisser `2` (défaut) derrière Firebase Hosting |
+| `PROXYS_DE_CONFIANCE` | ne pas définir (défaut `2` = Firebase Hosting + Cloud Run, cas de site-autonome.solakvan.com) |
 | `SSO_AUDIENCES_SUPPLEMENTAIRES` | vide |
 | `SWITCHGRID_*`, `TEST_DATABASE_URL` | inutiles (Enedis masqué en site autonome) |
 
