@@ -151,8 +151,7 @@ def create_app(config_name=None):
     required_env_vars = [
         'FLASK_SECRET_KEY',
         'RECAPTCHA_PUBLIC_KEY',
-        'RECAPTCHA_PRIVATE_KEY',
-        'RECAPTCHA_VERIFY_URL',
+        'RECAPTCHA_API_KEY',
         'MAIL_USERNAME',
         'MAIL_PASSWORD',
         'MAIL_DEFAULT_SENDER'
@@ -179,8 +178,11 @@ def create_app(config_name=None):
     # Configuration depuis les variables d'environnement
     app.config['SECRET_KEY'] = os.getenv('FLASK_SECRET_KEY')
     app.config['RECAPTCHA_PUBLIC_KEY'] = os.getenv('RECAPTCHA_PUBLIC_KEY')
-    app.config['RECAPTCHA_PRIVATE_KEY'] = os.getenv('RECAPTCHA_PRIVATE_KEY')
-    app.config['RECAPTCHA_VERIFY_URL'] = os.getenv('RECAPTCHA_VERIFY_URL')
+    # reCAPTCHA Enterprise (évaluations) : clé API lue côté serveur uniquement, voir app/utils/recaptcha.py.
+    app.config['RECAPTCHA_API_KEY'] = os.getenv('RECAPTCHA_API_KEY')
+    app.config['RECAPTCHA_PROJECT_ID'] = os.getenv('RECAPTCHA_PROJECT_ID') or 'cmp-2025'
+    app.config['RECAPTCHA_SCORE_THRESHOLD'] = os.getenv('RECAPTCHA_SCORE_THRESHOLD') or '0.5'
+    app.config['RECAPTCHA_TIMEOUT'] = os.getenv('RECAPTCHA_TIMEOUT') or '5'
 
     # Configuration email
     app.config['MAIL_SERVER'] = 'smtp.gmail.com'

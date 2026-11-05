@@ -18,7 +18,7 @@ def emails_depuis_env(nom_variable, defaut=None):
 class Config:
     SECRET_KEY = os.getenv('FLASK_SECRET_KEY')
     RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY')
-    RECAPTCHA_PRIVATE_KEY = os.getenv('RECAPTCHA_PRIVATE_KEY')
+    RECAPTCHA_API_KEY = os.getenv('RECAPTCHA_API_KEY')   # reCAPTCHA Enterprise, serveur uniquement
     MAIL_USERNAME = os.getenv('MAIL_USERNAME')
     MAIL_PASSWORD = os.getenv('MAIL_PASSWORD')
     MAIL_DEFAULT_SENDER = os.getenv('MAIL_DEFAULT_SENDER')

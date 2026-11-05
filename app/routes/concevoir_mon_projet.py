@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, render_template, g, url_for, flas
 from app.services.mention_essai import pdf_pour_utilisateur
 from datetime import datetime
 from app.utils.dates import utc_maintenant
+from app.utils.recaptcha import MESSAGE_REFUS as MESSAGE_REFUS_RECAPTCHA, creer_evaluation
 import io
 import json
 import re
@@ -2374,6 +2375,12 @@ def access_shared_project(token):
     # Vérifier le mot de passe si requis
     if share.require_password:
         if request.method == 'POST':
+            # reCAPTCHA Enterprise avant la vérification du mot de passe (fail closed) :
+            # bloque les essais automatisés de mots de passe sur les liens de partage.
+            accepte, _ = creer_evaluation(request.form.get('recaptcha_token'), 'partage_mot_de_passe')
+            if not accepte:
+                return render_template('sharing/share_password.html', share=share,
+                                       erreur=MESSAGE_REFUS_RECAPTCHA), 403
             password = request.form.get('password')
             if not share.verify_password(password):
                 flash('Mot de passe incorrect', 'error')

@@ -23,7 +23,8 @@ CSP_REPORT_ONLY = "; ".join([
     # 'unsafe-inline'/'unsafe-eval' restent nécessaires tant que les scripts en ligne
     # n'ont pas été extraits dans des fichiers ou dotés d'un nonce.
     f"script-src 'self' 'unsafe-inline' 'unsafe-eval' {CDN} "
-    "https://cdn.tailwindcss.com https://cdn.sheetjs.com https://maps.googleapis.com https://www.gstatic.com",
+    "https://cdn.tailwindcss.com https://cdn.sheetjs.com https://maps.googleapis.com https://www.gstatic.com "
+    "https://www.google.com/recaptcha/",
     f"style-src 'self' 'unsafe-inline' {CDN} https://fonts.googleapis.com",
     f"font-src 'self' data: https://fonts.gstatic.com {CDN}",
     "img-src 'self' data: blob: https:",
@@ -31,7 +32,7 @@ CSP_REPORT_ONLY = "; ".join([
     "https://data.geopf.fr https://geo.api.gouv.fr https://cadastre.data.gouv.fr "
     "https://inspire.cadastre.gouv.fr https://opendata.enedis.fr",
     "worker-src 'self' blob:",
-    "frame-src 'self'",
+    "frame-src 'self' https://www.google.com/recaptcha/ https://recaptcha.google.com/recaptcha/",
     "frame-ancestors 'self'",
     "object-src 'none'",
     "base-uri 'self'",
